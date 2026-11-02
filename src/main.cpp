@@ -128,13 +128,14 @@ void setup() {
   esp_task_wdt_init(WDT_TIMEOUT_SECONDS, true);
   esp_task_wdt_add(NULL);
 
-  // 2. Kiểm tra phần cứng ESP32-S3R8 và bộ nhớ Octal PSRAM OPI
+  // 2. Kiểm tra phần cứng ESP32-S3 N16R8 và bộ nhớ Octal PSRAM OPI
   Serial.println("\n=======================================================");
-  Serial.println("  HE THONG GIAM SAT VA PHAT HIEN TE NGA - ESP32-S3R8");
+  Serial.println("  HE THONG GIAM SAT VA PHAT HIEN TE NGA - ESP32-S3 N16R8");
   Serial.println("  (Time-of-Flight VL53L1X + 24GHz FMCW Radar LD2410B)");
-  Serial.println("  + Multi-Stage Fusion, Smart Nightlight & WDT 10s");
+  Serial.println("  + 16MB Flash, 8MB Octal PSRAM, Smart Nightlight & WDT");
   Serial.println("=======================================================");
   Serial.printf("[MEM] SRAM noi kha dung: %d KB\n", ESP.getFreeHeap() / 1024);
+  Serial.printf("[FLASH] Kich thuoc Flash: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
   if (psramFound()) {
     Serial.printf("[MEM] Octal PSRAM OPI kha dung: %d MB\n", ESP.getFreePsram() / (1024 * 1024));
   } else {
