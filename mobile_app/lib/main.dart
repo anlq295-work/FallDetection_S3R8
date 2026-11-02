@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 // =========================================================================
-// CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3R8
+// CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3 N16R8
 // =========================================================================
 const String serviceUuid       = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const String charWifiUuid      = "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28";
@@ -70,6 +70,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
   bool _isConnected = false;
   String _statusMessage = "Chưa kết nối thiết bị";
   List<ScanResult> _scanResults = [];
+  final Map<String, int> _rssiMap = {};
 
   // Các Characteristic được tìm thấy
   BluetoothCharacteristic? _wifiChar;
@@ -89,7 +90,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
   final TextEditingController _chatIdController = TextEditingController();
   final TextEditingController _botTokenController = TextEditingController();
   double _floorThreshold = 450;
-  bool _obscurePass = true;
 
   // Dữ liệu Telemetry thời gian thực
   String _sysState = "DISCONNECTED";
@@ -104,7 +104,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // 2 Tab: Kết nối (Thiết bị) và Giám sát
+    _tabController = TabController(length: 2, vsync: this);
     _checkBluetoothState();
   }
 
@@ -146,15 +147,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
         setState(() {
           _scanResults = results.where((r) {
             String name = r.device.platformName;
-            return name.contains("FallDetector") || r.advertisementData.serviceUuids.any((u) => u.str128.toLowerCase().contains(serviceUuid.toLowerCase()));
+            return name.contains("FallDetector") ||
+                   r.advertisementData.serviceUuids.any((u) => u.str128.toLowerCase().contains(serviceUuid.toLowerCase()));
           }).toList();
+
+          for (var r in results) {
+            _rssiMap[r.device.remoteId.str] = r.rssi;
+          }
         });
       });
 
       await Future.delayed(const Duration(seconds: 6));
       setState(() {
         _isScanning = false;
-        if (_scanResults.isEmpty) {
+        if (_scanResults.isEmpty && !_isConnected) {
           _statusMessage = "Không tìm thấy thiết bị. Hãy chắc chắn ESP32-S3 đang bật!";
         }
       });
@@ -166,11 +172,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
     }
   }
 
-  // Kết nối tới ESP32-S3R8
+  // Kết nối tới ESP32-S3
   Future<void> _connectToDevice(BluetoothDevice device) async {
     await FlutterBluePlus.stopScan();
     setState(() {
-      _statusMessage = "Đang kết nối tới ${device.platformName}...";
+      _statusMessage = "Đang kết nối tới ${device.platformName.isEmpty ? 'FallDetector_S3R8' : device.platformName}...";
     });
 
     try {
@@ -208,7 +214,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
         }
       }
 
-      // Đọc danh bạ hiện có trên chip
+      // Đọc cấu hình danh bạ & ngưỡng sàn hiện tại từ chip
       await _readCurrentContacts();
 
       // Đăng ký nhận thông báo Status Notify
@@ -414,6 +420,38 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
     }
   }
 
+  // Mở màn hình Cài đặt riêng cho thiết bị
+  void _openDeviceSettings(BluetoothDevice device) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => DeviceSettingsScreen(
+          device: device,
+          isConnected: _isConnected,
+          ssidController: _ssidController,
+          passController: _passController,
+          phoneController: _phoneController,
+          chatIdController: _chatIdController,
+          botTokenController: _botTokenController,
+          floorThreshold: _floorThreshold,
+          onFloorThresholdChanged: (val) {
+            setState(() {
+              _floorThreshold = val;
+            });
+          },
+          onSaveWifi: _sendWifiConfig,
+          onSaveContacts: _sendContactsConfig,
+          onDisconnect: () {
+            _disconnect();
+            Navigator.pop(ctx);
+          },
+          onCalibrateFloor: () => _sendCommand("CALIBRATE_FLOOR"),
+          onRefreshContacts: _readCurrentContacts,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -427,8 +465,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
         ),
         actions: [
           IconButton(
-            icon: Icon(_isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
-                color: _isConnected ? Colors.greenAccent : Colors.grey),
+            icon: Icon(
+              _isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
+              color: _isConnected ? Colors.greenAccent : Colors.grey,
+            ),
             tooltip: _isConnected ? "Đã kết nối" : "Chưa kết nối",
             onPressed: () => _tabController.animateTo(0),
           ),
@@ -437,7 +477,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.bluetooth_searching), text: 'Kết nối'),
-            Tab(icon: Icon(Icons.settings), text: 'Cài đặt'),
             Tab(icon: Icon(Icons.monitor_heart), text: 'Giám sát'),
           ],
         ),
@@ -446,7 +485,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
         controller: _tabController,
         children: [
           _buildConnectionTab(),
-          _buildSettingsTab(),
           _buildMonitorTab(),
         ],
       ),
@@ -474,92 +512,205 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
     );
   }
 
-  // TAB 1: KẾT NỐI BLUETOOTH
+  // TAB 1: KẾT NỐI BLUETOOTH (ĐÃ TINH CHỈNH THEO YÊU CẦU)
   Widget _buildConnectionTab() {
+    // Tập hợp danh sách thiết bị hiển thị (đưa thiết bị đã kết nối lên đầu)
+    List<BluetoothDevice> displayedDevices = [];
+    if (_connectedDevice != null && _isConnected) {
+      displayedDevices.add(_connectedDevice!);
+    }
+    for (var r in _scanResults) {
+      if (_connectedDevice == null || r.device.remoteId != _connectedDevice!.remoteId) {
+        displayedDevices.add(r.device);
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: _isConnected ? Colors.green.shade100 : Colors.grey.shade200,
-                        child: Icon(
-                          _isConnected ? Icons.sensors : Icons.sensors_off,
-                          color: _isConnected ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _connectedDevice != null ? _connectedDevice!.platformName : "Chưa có thiết bị",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            Text(
-                              _isConnected ? "Đang trực tuyến (BLE Connected)" : "Hãy quét và chọn thiết bị",
-                              style: TextStyle(color: _isConnected ? Colors.green : Colors.grey, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_isConnected)
-                        OutlinedButton(
-                          onPressed: _disconnect,
-                          child: const Text("Ngắt"),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          // Nút quét thiết bị đưa lên trên cùng (đã bỏ khối Đang trực tuyến riêng lẻ)
           ElevatedButton.icon(
             onPressed: _isScanning ? null : _startScan,
             icon: _isScanning
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.search),
             label: Text(_isScanning ? "Đang quét xung quanh..." : "Quét thiết bị FallDetector_S3R8"),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 16),
-          const Text("Thiết bị tìm thấy:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Thiết bị tìm thấy:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              if (displayedDevices.isNotEmpty)
+                Text("${displayedDevices.length} thiết bị", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
           const SizedBox(height: 8),
+
           Expanded(
-            child: _scanResults.isEmpty
+            child: displayedDevices.isEmpty
                 ? Center(
-                    child: Text(
-                      _isScanning ? "Đang tìm kiếm sóng Bluetooth..." : "Nhấn 'Quét' để tìm thiết bị ESP32",
-                      style: const TextStyle(color: Colors.grey),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bluetooth_searching, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          _isScanning ? "Đang tìm kiếm sóng Bluetooth..." : "Nhấn 'Quét' để tìm thiết bị FallDetector_S3R8",
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
-                    itemCount: _scanResults.length,
+                    itemCount: displayedDevices.length,
                     itemBuilder: (ctx, idx) {
-                      final r = _scanResults[idx];
-                      String name = r.device.platformName.isEmpty ? "FallDetector_S3R8" : r.device.platformName;
+                      final device = displayedDevices[idx];
+                      final bool isThisConnected = _isConnected && _connectedDevice?.remoteId == device.remoteId;
+                      final String devName = device.platformName.isEmpty ? "FallDetector_S3R8" : device.platformName;
+                      final int? rssi = _rssiMap[device.remoteId.str];
+
+                      // Trường hợp thiết bị đã kết nối thành công: Hiển thị xanh, nút Ngắt, chạm vào để mở Cài đặt
+                      if (isThisConnected) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: Colors.green.withValues(alpha: 0.12),
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(color: Colors.green, width: 1.8),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _openDeviceSettings(device),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14.0),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.sensors, color: Colors.green, size: 24),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          devName,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 3),
+                                        const Row(
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              "Đã kết nối",
+                                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text("•", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              "Chạm để cài đặt",
+                                              style: TextStyle(color: Colors.blueAccent, fontSize: 12, decoration: TextDecoration.underline),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "RSSI: ${rssi != null ? '$rssi dBm' : 'Tốt'} | ID: ${device.remoteId}",
+                                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Nút ngắt kết nối trực tiếp trên thiết bị
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.redAccent,
+                                      side: const BorderSide(color: Colors.redAccent),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    onPressed: _disconnect,
+                                    child: const Text("Ngắt", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(Icons.chevron_right, color: Colors.green),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Trường hợp thiết bị chưa kết nối: Card tiêu chuẩn với nút Kết nối
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          leading: const Icon(Icons.devices, color: Colors.blue),
-                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text("RSSI: ${r.rssi} dBm | ID: ${r.device.remoteId}"),
-                          trailing: ElevatedButton(
-                            onPressed: () => _connectToDevice(r.device),
-                            child: const Text("Kết nối"),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _connectToDevice(device),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.devices, color: Colors.blueAccent, size: 24),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        devName,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        "RSSI: ${rssi != null ? '$rssi dBm' : '--'} | ID: ${device.remoteId}",
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onPressed: () => _connectToDevice(device),
+                                  child: const Text("Kết nối"),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -571,141 +722,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
     );
   }
 
-  // TAB 2: CÀI ĐẶT WI-FI & DANH BẠ KHẨN CẤP
-  Widget _buildSettingsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Cấu hình Wi-Fi
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.wifi, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text("Cấu hình Wi-Fi cho ESP32", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _ssidController,
-                    decoration: const InputDecoration(
-                      labelText: "Tên mạng Wi-Fi (SSID)",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.router),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passController,
-                    obscureText: _obscurePass,
-                    decoration: InputDecoration(
-                      labelText: "Mật khẩu Wi-Fi",
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePass ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _obscurePass = !_obscurePass),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ElevatedButton.icon(
-                    onPressed: _isConnected ? _sendWifiConfig : null,
-                    icon: const Icon(Icons.save),
-                    label: const Text("Lưu Wi-Fi & Khởi động lại ESP32"),
-                    style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(45)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // 2. Cấu hình danh bạ khẩn cấp
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.contact_phone, color: Colors.redAccent),
-                      SizedBox(width: 8),
-                      Text("Danh bạ cứu hộ khẩn cấp", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: "Số điện thoại người thân (SMS)",
-                      hintText: "0901234567",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _chatIdController,
-                    keyboardType: TextInputType.text,
-                    decoration: const InputDecoration(
-                      labelText: "Telegram Chat ID (Người thân / Nhóm)",
-                      hintText: "123456789",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.send),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _botTokenController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Telegram Bot Token (Tùy chọn)",
-                      hintText: "Để trống nếu dùng mặc định",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.key),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text("Ngưỡng chiều cao sàn: ${_floorThreshold.toInt()} mm", style: const TextStyle(fontWeight: FontWeight.w500)),
-                  Slider(
-                    value: _floorThreshold,
-                    min: 200,
-                    max: 800,
-                    divisions: 12,
-                    label: "${_floorThreshold.toInt()} mm",
-                    onChanged: (val) => setState(() => _floorThreshold = val),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: _isConnected ? _sendContactsConfig : null,
-                    icon: const Icon(Icons.save_as),
-                    label: const Text("Cập nhật Danh bạ & Ngưỡng sàn"),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(45),
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 3: GIÁM SÁT THỜI GIAN THỰC & ĐIỀU KHIỂN TỪ XA
+  // TAB 2: GIÁM SÁT THỜI GIAN THỰC & ĐIỀU KHIỂN TỪ XA
   Widget _buildMonitorTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -870,6 +887,309 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> with SingleTi
             const SizedBox(height: 4),
             Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
             Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =========================================================================
+// MÀN HÌNH CÀI ĐẶT THIẾT BỊ (MỞ RA KHI CHẠM VÀO THIẾT BỊ ĐÃ KẾT NỐI)
+// =========================================================================
+class DeviceSettingsScreen extends StatefulWidget {
+  final BluetoothDevice device;
+  final bool isConnected;
+  final TextEditingController ssidController;
+  final TextEditingController passController;
+  final TextEditingController phoneController;
+  final TextEditingController chatIdController;
+  final TextEditingController botTokenController;
+  final double floorThreshold;
+  final ValueChanged<double> onFloorThresholdChanged;
+  final Future<void> Function() onSaveWifi;
+  final Future<void> Function() onSaveContacts;
+  final VoidCallback onDisconnect;
+  final VoidCallback onCalibrateFloor;
+  final Future<void> Function() onRefreshContacts;
+
+  const DeviceSettingsScreen({
+    super.key,
+    required this.device,
+    required this.isConnected,
+    required this.ssidController,
+    required this.passController,
+    required this.phoneController,
+    required this.chatIdController,
+    required this.botTokenController,
+    required this.floorThreshold,
+    required this.onFloorThresholdChanged,
+    required this.onSaveWifi,
+    required this.onSaveContacts,
+    required this.onDisconnect,
+    required this.onCalibrateFloor,
+    required this.onRefreshContacts,
+  });
+
+  @override
+  State<DeviceSettingsScreen> createState() => _DeviceSettingsScreenState();
+}
+
+class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
+  bool _obscurePass = true;
+  late double _currentFloorThreshold;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentFloorThreshold = widget.floorThreshold;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String devName = widget.device.platformName.isEmpty ? "FallDetector_S3R8" : widget.device.platformName;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Cài đặt: $devName",
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "ID: ${widget.device.remoteId}",
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Đọc lại cấu hình từ ESP32",
+            onPressed: () async {
+              await widget.onRefreshContacts();
+              if (!context.mounted) return;
+              setState(() {
+                _currentFloorThreshold = widget.floorThreshold;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Đã làm mới dữ liệu cấu hình từ ESP32!"), duration: Duration(seconds: 2)),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Thẻ tóm tắt trạng thái kết nối
+            Card(
+              color: widget.isConnected ? Colors.green.withValues(alpha: 0.12) : Colors.red.withValues(alpha: 0.12),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: widget.isConnected ? Colors.green : Colors.red, width: 1.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.isConnected ? Icons.check_circle : Icons.error,
+                      color: widget.isConnected ? Colors.green : Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.isConnected ? "Thiết bị đang kết nối Bluetooth Low Energy" : "Thiết bị đã ngắt kết nối",
+                        style: TextStyle(
+                          color: widget.isConnected ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // 1. Cấu hình Wi-Fi
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.wifi, color: Colors.blueAccent),
+                        SizedBox(width: 8),
+                        Text("Cấu hình Wi-Fi cho ESP32", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: widget.ssidController,
+                      decoration: const InputDecoration(
+                        labelText: "Tên mạng Wi-Fi (SSID)",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.router),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: widget.passController,
+                      obscureText: _obscurePass,
+                      decoration: InputDecoration(
+                        labelText: "Mật khẩu Wi-Fi",
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePass ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      onPressed: widget.isConnected ? widget.onSaveWifi : null,
+                      icon: const Icon(Icons.save),
+                      label: const Text("Lưu Wi-Fi & Khởi động lại ESP32"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(45),
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 2. Cấu hình danh bạ khẩn cấp
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.contact_phone, color: Colors.redAccent),
+                        SizedBox(width: 8),
+                        Text("Danh bạ cứu hộ khẩn cấp", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: widget.phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: "Số điện thoại người thân (SMS)",
+                        hintText: "0901234567",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: widget.chatIdController,
+                      keyboardType: TextInputType.text,
+                      decoration: const InputDecoration(
+                        labelText: "Telegram Chat ID (Người thân / Nhóm)",
+                        hintText: "123456789",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.send),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: widget.botTokenController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: "Telegram Bot Token (Tùy chọn)",
+                        hintText: "Để trống nếu dùng mặc định",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.key),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Ngưỡng chiều cao sàn: ${_currentFloorThreshold.toInt()} mm",
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    Slider(
+                      value: _currentFloorThreshold,
+                      min: 200,
+                      max: 800,
+                      divisions: 12,
+                      label: "${_currentFloorThreshold.toInt()} mm",
+                      onChanged: (val) {
+                        setState(() {
+                          _currentFloorThreshold = val;
+                        });
+                        widget.onFloorThresholdChanged(val);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: widget.isConnected ? widget.onSaveContacts : null,
+                      icon: const Icon(Icons.save_as),
+                      label: const Text("Cập nhật Danh bạ & Ngưỡng sàn"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(45),
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Công cụ & Ngắt kết nối
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.tune, color: Colors.orangeAccent),
+                        SizedBox(width: 8),
+                        Text("Công cụ thiết bị", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: widget.isConnected ? widget.onCalibrateFloor : null,
+                      icon: const Icon(Icons.straighten),
+                      label: const Text("Hiệu chuẩn sàn tự động (ToF)"),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: widget.onDisconnect,
+                      icon: const Icon(Icons.bluetooth_disabled, color: Colors.redAccent),
+                      label: const Text("Ngắt kết nối thiết bị này", style: TextStyle(color: Colors.redAccent)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent),
+                        minimumSize: const Size.fromHeight(42),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
