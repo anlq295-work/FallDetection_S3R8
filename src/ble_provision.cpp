@@ -96,6 +96,7 @@ BleProvisioning::BleProvisioning() {}
 
 void BleProvisioning::init(const char* deviceName) {
   BLEDevice::init(deviceName);
+  BLEDevice::setMTU(512);
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new ServerCB());
 

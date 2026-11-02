@@ -106,7 +106,15 @@ void processBleCommands() {
       currentState = STATE_ALERT;
     } else if (cmd == "GET_HISTORY") {
       String histJson = bleProvision.getEventHistoryJson();
+      Serial.printf("[BLE] Gui lich su hop den NVS (%d bytes): %s\n", histJson.length(), histJson.c_str());
       bleProvision.sendTelemetry(histJson);
+      bleProvision.updateStatus("HISTORY_SENT");
+    } else if (cmd == "ADD_TEST_EVENT") {
+      bleProvision.logFallEvent(EVENT_FALL_IMPACT, 680.0f, 88, 165);
+      String histJson = bleProvision.getEventHistoryJson();
+      Serial.printf("[BLE] Da tao su kien test hop den: %s\n", histJson.c_str());
+      bleProvision.sendTelemetry(histJson);
+      bleProvision.updateStatus("TEST_EVENT_ADDED");
     } else if (cmd == "CLEAR_HISTORY") {
       bleProvision.clearHistory();
       bleProvision.updateStatus("HISTORY_CLEARED_OK");
