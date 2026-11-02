@@ -1238,12 +1238,44 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // Hướng dẫn gửi nhiều người nhận & đa kênh
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.tips_and_updates, color: Colors.blueAccent, size: 18),
+                            SizedBox(width: 6),
+                            Text("Báo động đa kênh & Nhiều người nhận", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          "• Nhiều số SMS: Nhập các SĐT cách nhau bằng dấu phẩy (VD: 0901234567, 0988776655).\n"
+                          "• Nhóm Telegram: Thêm Bot vào nhóm gia đình rồi điền Group ID (có dấu -, VD: -100192837465) để cả nhà cùng nhận chuông cứu nạn đồng thời.\n"
+                          "• Nhiều Telegram cá nhân: Nhập các ID cách nhau dấu phẩy (VD: 123456789, 987654321).",
+                          style: TextStyle(fontSize: 11, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
                   TextField(
                     controller: widget.phoneController,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.text,
                     decoration: const InputDecoration(
                       labelText: "Số điện thoại người thân (SMS)",
-                      hintText: "0901234567",
+                      hintText: "0901234567, 0912345678",
+                      helperText: "Hỗ trợ nhiều số điện thoại, phân cách bằng dấu phẩy (,)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.phone),
                     ),
@@ -1253,8 +1285,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     controller: widget.chatIdController,
                     keyboardType: TextInputType.text,
                     decoration: const InputDecoration(
-                      labelText: "Telegram Chat ID (Người thân / Nhóm)",
-                      hintText: "123456789",
+                      labelText: "Telegram Chat ID / Group ID",
+                      hintText: "-100192837465, 123456789",
+                      helperText: "Group ID gia đình (có dấu -) hoặc nhiều ID cá nhân (,)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.send),
                     ),

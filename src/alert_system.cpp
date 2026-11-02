@@ -208,30 +208,53 @@ bool AlertSystem::sendTelegramAlert(const String& botToken, const String& chatId
     return false;
   }
 
-  HTTPClient http;
-  String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
-  http.begin(url);
-  http.setTimeout(5000);
-  http.addHeader("Content-Type", "application/json");
+  // Ho tro danh sach nhieu Chat ID / Group ID phan tach boi dau phay ',' hoac cham phay ';'
+  int startIdx = 0;
+  bool anySuccess = false;
+  int idCount = 0;
 
-  // Đóng gói JSON chuẩn UTF-8 (hỗ trợ Tiếng Việt và Emoji không lỗi URL)
-  StaticJsonDocument<512> doc;
-  doc["chat_id"] = chatId;
-  doc["text"] = message;
-  doc["parse_mode"] = "HTML";
+  while (startIdx < chatId.length()) {
+    int commaIdx = chatId.indexOf(',', startIdx);
+    int semiIdx = chatId.indexOf(';', startIdx);
+    int nextDelim = -1;
+    if (commaIdx != -1 && semiIdx != -1) nextDelim = min(commaIdx, semiIdx);
+    else if (commaIdx != -1) nextDelim = commaIdx;
+    else nextDelim = semiIdx;
 
-  String payload;
-  serializeJson(doc, payload);
+    String singleId = (nextDelim == -1) ? chatId.substring(startIdx) : chatId.substring(startIdx, nextDelim);
+    singleId.trim();
 
-  int httpCode = http.POST(payload);
-  bool success = (httpCode == HTTP_CODE_OK || httpCode == 201);
-  if (success) {
-    Serial.printf("[TELEGRAM] Gui canh bao thanh cong toi Chat ID: %s!\n", chatId.c_str());
-  } else {
-    Serial.printf("[TELEGRAM] Gui that bai! Ma loi HTTP: %d\n", httpCode);
+    if (singleId.length() > 0) {
+      idCount++;
+      HTTPClient http;
+      String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+      http.begin(url);
+      http.setTimeout(5000);
+      http.addHeader("Content-Type", "application/json");
+
+      StaticJsonDocument<512> doc;
+      doc["chat_id"] = singleId;
+      doc["text"] = message;
+      doc["parse_mode"] = "HTML";
+
+      String payload;
+      serializeJson(doc, payload);
+
+      int httpCode = http.POST(payload);
+      if (httpCode == HTTP_CODE_OK || httpCode == 201) {
+        Serial.printf("[TELEGRAM] (#%d) Gui canh bao thanh cong toi Chat/Group ID: %s!\n", idCount, singleId.c_str());
+        anySuccess = true;
+      } else {
+        Serial.printf("[TELEGRAM] (#%d) Gui that bai toi ID: %s! Ma loi: %d\n", idCount, singleId.c_str(), httpCode);
+      }
+      http.end();
+    }
+
+    if (nextDelim == -1) break;
+    startIdx = nextDelim + 1;
   }
-  http.end();
-  return success;
+
+  return anySuccess;
 }
 
 bool AlertSystem::sendSmsGateway(const String& phone, const String& content) {
@@ -240,27 +263,56 @@ bool AlertSystem::sendSmsGateway(const String& phone, const String& content) {
     return false;
   }
 
-  HTTPClient http;
-  http.begin(DEFAULT_SMS_GATEWAY_URL);
-  http.setTimeout(5000);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + String(DEFAULT_SMS_TOKEN));
-
-  StaticJsonDocument<256> doc;
+  // Ho tro danh sach nhieu so dien thoai phan tach boi dau phay ',' hoac cham phay ';'
+  StaticJsonDocument<512> doc;
   JsonArray to = doc.createNestedArray("to");
-  to.add(phone);
+  int phoneCount = 0;
+  int startIdx = 0;
+
+  while (startIdx < phone.length()) {
+    int commaIdx = phone.indexOf(',', startIdx);
+    int semiIdx = phone.indexOf(';', startIdx);
+    int nextDelim = -1;
+    if (commaIdx != -1 && semiIdx != -1) nextDelim = min(commaIdx, semiIdx);
+    else if (commaIdx != -1) nextDelim = commaIdx;
+    else nextDelim = semiIdx;
+
+    String singlePhone = (nextDelim == -1) ? phone.substring(startIdx) : phone.substring(startIdx, nextDelim);
+    singlePhone.trim();
+
+    if (singlePhone.length() >= 9) { // So dien thoai hop le
+      to.add(singlePhone);
+      phoneCount++;
+      Serial.printf("[SMS] Nhan so dien thoai (#%d): %s\n", phoneCount, singlePhone.c_str());
+    }
+
+    if (nextDelim == -1) break;
+    startIdx = nextDelim + 1;
+  }
+
+  if (phoneCount == 0) {
+    Serial.println("[SMS] Khong co so dien thoai hop le de gui!");
+    return false;
+  }
+
   doc["content"] = content;
   doc["type"] = 1;
 
   String payload;
   serializeJson(doc, payload);
 
+  HTTPClient http;
+  http.begin(DEFAULT_SMS_GATEWAY_URL);
+  http.setTimeout(5000);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + String(DEFAULT_SMS_TOKEN));
+
   int httpCode = http.POST(payload);
   bool success = (httpCode == HTTP_CODE_OK || httpCode == 200);
   if (success) {
-    Serial.printf("[SMS] Gui tin nhan khan cap toi %s thanh cong!\n", phone.c_str());
+    Serial.printf("[SMS] Da phat tin nhan SMS dong loat toi %d so dien thoai thanh cong!\n", phoneCount);
   } else {
-    Serial.printf("[SMS] Gui that bai! Ma loi HTTP: %d\n", httpCode);
+    Serial.printf("[SMS] Gui tin that bai! Ma loi HTTP: %d\n", httpCode);
   }
   http.end();
   return success;

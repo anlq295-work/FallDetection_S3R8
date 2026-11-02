@@ -63,7 +63,7 @@ class ContactCB: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pChar) {
     String val = pChar->getValue().c_str();
     if (val.length() > 0) {
-      StaticJsonDocument<256> doc;
+      StaticJsonDocument<512> doc;
       DeserializationError err = deserializeJson(doc, val);
       if (!err) {
         prefs.begin("sys_cfg", false);
@@ -126,7 +126,7 @@ void BleProvisioning::init(const char* deviceName) {
   pCmdChar->setCallbacks(new CmdCB());
 
   prefs.begin("sys_cfg", true);
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
   doc["phone"] = prefs.getString("emg_phone", "");
   doc["chat_id"] = prefs.getString("emg_chat_id", "");
   doc["floor_mm"] = prefs.getUShort("floor_thresh", FLOOR_HEIGHT_DEFAULT_MM);
