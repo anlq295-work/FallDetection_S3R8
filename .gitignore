@@ -7,3 +7,6 @@ mobile_app/.flutter-plugins
 mobile_app/.flutter-plugins-dependencies
 mobile_app/.pub-cache/
 mobile_app/.pub/
+downloaded_artifacts/
+FallGuard_iOS_unsigned.ipa
+FallGuard_S3R8_v1.0.ipa
