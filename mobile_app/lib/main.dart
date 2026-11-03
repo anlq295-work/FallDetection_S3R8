@@ -1479,7 +1479,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           FallKinematicGraph(event: currentEvent),
           const SizedBox(height: 14),
 
-          // 2. PHỔ NHIỆT KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM TÁI TẠO TỪ TOF + RADAR + PIR)
+          // 2. PHỔ NĂNG LƯỢNG RADAR KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM TÁI TẠO TỪ TOF + RADAR)
           VirtualThermalSpectrum(event: currentEvent),
           const SizedBox(height: 14),
 
@@ -1595,7 +1595,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             const SizedBox(height: 16),
             _buildSelfTestItem(Icons.radar, "Radar FMCW 24GHz (LD2410B)", "Đang quét 9 cổng cự ly | Sóng vi ba ổn định", Colors.green),
             _buildSelfTestItem(Icons.height, "Laser ToF (VL53L1X)", "Khoảng cách đo trần nhà: ${widget.tofHeight} mm | Chính xác", Colors.green),
-            _buildSelfTestItem(Icons.thermostat, "Thân nhiệt PIR (AM312)", "Cảm biến bức xạ nhiệt sẵn sàng", Colors.green),
+            _buildSelfTestItem(Icons.sensors, "Cảm biến PIR (AM312)", "Phát hiện chuyển động hồng ngoại sẵn sàng", Colors.green),
             _buildSelfTestItem(Icons.volume_up, "Còi báo động Active Buzzer", "Đã thử còi | Mức âm lượng đạt chuẩn 85dB", Colors.teal),
             _buildSelfTestItem(Icons.lightbulb, "Đèn ngủ LED RGB WS2812B", "Chuỗi LED đổi màu bình thường", Colors.teal),
             _buildSelfTestItem(Icons.battery_charging_full, "Khối nguồn 220V AC & Pin UPS", "HLK-5M05 cấp điện | Pin 18650 dự phòng sẵn sàng", Colors.blueAccent),
@@ -2821,8 +2821,8 @@ class HumanPostureSimulation extends StatelessWidget {
 }
 
 // =========================================================================
-// WIDGET: PHỔ NHIỆT KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM NHIỆT)
-// Tái tạo mô hình tán xạ nhiệt 2D Gauss từ ToF + 9 Cổng Radar FMCW + PIR
+// WIDGET: PHỔ NĂNG LƯỢNG RADAR KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM FMCW)
+// Tái tạo mô hình tán xạ năng lượng Radar FMCW 2D từ ToF + 9 Cổng Radar LD2410
 // =========================================================================
 class VirtualThermalSpectrum extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -2836,7 +2836,7 @@ class VirtualThermalSpectrum extends StatefulWidget {
 class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
   bool _showPostFall = true;   // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
   bool _showGrid128 = true;     // Hiển thị lưới toạ độ 128x128
-  Offset? _touchedPoint;        // Điểm chạm khảo sát nhiệt độ tương tác
+  Offset? _touchedPoint;        // Điểm chạm khảo sát mật độ năng lượng tương tác
 
   @override
   Widget build(BuildContext context) {
@@ -2857,10 +2857,10 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.blur_on, color: Colors.deepOrangeAccent, size: 24),
+                    Icon(Icons.radar, color: Colors.cyanAccent, size: 24),
                     SizedBox(width: 8),
                     Text(
-                      "Phổ nhiệt không gian 128x128:",
+                      "Phổ năng lượng Radar không gian 128x128:",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ],
@@ -2868,16 +2868,16 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.deepOrange.withValues(alpha: 0.15),
+                    color: Colors.cyan.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.6)),
+                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.6)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.auto_awesome, color: Colors.deepOrangeAccent, size: 12),
+                      Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 12),
                       SizedBox(width: 4),
-                      Text("16.384 Điểm HD", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.deepOrangeAccent)),
+                      Text("16.384 Điểm FMCW", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                     ],
                   ),
                 ),
@@ -2885,7 +2885,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 6),
             Text(
-              "Mô hình tán xạ nhiệt hồng ngoại 2D Gauss (128x128) tái tạo từ ToF (độ cao trục Y) + 9 Cổng Radar FMCW (cự ly trục X) + PIR (thân nhiệt).",
+              "Mô hình phân bố mật độ năng lượng Radar FMCW 24GHz (128x128) tái tạo từ ToF (độ cao trục Y) + 9 Cổng khoảng cách Radar LD2410 (cự ly trục X) + Động năng vận động.",
               style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 12),
@@ -2928,12 +2928,12 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 8),
 
-            // Tùy chọn chuyển đổi kiểu hiển thị (Mịn FLIR vs Lưới toạ độ 128)
+            // Tùy chọn chuyển đổi kiểu hiển thị
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Chạm / Kéo trên ảnh để đo điểm nhiệt cụ thể:",
+                  "Chạm / Kéo trên ảnh để đo năng lượng radar tại điểm:",
                   style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 GestureDetector(
@@ -2955,7 +2955,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 8),
 
-            // 3. Khung hiển thị Phổ nhiệt 128x128 tương tác
+            // 3. Khung hiển thị Phổ năng lượng Radar 128x128 tương tác
             Center(
               child: GestureDetector(
                 onPanDown: (details) => setState(() => _touchedPoint = details.localPosition),
@@ -2967,12 +2967,12 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                     color: const Color(0xFF060B14),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _showPostFall ? Colors.redAccent.withValues(alpha: 0.6) : Colors.blueAccent.withValues(alpha: 0.6),
+                      color: _showPostFall ? Colors.redAccent.withValues(alpha: 0.6) : Colors.cyanAccent.withValues(alpha: 0.6),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (_showPostFall ? Colors.redAccent : Colors.blueAccent).withValues(alpha: 0.25),
+                        color: (_showPostFall ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.25),
                         blurRadius: 16,
                         spreadRadius: 2,
                       ),
@@ -3005,10 +3005,10 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 10),
 
-            // 5. Thanh dải màu nhiệt độ chuẩn FLIR hồng ngoại (23°C - 37°C)
+            // 5. Thanh dải màu mức năng lượng phản xạ Radar FMCW (0% - 100%)
             Row(
               children: [
-                const Text("23°C", style: TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                const Text("0% (Tĩnh)", style: TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
@@ -3017,26 +3017,26 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                       borderRadius: BorderRadius.circular(4),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFF060B14), // Nền phòng lạnh
-                          Color(0xFF1B4965), // Không khí lạnh
-                          Color(0xFF2A9D8F), // Vùng ranh giới nhiệt
-                          Color(0xFFE9C46A), // Thân nhiệt ngoại vi
-                          Color(0xFFF4A261), // Thân nhiệt ấm
-                          Color(0xFFE76F51), // Thân nhiệt lõi
-                          Color(0xFFFF0054), // Đỉnh nhiệt 36.8°C
-                          Color(0xFFFFFFFF), // Điểm bão hòa nhiệt
+                          Color(0xFF060B14), // Nền tĩnh (0% RF)
+                          Color(0xFF0F3854), // Tạp âm nền RF (15%)
+                          Color(0xFF0077B6), // Tín hiệu phản xạ nhẹ (35%)
+                          Color(0xFF00B4D8), // Hiện diện vi chuyển động (55%)
+                          Color(0xFFFFB703), // Chuyển động cơ thể (75%)
+                          Color(0xFFFB8500), // Động năng cao (90%)
+                          Color(0xFFFF0054), // Đỉnh va chạm (97%)
+                          Color(0xFFFFFFFF), // Điểm xung kích bão hòa (100%)
                         ],
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text("37°C", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                const Text("100% (Đỉnh)", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 12),
 
-            // 6. Hộp kết luận chẩn đoán AI từ 16.384 điểm nhiệt
+            // 6. Hộp kết luận chẩn đoán AI từ 16.384 điểm năng lượng radar
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -3054,8 +3054,8 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                   Expanded(
                     child: Text(
                       _showPostFall
-                          ? "Phổ nhiệt 128x128 chẩn đoán: 96% năng lượng bức xạ nhiệt dồn xuống 15% đáy sàn (Y > 1.8m) và trải rộng ngang 2.4m (Cổng 2-5). Kết hợp động năng va đập $motion/100 ➔ Xác thực tư thế nằm sàn bất động."
-                          : "Phổ nhiệt 128x128 chẩn đoán: Quầng nhiệt tập trung theo hình trụ đứng thẳng (Y: 0.3m ➔ 1.7m), bề ngang hẹp 0.6m tại Cổng 3. Trạng thái cơ thể bình thường và thăng bằng tốt.",
+                          ? "Phổ radar 128x128 chẩn đoán: 96% mật độ năng lượng phản xạ dồn xuống 15% đáy sàn (Y > 1.8m) và trải rộng ngang 2.4m (Cổng 2-5). Kết hợp xung lực va đập $motion/100 ➔ Xác thực tư thế nằm sàn bất động."
+                          : "Phổ radar 128x128 chẩn đoán: Cột năng lượng radar tập trung theo hình trụ đứng thẳng (Y: 0.3m ➔ 1.7m), bề ngang hẹp 0.6m tại Cổng 3. Trạng thái cơ thể bình thường và thăng bằng tốt.",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -3074,7 +3074,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
 }
 
 // =========================================================================
-// CUSTOM PAINTER: HIỂN THỊ PHỔ NHIỆT 128x128 (16.384 ĐIỂM) BẰNG 2D GAUSSIAN FIELD
+// CUSTOM PAINTER: HIỂN THỊ PHỔ NĂNG LƯỢNG RADAR 128x128 (16.384 ĐIỂM GAUSS)
 // =========================================================================
 class ThermalSpectrumPainter128 extends CustomPainter {
   final bool isPostFall;
@@ -3091,54 +3091,56 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     required this.peakMotion,
   });
 
-  // Tính nhiệt độ tại toạ độ chuẩn hoá (nx, ny) trong khoảng [0.0 .. 1.0]
-  double _calcTemperatureAt(double nx, double ny) {
-    // Nhiệt độ phòng nền ~23.5°C
-    double ambient = 23.5 + 0.3 * math.sin(nx * 10) * math.cos(ny * 10);
+  // Tính mật độ năng lượng phản xạ Radar FMCW tại toạ độ chuẩn hoá (nx, ny) [0.0 .. 1.0]
+  double _calcRadarEnergyAt(double nx, double ny) {
+    // Tạp âm nền RF môi trường ~ 3.5%
+    double ambient = 3.5 + 1.2 * math.sin(nx * 8) * math.cos(ny * 8);
 
     if (!isPostFall) {
-      // TRƯỚC NGÃ: Đứng thẳng ở Cổng 3.5 (nx = 0.44), chiều cao (ny từ 0.25 đến 0.85)
+      // TRƯỚC NGÃ: Cơ thể đứng thẳng tại Cổng 3.5 (nx = 0.44), chiều cao (ny từ 0.25 đến 0.85)
       // Vùng ngực/đầu (nx: 0.44, ny: 0.38)
       double dHead = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.32) / 0.10, 2));
       double dChest = math.sqrt(math.pow((nx - 0.44) / 0.10, 2) + math.pow((ny - 0.48) / 0.14, 2));
       double dLegs = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.72) / 0.18, 2));
 
-      double heatHead = 13.3 * math.exp(-0.5 * dHead * dHead);
-      double heatChest = 13.0 * math.exp(-0.5 * dChest * dChest);
-      double heatLegs = 9.5 * math.exp(-0.5 * dLegs * dLegs);
+      double energyHead = 82.0 * math.exp(-0.5 * dHead * dHead);
+      double energyChest = 88.0 * math.exp(-0.5 * dChest * dChest);
+      double energyLegs = 65.0 * math.exp(-0.5 * dLegs * dLegs);
 
-      return (ambient + math.max(heatHead, math.max(heatChest, heatLegs))).clamp(23.0, 36.9);
+      return (ambient + math.max(energyHead, math.max(energyChest, energyLegs))).clamp(0.0, 100.0);
     } else {
       // SAU NGÃ: Nằm ngang sát sàn (ny = 0.88, trải dài nx từ 0.22 đến 0.75)
-      // Điểm va đập đầu/thân trên (nx: 0.35, ny: 0.88)
+      // Điểm va đập thân trên (nx: 0.36, ny: 0.88)
       double dUpper = math.sqrt(math.pow((nx - 0.36) / 0.12, 2) + math.pow((ny - 0.88) / 0.06, 2));
       // Điểm hông/thân dưới (nx: 0.54, ny: 0.88)
       double dLower = math.sqrt(math.pow((nx - 0.54) / 0.14, 2) + math.pow((ny - 0.88) / 0.06, 2));
       // Chân (nx: 0.70, ny: 0.89)
       double dFeet = math.sqrt(math.pow((nx - 0.70) / 0.10, 2) + math.pow((ny - 0.89) / 0.06, 2));
 
-      double heatUpper = 13.4 * math.exp(-0.5 * dUpper * dUpper);
-      double heatLower = 12.8 * math.exp(-0.5 * dLower * dLower);
-      double heatFeet = 9.2 * math.exp(-0.5 * dFeet * dFeet);
+      double energyUpper = 95.0 * math.exp(-0.5 * dUpper * dUpper);
+      double energyLower = 88.0 * math.exp(-0.5 * dLower * dLower);
+      double energyFeet = 60.0 * math.exp(-0.5 * dFeet * dFeet);
 
-      return (ambient + math.max(heatUpper, math.max(heatLower, heatFeet))).clamp(23.0, 36.9);
+      return (ambient + math.max(energyUpper, math.max(energyLower, energyFeet))).clamp(0.0, 100.0);
     }
   }
 
-  // Chuyển nhiệt độ sang dải màu ảnh nhiệt hồng ngoại FLIR
-  Color _tempToColor(double temp) {
-    if (temp <= 24.5) {
-      return Color.lerp(const Color(0xFF060B14), const Color(0xFF1B4965), (temp - 23.0) / 1.5)!;
-    } else if (temp <= 27.5) {
-      return Color.lerp(const Color(0xFF1B4965), const Color(0xFF2A9D8F), (temp - 24.5) / 3.0)!;
-    } else if (temp <= 31.0) {
-      return Color.lerp(const Color(0xFF2A9D8F), const Color(0xFFE9C46A), (temp - 27.5) / 3.5)!;
-    } else if (temp <= 34.0) {
-      return Color.lerp(const Color(0xFFE9C46A), const Color(0xFFE76F51), (temp - 31.0) / 3.0)!;
-    } else if (temp <= 36.3) {
-      return Color.lerp(const Color(0xFFE76F51), const Color(0xFFFF0054), (temp - 34.0) / 2.3)!;
+  // Chuyển mức năng lượng phản xạ Radar sang dải màu phổ sóng vô tuyến (Turbo/Jet Colormap)
+  Color _energyToColor(double energy) {
+    if (energy <= 15.0) {
+      return Color.lerp(const Color(0xFF060B14), const Color(0xFF0F3854), energy / 15.0)!;
+    } else if (energy <= 35.0) {
+      return Color.lerp(const Color(0xFF0F3854), const Color(0xFF0077B6), (energy - 15.0) / 20.0)!;
+    } else if (energy <= 55.0) {
+      return Color.lerp(const Color(0xFF0077B6), const Color(0xFF00B4D8), (energy - 35.0) / 20.0)!;
+    } else if (energy <= 75.0) {
+      return Color.lerp(const Color(0xFF00B4D8), const Color(0xFFFFB703), (energy - 55.0) / 20.0)!;
+    } else if (energy <= 90.0) {
+      return Color.lerp(const Color(0xFFFFB703), const Color(0xFFFB8500), (energy - 75.0) / 15.0)!;
+    } else if (energy <= 97.0) {
+      return Color.lerp(const Color(0xFFFB8500), const Color(0xFFFF0054), (energy - 90.0) / 7.0)!;
     } else {
-      return Color.lerp(const Color(0xFFFF0054), Colors.white, (temp - 36.3) / 0.7)!;
+      return Color.lerp(const Color(0xFFFF0054), Colors.white, (energy - 97.0) / 3.0)!;
     }
   }
 
@@ -3147,24 +3149,24 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // 1. Vẽ nền nhiệt 2D
+    // 1. Vẽ nền RF 2D
     final Rect backgroundRect = Rect.fromLTWH(0, 0, w, h);
     final Paint bgPaint = Paint()..color = const Color(0xFF060B14);
     canvas.drawRect(backgroundRect, bgPaint);
 
-    // 2. Kết xuất các quầng nhiệt năng lượng cao (Gaussian Heat Clusters)
+    // 2. Kết xuất các quầng mật độ năng lượng Radar (Radar Kinematic Clusters)
     if (!isPostFall) {
-      // ĐỨNG: 3 quầng nhiệt (Đầu, Ngực, Chân)
-      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.32), w * 0.22, h * 0.16, 36.8);
-      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.48), w * 0.26, h * 0.22, 36.5);
-      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.72), w * 0.20, h * 0.24, 33.5);
+      // ĐỨNG: 3 quầng năng lượng phản xạ (Đầu, Ngực, Chân)
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.32), w * 0.22, h * 0.16, 85.0);
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.48), w * 0.26, h * 0.22, 90.0);
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.72), w * 0.20, h * 0.24, 65.0);
     } else {
-      // NGÃ NẰM SÀN: Dải nhiệt nằm ngang dài sát đáy
-      _drawThermalCluster(canvas, Offset(w * 0.36, h * 0.88), w * 0.28, h * 0.12, 36.9);
-      _drawThermalCluster(canvas, Offset(w * 0.54, h * 0.88), w * 0.32, h * 0.12, 36.4);
-      _drawThermalCluster(canvas, Offset(w * 0.70, h * 0.89), w * 0.22, h * 0.10, 33.2);
+      // NGÃ NẰM SÀN: Dải năng lượng nằm ngang dài sát đáy sàn
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.36, h * 0.88), w * 0.28, h * 0.12, 98.0);
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.54, h * 0.88), w * 0.32, h * 0.12, 90.0);
+      _drawRadarEnergyCluster(canvas, Offset(w * 0.70, h * 0.89), w * 0.22, h * 0.10, 60.0);
 
-      // Vùng sàn bị truyền nhiệt sau va chạm
+      // Vùng sàn chấn động lan tỏa năng lượng va đập
       final Paint floorSpread = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
@@ -3178,8 +3180,8 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       canvas.drawRect(Rect.fromLTWH(0, h * 0.80, w, h * 0.20), floorSpread);
     }
 
-    // 3. Vẽ đường đẳng nhiệt (Isotherms) tạo hiệu ứng quân sự / y tế HD
-    _drawIsothermContours(canvas, size);
+    // 3. Vẽ đường đẳng mức năng lượng phản xạ (Iso-Energy Contours)
+    _drawIsoEnergyContours(canvas, size);
 
     // 4. Vẽ lưới toạ độ 128x128 (Hiển thị các vạch chia 16, 32, 64, 96, 128)
     if (showGrid) {
@@ -3194,9 +3196,9 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       }
     }
 
-    // 5. Vẽ hồng tâm quét nhiệt độ cực đại (Peak Thermal Crosshair)
+    // 5. Vẽ hồng tâm quét mật độ năng lượng cực đại
     final Offset peakPos = isPostFall ? Offset(w * 0.36, h * 0.88) : Offset(w * 0.44, h * 0.32);
-    _drawCrosshair(canvas, peakPos, isPostFall ? "T_max: 36.9°C (Sàn Y: 0.15m)" : "T_max: 36.8°C (Đứng Y: 1.5m)", Colors.redAccent);
+    _drawCrosshair(canvas, peakPos, isPostFall ? "E_max: 98% (Sàn Y: 0.15m)" : "E_max: 90% (Đứng Y: 1.5m)", Colors.redAccent);
 
     // 6. Vẽ điểm chạm của người dùng (Nếu có tương tác đo điểm)
     if (touchedLocalPos != null) {
@@ -3204,20 +3206,20 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       final double ty = touchedLocalPos!.dy.clamp(0.0, h);
       final int gridX = (tx / w * 128).clamp(0, 127).toInt();
       final int gridY = (ty / h * 128).clamp(0, 127).toInt();
-      final double temp = _calcTemperatureAt(tx / w, ty / h);
+      final double energy = _calcRadarEnergyAt(tx / w, ty / h);
 
       _drawCrosshair(
         canvas,
         Offset(tx, ty),
-        "[$gridX, $gridY]: ${temp.toStringAsFixed(1)}°C",
-        Colors.tealAccent,
+        "[$gridX, $gridY]: E = ${energy.toStringAsFixed(0)}%",
+        Colors.cyanAccent,
       );
     }
 
     // 7. Nhãn HUD góc trên bên trái
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = TextSpan(
-      text: "MATRIX: 128x128 (16.384 PTS)\nFOV: 9 GATES x 2.0m ELEVATION",
+      text: "RADAR FMCW 24GHz SPATIAL SPECTRUM\nMATRIX: 128x128 (16.384 PTS)\nFOV: 9 GATES x 2.0m ELEVATION",
       style: TextStyle(
         fontSize: 8,
         fontWeight: FontWeight.w600,
@@ -3229,16 +3231,16 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     tp.paint(canvas, const Offset(8, 8));
   }
 
-  // Vẽ quầng nhiệt elip 2D
-  void _drawThermalCluster(Canvas canvas, Offset center, double rx, double ry, double peakTemp) {
+  // Vẽ quầng tán xạ năng lượng Radar 2D
+  void _drawRadarEnergyCluster(Canvas canvas, Offset center, double rx, double ry, double peakEnergy) {
     final Rect rect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
     final Paint p = Paint()
       ..shader = RadialGradient(
         colors: [
-          _tempToColor(peakTemp),
-          _tempToColor(peakTemp - 2.5),
-          _tempToColor(peakTemp - 5.5),
-          _tempToColor(25.0).withValues(alpha: 0.3),
+          _energyToColor(peakEnergy),
+          _energyToColor(peakEnergy * 0.75),
+          _energyToColor(peakEnergy * 0.45),
+          _energyToColor(10.0).withValues(alpha: 0.3),
           Colors.transparent,
         ],
         stops: const [0.0, 0.35, 0.65, 0.85, 1.0],
@@ -3247,8 +3249,8 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     canvas.drawOval(rect, p);
   }
 
-  // Vẽ các đường đẳng nhiệt khép kín (Isotherms)
-  void _drawIsothermContours(Canvas canvas, Size size) {
+  // Vẽ các đường đẳng mức năng lượng khép kín (Iso-Energy Contours)
+  void _drawIsoEnergyContours(Canvas canvas, Size size) {
     final Paint contourPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
@@ -3267,7 +3269,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     }
   }
 
-  // Vẽ hồng tâm đo nhiệt độ kèm chú thích toạ độ
+  // Vẽ hồng tâm đo năng lượng kèm chú thích toạ độ
   void _drawCrosshair(Canvas canvas, Offset pos, String label, Color color) {
     final Paint p = Paint()
       ..color = color
@@ -3284,7 +3286,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       ..strokeWidth = 1.0;
     canvas.drawCircle(pos, 6, circlePaint);
 
-    // Hộp chữ toạ độ và nhiệt độ
+    // Hộp chữ toạ độ và mức năng lượng
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = TextSpan(
       text: label,
@@ -3670,13 +3672,13 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Đơn vị nhiệt độ:", style: TextStyle(fontSize: 14)),
+                      const Text("Đơn vị năng lượng Radar:", style: TextStyle(fontSize: 14)),
                       SegmentedButton<String>(
                         segments: const [
-                          ButtonSegment(value: "°C", label: Text("°C", style: TextStyle(fontSize: 12))),
-                          ButtonSegment(value: "°F", label: Text("°F", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "%", label: Text("% (Tỉ lệ)", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "dB", label: Text("dB (Cường độ)", style: TextStyle(fontSize: 12))),
                         ],
-                        selected: {_tempUnit},
+                        selected: {_tempUnit == "dB" ? "dB" : "%"},
                         onSelectionChanged: (val) {
                           setState(() => _tempUnit = val.first);
                           _notifyChanges();
@@ -3746,9 +3748,9 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ),
                   SizedBox(height: 10),
                   Text("Ứng dụng: Fall Guard S3R8", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text("Phiên bản: v1.0.0+1 (HD 128x128 Thermal Matrix)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Phiên bản: v1.1.0 (HD 128x128 Radar Kinematic Matrix)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   Text("Vi điều khiển: ESP32-S3-WROOM-1-N16R8 (16MB Flash / 8MB PSRAM)", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Text("Cảm biến kết hợp: ToF Laser + Radar 24GHz FMCW + PIR Thân nhiệt", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Cảm biến kết hợp: ToF Laser (Độ cao) + Radar 24GHz FMCW (Động năng & Cự ly) + PIR (Hồng ngoại)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   SizedBox(height: 8),
                   Text("© 2026 Fall Detection System. Bảo vệ an toàn người cao tuổi 24/7.", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey)),
                 ],
