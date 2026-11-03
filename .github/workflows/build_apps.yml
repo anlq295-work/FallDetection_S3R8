@@ -79,6 +79,9 @@ jobs:
           mkdir -p Payload
           cp -r Runner.app Payload/
 
+          # Luon dong goi ban unsigned lam ban phat hanh cong khai
+          zip -qr FallGuard_iOS_unsigned.ipa Payload
+
           SIGNED_SUCCESS=false
           if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
             echo "--> Phat hien chung chi Apple! Bat dau ky so..."
@@ -123,11 +126,6 @@ jobs:
                 SIGNED_SUCCESS=true
               fi
             fi
-          fi
-
-          if [ "$SIGNED_SUCCESS" != "true" ]; then
-            echo "--> Dong goi ban Unsigned IPA lam du phong..."
-            zip -qr FallGuard_iOS_unsigned.ipa Payload
           fi
 
       - name: Upload Signed or Unsigned IPA
@@ -188,6 +186,13 @@ jobs:
           name: FallGuard-ESP32-Firmware
           path: release_assets/
 
+      - name: Filter Out Signed Files from Public Release
+        run: |
+          # Xoa bo file Signed khoi ban release cong khai (chi giu trong Actions Artifacts de tai ve may tinh ca nhan)
+          rm -f release_assets/*_Signed.ipa release_assets/*_signed.ipa release_assets/FallGuard_Signed.ipa
+          echo "Danh sach tep se publish len Release cong khai:"
+          ls -la release_assets/
+
       - name: Copy Manifest
         run: |
           cp ios_ota/manifest.plist release_assets/
@@ -200,8 +205,8 @@ jobs:
           body: |
             ## Fall Guard S3R8 - Tự động cập nhật OTA
             - **Android APK**: `app-release.apk` (Hỗ trợ tự cài đặt in-app)
-            - **iOS Signed IPA**: `FallGuard_Signed.ipa` (Hỗ trợ cài đặt OTA qua `itms-services`)
             - **ESP32 Firmware**: `firmware.bin` (Hỗ trợ OTA tự động từ App qua Wi-Fi / BLE)
+            - **iOS App**: `FallGuard_iOS_unsigned.ipa` (Bản Signed cá nhân được tải trực tiếp về máy tính qua script pull_artifacts)
             - **Manifest**: `manifest.plist`
           files: |
             release_assets/app-release.apk
