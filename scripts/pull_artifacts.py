@@ -44,20 +44,56 @@ def download_artifact(artifact_id, out_zip_path, token):
     print(f"    Downloaded successfully: {out_zip_path} ({os.path.getsize(out_zip_path)} bytes)")
 
 def main():
+    import argparse
+    import time
+    
+    parser = argparse.ArgumentParser(description="Pull artifacts from GitHub Actions.")
+    parser.add_argument("--wait", action="store_true", help="Wait for in-progress run to complete")
+    args = parser.parse_args()
+
     token = get_github_token()
     if not token:
         print("GitHub token not found!")
         return
 
-    # Lay run moi nhat
-    runs_url = "https://api.github.com/repos/anlq295-work/FallDetection_S3R8/actions/runs?per_page=1"
+    # Lay danh sach runs gan nhat
+    runs_url = "https://api.github.com/repos/anlq295-work/FallDetection_S3R8/actions/runs?per_page=5"
     req = urllib.request.Request(runs_url, headers={"User-Agent": "FallGuard-Puller", "Authorization": f"Bearer {token}"})
     with urllib.request.urlopen(req) as resp:
         data = json.loads(resp.read().decode())
     
-    latest_run = data["workflow_runs"][0]
-    run_id = latest_run["id"]
-    print(f"Latest run: #{run_id} (Status: {latest_run['status']}, Conclusion: {latest_run['conclusion']})")
+    runs = data.get("workflow_runs", [])
+    if not runs:
+        print("No workflow runs found!")
+        return
+
+    target_run = None
+    if args.wait and runs[0]["status"] != "completed":
+        print(f"Waiting for run #{runs[0]['id']} ({runs[0]['status']}) to complete...")
+        run_id = runs[0]["id"]
+        while True:
+            time.sleep(10)
+            check_url = f"https://api.github.com/repos/anlq295-work/FallDetection_S3R8/actions/runs/{run_id}"
+            req_check = urllib.request.Request(check_url, headers={"User-Agent": "FallGuard-Puller", "Authorization": f"Bearer {token}"})
+            with urllib.request.urlopen(req_check) as resp_c:
+                run_status = json.loads(resp_c.read().decode())
+            status = run_status.get("status")
+            conclusion = run_status.get("conclusion")
+            print(f"  Status: {status}, Conclusion: {conclusion}")
+            if status == "completed":
+                target_run = run_status
+                break
+    else:
+        # Tim run completed gan nhat hoac run dau tien neu da complete
+        for r in runs:
+            if r["status"] == "completed" and r["conclusion"] == "success":
+                target_run = r
+                break
+        if not target_run:
+            target_run = runs[0]
+
+    run_id = target_run["id"]
+    print(f"Selected run: #{run_id} (Status: {target_run['status']}, Conclusion: {target_run['conclusion']})")
 
     # Lay danh sach artifacts
     art_url = f"https://api.github.com/repos/anlq295-work/FallDetection_S3R8/actions/runs/{run_id}/artifacts"
