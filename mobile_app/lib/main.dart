@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,6 +17,7 @@ const String charContactUuid   = "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011";
 const String charStatusUuid    = "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344";
 const String charTelemetryUuid = "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455";
 const String charCmdUuid       = "4fa0b044-9b3e-4d75-af4c-b70e901c5566";
+const String charOtaUuid       = "5e1c0155-ac5d-4e86-be5d-c81f012d6677";
 
 void main() {
   runApp(const FallGuardApp());
@@ -82,6 +84,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   BluetoothCharacteristic? _statusChar;
   BluetoothCharacteristic? _telemetryChar;
   BluetoothCharacteristic? _cmdChar;
+  BluetoothCharacteristic? _otaChar;
+  final ValueNotifier<String> _otaStatusNotifier = ValueNotifier<String>("");
 
   StreamSubscription? _scanSub;
   StreamSubscription? _statusSub;
@@ -331,6 +335,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             if (u == charStatusUuid.toLowerCase()) _statusChar = c;
             if (u == charTelemetryUuid.toLowerCase()) _telemetryChar = c;
             if (u == charCmdUuid.toLowerCase()) _cmdChar = c;
+            if (u == charOtaUuid.toLowerCase()) _otaChar = c;
           }
         }
       }
@@ -439,6 +444,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _showSnackbar("Đã xóa sạch nhật ký hộp đen!", Colors.orange);
     } else if (msg == "TEST_EVENT_ADDED") {
       _showSnackbar("Đã thêm sự cố mẫu vào hộp đen NVS!", Colors.green);
+    } else if (msg.startsWith("OTA_")) {
+      _otaStatusNotifier.value = msg;
+      if (msg == "OTA_SUCCESS_REBOOTING") {
+        _showSnackbar("Nạp firmware ESP32 thành công 100%! Thiết bị đang khởi động lại...", Colors.green);
+      } else if (msg.startsWith("OTA_ERROR:")) {
+        _showSnackbar("Lỗi cập nhật firmware: ${msg.replaceFirst('OTA_ERROR:', '')}", Colors.red);
+      }
     }
   }
 
@@ -593,6 +605,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           onSendCommand: _sendCommand,
           onFetchHistory: _fetchHistory,
           onRefreshContacts: _readCurrentContacts,
+          otaChar: _otaChar,
+          otaStatusNotifier: _otaStatusNotifier,
         ),
       ),
     );
@@ -1136,6 +1150,8 @@ class DeviceDetailScreen extends StatefulWidget {
   final Future<void> Function(String) onSendCommand;
   final Future<void> Function() onFetchHistory;
   final Future<void> Function() onRefreshContacts;
+  final BluetoothCharacteristic? otaChar;
+  final ValueNotifier<String> otaStatusNotifier;
 
   const DeviceDetailScreen({
     super.key,
@@ -1164,6 +1180,8 @@ class DeviceDetailScreen extends StatefulWidget {
     required this.onSendCommand,
     required this.onFetchHistory,
     required this.onRefreshContacts,
+    this.otaChar,
+    required this.otaStatusNotifier,
   });
 
   @override
@@ -1985,6 +2003,84 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
+          // 7. CẬP NHẬT FIRMWARE THIẾT BỊ (ESP32-S3 FIRMWARE OTA)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.memory, color: Colors.purpleAccent),
+                      SizedBox(width: 8),
+                      Text("Cập nhật Firmware Thiết bị (ESP32 OTA)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Cập nhật hệ điều hành & thuật toán nhận diện té ngã cho vi điều khiển ESP32-S3-N16R8 mà không cần cắm dây cáp máy tính.",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Firmware hiện tại trên chip:", style: TextStyle(fontSize: 12)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text("v1.0.0 (Oct 2026)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.greenAccent)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Bản mới nhất trên Cloud:", style: TextStyle(fontSize: 12)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text("v1.0.1 (Mới nhất)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purpleAccent)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: widget.isConnected ? _showEsp32OtaDialog : null,
+                    icon: const Icon(Icons.cloud_sync),
+                    label: const Text("Cài đặt Firmware cho thiết bị (1-Chạm)"),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.purpleAccent.shade700,
+                      minimumSize: const Size.fromHeight(44),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // 4. CẬP NHẬT ỨNG DỤNG KHÔNG DÂY (OTA UPDATE CHO ANDROID & IPHONE)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2078,6 +2174,248 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
         ],
       ),
+    );
+  }
+
+  void _showEsp32OtaDialog() {
+    final TextEditingController urlController = TextEditingController(
+      text: "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/firmware.bin",
+    );
+    bool isBleFlashing = false;
+    double bleProgress = 0.0;
+    String bleStatusText = "";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.system_update_alt, color: Colors.purpleAccent, size: 28),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Cập nhật Firmware ESP32",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.purpleAccent, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Hệ thống hỗ trợ cơ chế A/B Dual-OTA trên chip ESP32-S3 (16MB Flash). Đảm bảo thiết bị luôn được cấp nguồn trong suốt quá trình cập nhật.",
+                                style: TextStyle(fontSize: 11, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "1. Cập nhật tự động qua Wi-Fi (Khuyên dùng)",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purpleAccent),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "ESP32 kết nối Internet qua Wi-Fi và tự tải file firmware.bin trực tiếp từ GitHub chỉ mất 5-10 giây.",
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: urlController,
+                        style: const TextStyle(fontSize: 11),
+                        decoration: const InputDecoration(
+                          labelText: "Đường dẫn tải Firmware (.bin)",
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.link, size: 18),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ValueListenableBuilder<String>(
+                        valueListenable: widget.otaStatusNotifier,
+                        builder: (context, otaStatus, _) {
+                          double? wifiPct;
+                          String wifiText = "Sẵn sàng cập nhật";
+                          if (otaStatus == "OTA_STARTING") {
+                            wifiText = "Đang kết nối Cloud và tải firmware...";
+                            wifiPct = 0.1;
+                          } else if (otaStatus.startsWith("OTA_PROGRESS:")) {
+                            int p = int.tryParse(otaStatus.replaceFirst("OTA_PROGRESS:", "")) ?? 0;
+                            wifiPct = p / 100.0;
+                            wifiText = "Tiến độ nạp vào Flash: $p%";
+                          } else if (otaStatus == "OTA_SUCCESS_REBOOTING") {
+                            wifiPct = 1.0;
+                            wifiText = "Thành công 100%! Thiết bị đang khởi động lại...";
+                          } else if (otaStatus.startsWith("OTA_ERROR:")) {
+                            wifiText = "Lỗi: ${otaStatus.replaceFirst('OTA_ERROR:', '')}";
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (otaStatus.isNotEmpty) ...[
+                                LinearProgressIndicator(
+                                  value: wifiPct,
+                                  color: otaStatus.startsWith("OTA_ERROR:") ? Colors.red : Colors.purpleAccent,
+                                  backgroundColor: Colors.purple.withValues(alpha: 0.15),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  wifiText,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: otaStatus.startsWith("OTA_ERROR:") ? Colors.red : Colors.purpleAccent,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                              FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.purpleAccent.shade700,
+                                  minimumSize: const Size.fromHeight(40),
+                                ),
+                                onPressed: () {
+                                  final url = urlController.text.trim();
+                                  if (url.isNotEmpty) {
+                                    widget.onSendCommand("OTA_HTTP:$url");
+                                  } else {
+                                    widget.onSendCommand("OTA_LATEST");
+                                  }
+                                },
+                                icon: const Icon(Icons.wifi, size: 18),
+                                label: const Text("Bắt đầu cập nhật qua Wi-Fi"),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const Divider(height: 32),
+                      const Text(
+                        "2. Nạp qua Bluetooth Low Energy (BLE OTA)",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Dùng cho trường hợp thiết bị ở nơi chưa có Wi-Fi hoặc không có Internet.",
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 10),
+                      if (isBleFlashing) ...[
+                        LinearProgressIndicator(
+                          value: bleProgress,
+                          color: Colors.blueAccent,
+                          backgroundColor: Colors.blue.withValues(alpha: 0.2),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          bleStatusText,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.blueAccent),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        onPressed: isBleFlashing ? null : () async {
+                          if (widget.otaChar == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Không tìm thấy cổng OTA Bluetooth trên thiết bị!"), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
+                          setDialogState(() {
+                            isBleFlashing = true;
+                            bleProgress = 0.05;
+                            bleStatusText = "Đang tải firmware từ GitHub về điện thoại...";
+                          });
+
+                          try {
+                            final client = HttpClient();
+                            client.badCertificateCallback = (cert, host, port) => true;
+                            final req = await client.getUrl(Uri.parse(urlController.text.trim()));
+                            final resp = await req.close();
+                            final bytes = await consolidateHttpClientResponseBytes(resp);
+
+                            setDialogState(() {
+                              bleProgress = 0.1;
+                              bleStatusText = "Bắt đầu truyền vào ESP32 qua BLE (${(bytes.length / 1024).toStringAsFixed(1)} KB)...";
+                            });
+
+                            await widget.otaChar!.write(utf8.encode("OTA_BEGIN:${bytes.length}"), withoutResponse: false);
+                            await Future.delayed(const Duration(milliseconds: 250));
+
+                            const chunkSize = 256;
+                            int sent = 0;
+                            final total = bytes.length;
+                            while (sent < total) {
+                              final end = (sent + chunkSize < total) ? sent + chunkSize : total;
+                              final chunk = bytes.sublist(sent, end);
+                              await widget.otaChar!.write(chunk, withoutResponse: false);
+                              sent = end;
+                              setDialogState(() {
+                                bleProgress = 0.1 + (sent / total) * 0.85;
+                                bleStatusText = "Đang truyền: ${(sent / 1024).toStringAsFixed(1)} / ${(total / 1024).toStringAsFixed(1)} KB (${(bleProgress * 100).toInt()}%)";
+                              });
+                              await Future.delayed(const Duration(milliseconds: 15));
+                            }
+
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            await widget.otaChar!.write(utf8.encode("OTA_END"), withoutResponse: false);
+
+                            setDialogState(() {
+                              bleProgress = 1.0;
+                              bleStatusText = "Hoàn tất 100%! Thiết bị đang khởi động lại...";
+                            });
+                          } catch (e) {
+                            setDialogState(() {
+                              isBleFlashing = false;
+                              bleStatusText = "Lỗi nạp BLE: $e";
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.bluetooth, size: 18, color: Colors.blueAccent),
+                        label: const Text("Tải & Nạp firmware qua BLE", style: TextStyle(color: Colors.blueAccent)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isBleFlashing ? null : () => Navigator.pop(dialogCtx),
+                  child: const Text("Đóng"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

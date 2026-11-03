@@ -137,9 +137,33 @@ jobs:
           path: mobile_app/build/ios/iphoneos/*.ipa
           if-no-files-found: error
 
+  build-firmware:
+    name: Build ESP32 Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
+
+      - name: Build ESP32-S3 Firmware
+        run: pio run -e esp32-s3-n16r8
+
+      - name: Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FallGuard-ESP32-Firmware
+          path: .pio/build/esp32-s3-n16r8/firmware.bin
+
   publish-release:
     name: Publish GitHub Release (OTA Assets)
-    needs: [build-android, build-ios]
+    needs: [build-android, build-ios, build-firmware]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -158,6 +182,12 @@ jobs:
           name: FallGuard-iOS-IPA
           path: release_assets/
 
+      - name: Download Firmware Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FallGuard-ESP32-Firmware
+          path: release_assets/
+
       - name: Copy Manifest
         run: |
           cp ios_ota/manifest.plist release_assets/
@@ -171,11 +201,13 @@ jobs:
             ## Fall Guard S3R8 - Tự động cập nhật OTA
             - **Android APK**: `app-release.apk` (Hỗ trợ tự cài đặt in-app)
             - **iOS Signed IPA**: `FallGuard_Signed.ipa` (Hỗ trợ cài đặt OTA qua `itms-services`)
+            - **ESP32 Firmware**: `firmware.bin` (Hỗ trợ OTA tự động từ App qua Wi-Fi / BLE)
             - **Manifest**: `manifest.plist`
           files: |
             release_assets/app-release.apk
             release_assets/*.ipa
             release_assets/manifest.plist
+            release_assets/firmware.bin
           draft: false
           prerelease: false
         env:

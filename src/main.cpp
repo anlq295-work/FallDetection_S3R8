@@ -3,6 +3,7 @@
 #include "edge_ai.h"
 #include "alert_system.h"
 #include "ble_provision.h"
+#include "ota_manager.h"
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 
@@ -118,6 +119,17 @@ void processBleCommands() {
     } else if (cmd == "CLEAR_HISTORY") {
       bleProvision.clearHistory();
       bleProvision.updateStatus("HISTORY_CLEARED_OK");
+    } else if (cmd.startsWith("OTA_HTTP:")) {
+      String url = cmd.substring(9);
+      url.trim();
+      Serial.printf("[BLE] Nhan lenh OTA qua Wi-Fi: %s\n", url.c_str());
+      alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
+      otaManager.performHttpOta(url);
+    } else if (cmd == "OTA_LATEST" || cmd == "OTA_GITHUB_LATEST") {
+      String latestUrl = "https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/build/firmware.bin";
+      Serial.printf("[BLE] Nhan lenh OTA ban moi nhat tu GitHub: %s\n", latestUrl.c_str());
+      alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
+      otaManager.performHttpOta(latestUrl);
     }
   }
 

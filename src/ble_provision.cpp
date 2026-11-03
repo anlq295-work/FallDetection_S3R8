@@ -1,4 +1,5 @@
 #include "ble_provision.h"
+#include "ota_manager.h"
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -12,6 +13,7 @@
 #define CHAR_STATUS_UUID       "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344"
 #define CHAR_TELEMETRY_UUID    "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455"
 #define CHAR_CMD_UUID          "4fa0b044-9b3e-4d75-af4c-b70e901c5566"
+#define CHAR_OTA_UUID          "5e1c0155-ac5d-4e86-be5d-c81f012d6677"
 
 static Preferences prefs;
 static Preferences evtPrefs;
@@ -20,6 +22,7 @@ static BLECharacteristic* pStatusChar = nullptr;
 static BLECharacteristic* pContactChar = nullptr;
 static BLECharacteristic* pTelemetryChar = nullptr;
 static BLECharacteristic* pCmdChar = nullptr;
+static BLECharacteristic* pOtaChar = nullptr;
 
 static bool bleConnected = false;
 static bool rebootFlag = false;
@@ -92,6 +95,27 @@ class CmdCB: public BLECharacteristicCallbacks {
   }
 };
 
+class OtaCB: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* pChar) {
+    uint8_t* pData = pChar->getData();
+    size_t len = pChar->getLength();
+    if (len == 0) return;
+
+    if (len >= 10 && memcmp(pData, "OTA_BEGIN:", 10) == 0) {
+      String str = "";
+      for (size_t i = 10; i < len; i++) str += (char)pData[i];
+      size_t fileSize = str.toInt();
+      otaManager.startBleOta(fileSize);
+    } else if (len == 7 && memcmp(pData, "OTA_END", 7) == 0) {
+      otaManager.endBleOta();
+    } else if (len == 9 && memcmp(pData, "OTA_ABORT", 9) == 0) {
+      otaManager.abortBleOta();
+    } else {
+      otaManager.writeBleOtaChunk(pData, len);
+    }
+  }
+};
+
 BleProvisioning::BleProvisioning() {}
 
 void BleProvisioning::init(const char* deviceName) {
@@ -124,6 +148,11 @@ void BleProvisioning::init(const char* deviceName) {
   pCmdChar = pService->createCharacteristic(
                       CHAR_CMD_UUID, BLECharacteristic::PROPERTY_WRITE);
   pCmdChar->setCallbacks(new CmdCB());
+
+  pOtaChar = pService->createCharacteristic(
+                      CHAR_OTA_UUID, 
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  pOtaChar->setCallbacks(new OtaCB());
 
   prefs.begin("sys_cfg", true);
   StaticJsonDocument<512> doc;

@@ -2,6 +2,8 @@
 .vscode
 *.apk
 *.ipa
+*.bin
+build/
 __pycache__/
 mobile_app/build/
 mobile_app/.dart_tool/
