@@ -6,6 +6,7 @@
 #include "ota_manager.h"
 #include <WiFi.h>
 #include <esp_task_wdt.h>
+#include <esp_idf_version.h>
 
 SensorManager sensorMgr;
 EdgeAIEngine  aiEngine;
@@ -145,8 +146,18 @@ void setup() {
   delay(1000);
 
   // 1. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  esp_task_wdt_config_t twdt_config = {
+      .timeout_ms = WDT_TIMEOUT_SECONDS * 1000,
+      .idle_core_mask = 0,
+      .trigger_panic = true,
+  };
+  esp_task_wdt_reconfigure(&twdt_config);
+  esp_task_wdt_add(NULL);
+#else
   esp_task_wdt_init(WDT_TIMEOUT_SECONDS, true);
   esp_task_wdt_add(NULL);
+#endif
 
   // 2. Kiểm tra phần cứng ESP32-S3 N16R8 và bộ nhớ Octal PSRAM OPI
   Serial.println("\n=======================================================");
