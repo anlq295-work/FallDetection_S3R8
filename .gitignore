@@ -10,3 +10,8 @@ mobile_app/.pub/
 downloaded_artifacts/
 FallGuard_iOS_unsigned.ipa
 FallGuard_S3R8_v1.0.ipa
+incognitonamenlos4-75TYQA/
+*.p12
+*.mobileprovision
+*.key
+
