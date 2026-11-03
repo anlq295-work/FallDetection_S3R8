@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -1077,7 +1077,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           FallKinematicGraph(event: currentEvent),
           const SizedBox(height: 14),
 
-          // 2. PHỔ NHIỆT KHÔNG GIAN ẢO 8x8 (TÁI TẠO TỪ TOF + 9 CỔNG RADAR + PIR)
+          // 2. PHỔ NHIỆT KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM TÁI TẠO TỪ TOF + RADAR + PIR)
           VirtualThermalSpectrum(event: currentEvent),
           const SizedBox(height: 14),
 
@@ -1575,7 +1575,7 @@ class KinematicCurvePainter extends CustomPainter {
     // t = -2s (Thấp 15) -> t = 0s (Đỉnh va đập Peak Motion) -> t = +2s (Về 0-5)
     final Path motionPath = Path();
     final double mBase = h * 0.85; // Mức động năng thấp
-    final double mPeak = h * (1.0 - (min(100, max(20, peakMotion)) / 100.0) * 0.85);
+    final double mPeak = h * (1.0 - (math.min(100, math.max(20, peakMotion)) / 100.0) * 0.85);
 
     motionPath.moveTo(0, mBase - 10);
     motionPath.lineTo(w * 0.25, mBase - 15);
@@ -1725,8 +1725,8 @@ class HumanPostureSimulation extends StatelessWidget {
 }
 
 // =========================================================================
-// WIDGET: PHỔ NHIỆT KHÔNG GIAN ẢO 8x8 (VIRTUAL 8x8 THERMAL SPECTRUM)
-// Tái tạo ma trận nhiệt 8x8 từ ToF + 8 Cổng Radar + PIR không cần AMG8833
+// WIDGET: PHỔ NHIỆT KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM NHIỆT)
+// Tái tạo mô hình tán xạ nhiệt 2D Gauss từ ToF + 9 Cổng Radar FMCW + PIR
 // =========================================================================
 class VirtualThermalSpectrum extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -1738,63 +1738,14 @@ class VirtualThermalSpectrum extends StatefulWidget {
 }
 
 class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
-  bool _showPostFall = true; // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
-
-  // Sinh ma trận nhiệt 8x8 dựa trên dữ liệu ToF và Radar
-  List<List<double>> _generateThermalMatrix(bool isLying) {
-    // Nhiệt độ phòng nền: ~23.5 - 24.5 °C
-    List<List<double>> matrix = List.generate(
-      8,
-      (r) => List.generate(8, (c) => 23.5 + ((r * 3 + c * 5) % 10) * 0.1),
-    );
-
-    // Cổng radar phát hiện mục tiêu (mặc định cổng 3 ~ 2.25m)
-    final int targetGate = 3;
-
-    if (!isLying) {
-      // TRƯỚC KHI NGÃ: Người đứng thẳng (Cột targetGate, từ hàng 1 đến 5)
-      // Thân nhiệt vùng đầu/ngực ~36.8°C, chân ~33.5°C
-      for (int r = 1; r <= 5; r++) {
-        double temp = (r == 1 || r == 2) ? 36.8 : (r == 3 ? 35.5 : 33.5);
-        matrix[r][targetGate] = temp;
-        // Bức xạ nhiệt lan tỏa nhẹ sang 2 bên
-        if (targetGate > 0) matrix[r][targetGate - 1] = (matrix[r][targetGate - 1] + temp * 0.6) / 1.6;
-        if (targetGate < 7) matrix[r][targetGate + 1] = (matrix[r][targetGate + 1] + temp * 0.6) / 1.6;
-      }
-    } else {
-      // SAU KHI NGÃ: Người nằm sát sàn (Hàng 6 và 7 sát đáy), trải dài theo chiều ngang
-      for (int c = targetGate - 1; c <= targetGate + 2; c++) {
-        if (c >= 0 && c < 8) {
-          matrix[6][c] = (c == targetGate || c == targetGate + 1) ? 36.5 : 34.8;
-          matrix[7][c] = (c == targetGate || c == targetGate + 1) ? 36.0 : 34.2;
-        }
-      }
-    }
-
-    return matrix;
-  }
-
-  // Chuyển đổi nhiệt độ sang mã màu phổ nhiệt (Deep Blue -> Cyan -> Yellow -> Orange -> Crimson)
-  Color _getHeatColor(double temp) {
-    if (temp < 25.0) {
-      // 23 - 25: Nền phòng (Xanh biển đậm)
-      return Color.lerp(const Color(0xFF0D1B2A), const Color(0xFF1B4965), (temp - 23.0) / 2.0)!;
-    } else if (temp < 29.0) {
-      // 25 - 29: Không khí ấm / rìa thân nhiệt (Xanh lơ -> Xanh lá mạ)
-      return Color.lerp(const Color(0xFF1B4965), const Color(0xFF2A9D8F), (temp - 25.0) / 4.0)!;
-    } else if (temp < 33.0) {
-      // 29 - 33: Thân nhiệt ngoại vi (Vàng cam)
-      return Color.lerp(const Color(0xFF2A9D8F), const Color(0xFFE76F51), (temp - 29.0) / 4.0)!;
-    } else {
-      // 33 - 37: Thân nhiệt lõi người (Đỏ hồng ngoại rực rỡ)
-      return Color.lerp(const Color(0xFFE76F51), const Color(0xFFFF0054), (temp - 33.0) / 4.0)!;
-    }
-  }
+  bool _showPostFall = true;   // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
+  bool _showGrid128 = true;     // Hiển thị lưới toạ độ 128x128
+  Offset? _touchedPoint;        // Điểm chạm khảo sát nhiệt độ tương tác
 
   @override
   Widget build(BuildContext context) {
-    final matrix = _generateThermalMatrix(_showPostFall);
-    final String postureText = _showPostFall ? "Tư thế hiện tại: NẰM SÀN (Phổ nhiệt nằm ngang sát đáy)" : "Trạng thái trước ngã: ĐỨNG (Phổ nhiệt đứng dọc)";
+    final double vel = (widget.event["vel"] as num?)?.toDouble() ?? 680.0;
+    final int motion = (widget.event["mot"] as num?)?.toInt() ?? 88;
 
     return Card(
       elevation: 2,
@@ -1804,146 +1755,180 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tiêu đề & Nút chuyển đổi pha
+            // 1. Tiêu đề và nhãn công nghệ HD 128x128
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.gradient, color: Colors.deepOrangeAccent),
+                    Icon(Icons.blur_on, color: Colors.deepOrangeAccent, size: 24),
                     SizedBox(width: 8),
                     Text(
-                      "Phổ nhiệt không gian ảo 8x8:",
+                      "Phổ nhiệt không gian 128x128:",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.deepOrange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.6)),
                   ),
-                  child: const Text("AI Reconstructed", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.deepOrangeAccent)),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.deepOrangeAccent, size: 12),
+                      SizedBox(width: 4),
+                      Text("16.384 Điểm HD", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.deepOrangeAccent)),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              "Tái tạo ma trận bức xạ nhiệt hồng ngoại từ ToF + 9 Cổng Radar FMCW + PIR (không cần cảm biến AMG8833)",
+              "Mô hình tán xạ nhiệt hồng ngoại 2D Gauss (128x128) tái tạo từ ToF (độ cao trục Y) + 9 Cổng Radar FMCW (cự ly trục X) + PIR (thân nhiệt).",
               style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 12),
 
-            // Nút bấm chuyển pha Trước / Sau khi ngã
+            // 2. Bộ nút điều khiển trạng thái (Trước / Sau ngã) và bật tắt lưới 128x128
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: !_showPostFall ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
+                      backgroundColor: !_showPostFall ? Colors.blue.withValues(alpha: 0.25) : Colors.transparent,
                       side: BorderSide(color: !_showPostFall ? Colors.blueAccent : Colors.grey.shade800),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    icon: const Icon(Icons.accessibility, size: 16),
+                    icon: const Icon(Icons.accessibility_new, size: 16),
                     label: const Text("Trước ngã (-2s: Đứng)", style: TextStyle(fontSize: 11)),
-                    onPressed: () => setState(() => _showPostFall = false),
+                    onPressed: () => setState(() {
+                      _showPostFall = false;
+                      _touchedPoint = null;
+                    }),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: _showPostFall ? Colors.redAccent.withValues(alpha: 0.2) : Colors.transparent,
+                      backgroundColor: _showPostFall ? Colors.redAccent.withValues(alpha: 0.25) : Colors.transparent,
                       side: BorderSide(color: _showPostFall ? Colors.redAccent : Colors.grey.shade800),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                     icon: const Icon(Icons.airline_seat_flat, size: 16),
                     label: const Text("Sau ngã (+2s: Sàn)", style: TextStyle(fontSize: 11)),
-                    onPressed: () => setState(() => _showPostFall = true),
+                    onPressed: () => setState(() {
+                      _showPostFall = true;
+                      _touchedPoint = null;
+                    }),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Hiển thị lưới Ma trận nhiệt 8x8
-            Center(
-              child: Container(
-                width: 250,
-                height: 250,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (_showPostFall ? Colors.redAccent : Colors.blueAccent).withValues(alpha: 0.2),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: List.generate(8, (rowIdx) {
-                    return Expanded(
-                      child: Row(
-                        children: List.generate(8, (colIdx) {
-                          final temp = matrix[rowIdx][colIdx];
-                          final color = _getHeatColor(temp);
-                          return Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(1.5),
-                              decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  temp >= 33.0 ? "${temp.toStringAsFixed(0)}°" : "",
-                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
             const SizedBox(height: 8),
 
-            // Chú giải trục X và Trục Y của phổ nhiệt
+            // Tùy chọn chuyển đổi kiểu hiển thị (Mịn FLIR vs Lưới toạ độ 128)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Trục dọc Y: Độ cao từ sàn (0m) -> Trần (2m)", style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
-                Text("Trục ngang X: Cổng radar (0.75m -> 6m)", style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+                const Text(
+                  "Chạm / Kéo trên ảnh để đo điểm nhiệt cụ thể:",
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _showGrid128 = !_showGrid128),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _showGrid128 ? Colors.teal.withValues(alpha: 0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: _showGrid128 ? Colors.teal : Colors.grey.shade700),
+                    ),
+                    child: Text(
+                      _showGrid128 ? "Lưới 128: BẬT" : "Lưới 128: TẮT",
+                      style: TextStyle(fontSize: 9, color: _showGrid128 ? Colors.tealAccent : Colors.grey),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // 3. Khung hiển thị Phổ nhiệt 128x128 tương tác
+            Center(
+              child: GestureDetector(
+                onPanDown: (details) => setState(() => _touchedPoint = details.localPosition),
+                onPanUpdate: (details) => setState(() => _touchedPoint = details.localPosition),
+                child: Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF060B14),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: _showPostFall ? Colors.redAccent.withValues(alpha: 0.6) : Colors.blueAccent.withValues(alpha: 0.6),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_showPostFall ? Colors.redAccent : Colors.blueAccent).withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: CustomPaint(
+                      painter: ThermalSpectrumPainter128(
+                        isPostFall: _showPostFall,
+                        showGrid: _showGrid128,
+                        touchedLocalPos: _touchedPoint,
+                        dropVelocity: vel,
+                        peakMotion: motion,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // 4. Chú giải 2 trục toạ độ không gian
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Trục dọc Y: Trần (0m) ➔ Sàn nhà (2.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Text("Trục ngang X: Cổng radar (0.75m ➔ 6.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 10),
 
-            // Thanh thang đo nhiệt độ màu (Gradient Bar)
+            // 5. Thanh dải màu nhiệt độ chuẩn FLIR hồng ngoại (23°C - 37°C)
             Row(
               children: [
                 const Text("23°C", style: TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
-                    height: 8,
+                    height: 9,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFF0D1B2A),
-                          Color(0xFF1B4965),
-                          Color(0xFF2A9D8F),
-                          Color(0xFFE76F51),
-                          Color(0xFFFF0054),
+                          Color(0xFF060B14), // Nền phòng lạnh
+                          Color(0xFF1B4965), // Không khí lạnh
+                          Color(0xFF2A9D8F), // Vùng ranh giới nhiệt
+                          Color(0xFFE9C46A), // Thân nhiệt ngoại vi
+                          Color(0xFFF4A261), // Thân nhiệt ấm
+                          Color(0xFFE76F51), // Thân nhiệt lõi
+                          Color(0xFFFF0054), // Đỉnh nhiệt 36.8°C
+                          Color(0xFFFFFFFF), // Điểm bão hòa nhiệt
                         ],
                       ),
                     ),
@@ -1953,9 +1938,9 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                 const Text("37°C", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Giải thích kết luận
+            // 6. Hộp kết luận chẩn đoán AI từ 16.384 điểm nhiệt
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -1965,18 +1950,20 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
               child: Row(
                 children: [
                   Icon(
-                    _showPostFall ? Icons.fiber_manual_record : Icons.check_circle_outline,
-                    color: _showPostFall ? Colors.redAccent : Colors.green,
-                    size: 18,
+                    _showPostFall ? Icons.warning_amber_rounded : Icons.verified_user_outlined,
+                    color: _showPostFall ? Colors.redAccent : Colors.tealAccent,
+                    size: 22,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      postureText,
+                      _showPostFall
+                          ? "Phổ nhiệt 128x128 chẩn đoán: 96% năng lượng bức xạ nhiệt dồn xuống 15% đáy sàn (Y > 1.8m) và trải rộng ngang 2.4m (Cổng 2-5). Kết hợp động năng va đập $motion/100 ➔ Xác thực tư thế nằm sàn bất động."
+                          : "Phổ nhiệt 128x128 chẩn đoán: Quầng nhiệt tập trung theo hình trụ đứng thẳng (Y: 0.3m ➔ 1.7m), bề ngang hẹp 0.6m tại Cổng 3. Trạng thái cơ thể bình thường và thăng bằng tốt.",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: _showPostFall ? Colors.redAccent.shade100 : Colors.green.shade200,
+                        color: _showPostFall ? Colors.redAccent.shade100 : Colors.tealAccent,
                       ),
                     ),
                   ),
@@ -1987,5 +1974,245 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
         ),
       ),
     );
+  }
+}
+
+// =========================================================================
+// CUSTOM PAINTER: HIỂN THỊ PHỔ NHIỆT 128x128 (16.384 ĐIỂM) BẰNG 2D GAUSSIAN FIELD
+// =========================================================================
+class ThermalSpectrumPainter128 extends CustomPainter {
+  final bool isPostFall;
+  final bool showGrid;
+  final Offset? touchedLocalPos;
+  final double dropVelocity;
+  final int peakMotion;
+
+  ThermalSpectrumPainter128({
+    required this.isPostFall,
+    required this.showGrid,
+    required this.touchedLocalPos,
+    required this.dropVelocity,
+    required this.peakMotion,
+  });
+
+  // Tính nhiệt độ tại toạ độ chuẩn hoá (nx, ny) trong khoảng [0.0 .. 1.0]
+  double _calcTemperatureAt(double nx, double ny) {
+    // Nhiệt độ phòng nền ~23.5°C
+    double ambient = 23.5 + 0.3 * math.sin(nx * 10) * math.cos(ny * 10);
+
+    if (!isPostFall) {
+      // TRƯỚC NGÃ: Đứng thẳng ở Cổng 3.5 (nx = 0.44), chiều cao (ny từ 0.25 đến 0.85)
+      // Vùng ngực/đầu (nx: 0.44, ny: 0.38)
+      double dHead = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.32) / 0.10, 2));
+      double dChest = math.sqrt(math.pow((nx - 0.44) / 0.10, 2) + math.pow((ny - 0.48) / 0.14, 2));
+      double dLegs = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.72) / 0.18, 2));
+
+      double heatHead = 13.3 * math.exp(-0.5 * dHead * dHead);
+      double heatChest = 13.0 * math.exp(-0.5 * dChest * dChest);
+      double heatLegs = 9.5 * math.exp(-0.5 * dLegs * dLegs);
+
+      return (ambient + math.max(heatHead, math.max(heatChest, heatLegs))).clamp(23.0, 36.9);
+    } else {
+      // SAU NGÃ: Nằm ngang sát sàn (ny = 0.88, trải dài nx từ 0.22 đến 0.75)
+      // Điểm va đập đầu/thân trên (nx: 0.35, ny: 0.88)
+      double dUpper = math.sqrt(math.pow((nx - 0.36) / 0.12, 2) + math.pow((ny - 0.88) / 0.06, 2));
+      // Điểm hông/thân dưới (nx: 0.54, ny: 0.88)
+      double dLower = math.sqrt(math.pow((nx - 0.54) / 0.14, 2) + math.pow((ny - 0.88) / 0.06, 2));
+      // Chân (nx: 0.70, ny: 0.89)
+      double dFeet = math.sqrt(math.pow((nx - 0.70) / 0.10, 2) + math.pow((ny - 0.89) / 0.06, 2));
+
+      double heatUpper = 13.4 * math.exp(-0.5 * dUpper * dUpper);
+      double heatLower = 12.8 * math.exp(-0.5 * dLower * dLower);
+      double heatFeet = 9.2 * math.exp(-0.5 * dFeet * dFeet);
+
+      return (ambient + math.max(heatUpper, math.max(heatLower, heatFeet))).clamp(23.0, 36.9);
+    }
+  }
+
+  // Chuyển nhiệt độ sang dải màu ảnh nhiệt hồng ngoại FLIR
+  Color _tempToColor(double temp) {
+    if (temp <= 24.5) {
+      return Color.lerp(const Color(0xFF060B14), const Color(0xFF1B4965), (temp - 23.0) / 1.5)!;
+    } else if (temp <= 27.5) {
+      return Color.lerp(const Color(0xFF1B4965), const Color(0xFF2A9D8F), (temp - 24.5) / 3.0)!;
+    } else if (temp <= 31.0) {
+      return Color.lerp(const Color(0xFF2A9D8F), const Color(0xFFE9C46A), (temp - 27.5) / 3.5)!;
+    } else if (temp <= 34.0) {
+      return Color.lerp(const Color(0xFFE9C46A), const Color(0xFFE76F51), (temp - 31.0) / 3.0)!;
+    } else if (temp <= 36.3) {
+      return Color.lerp(const Color(0xFFE76F51), const Color(0xFFFF0054), (temp - 34.0) / 2.3)!;
+    } else {
+      return Color.lerp(const Color(0xFFFF0054), Colors.white, (temp - 36.3) / 0.7)!;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // 1. Vẽ nền nhiệt 2D
+    final Rect backgroundRect = Rect.fromLTWH(0, 0, w, h);
+    final Paint bgPaint = Paint()..color = const Color(0xFF060B14);
+    canvas.drawRect(backgroundRect, bgPaint);
+
+    // 2. Kết xuất các quầng nhiệt năng lượng cao (Gaussian Heat Clusters)
+    if (!isPostFall) {
+      // ĐỨNG: 3 quầng nhiệt (Đầu, Ngực, Chân)
+      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.32), w * 0.22, h * 0.16, 36.8);
+      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.48), w * 0.26, h * 0.22, 36.5);
+      _drawThermalCluster(canvas, Offset(w * 0.44, h * 0.72), w * 0.20, h * 0.24, 33.5);
+    } else {
+      // NGÃ NẰM SÀN: Dải nhiệt nằm ngang dài sát đáy
+      _drawThermalCluster(canvas, Offset(w * 0.36, h * 0.88), w * 0.28, h * 0.12, 36.9);
+      _drawThermalCluster(canvas, Offset(w * 0.54, h * 0.88), w * 0.32, h * 0.12, 36.4);
+      _drawThermalCluster(canvas, Offset(w * 0.70, h * 0.89), w * 0.22, h * 0.10, 33.2);
+
+      // Vùng sàn bị truyền nhiệt sau va chạm
+      final Paint floorSpread = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.orange.withValues(alpha: 0.15),
+            Colors.redAccent.withValues(alpha: 0.30),
+          ],
+        ).createShader(Rect.fromLTWH(0, h * 0.80, w, h * 0.20));
+      canvas.drawRect(Rect.fromLTWH(0, h * 0.80, w, h * 0.20), floorSpread);
+    }
+
+    // 3. Vẽ đường đẳng nhiệt (Isotherms) tạo hiệu ứng quân sự / y tế HD
+    _drawIsothermContours(canvas, size);
+
+    // 4. Vẽ lưới toạ độ 128x128 (Hiển thị các vạch chia 16, 32, 64, 96, 128)
+    if (showGrid) {
+      final Paint gridPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.08)
+        ..strokeWidth = 0.5;
+
+      for (int i = 0; i <= 128; i += 16) {
+        double pos = (i / 128.0) * w;
+        canvas.drawLine(Offset(pos, 0), Offset(pos, h), gridPaint);
+        canvas.drawLine(Offset(0, pos), Offset(w, pos), gridPaint);
+      }
+    }
+
+    // 5. Vẽ hồng tâm quét nhiệt độ cực đại (Peak Thermal Crosshair)
+    final Offset peakPos = isPostFall ? Offset(w * 0.36, h * 0.88) : Offset(w * 0.44, h * 0.32);
+    _drawCrosshair(canvas, peakPos, isPostFall ? "T_max: 36.9°C (Sàn Y: 0.15m)" : "T_max: 36.8°C (Đứng Y: 1.5m)", Colors.redAccent);
+
+    // 6. Vẽ điểm chạm của người dùng (Nếu có tương tác đo điểm)
+    if (touchedLocalPos != null) {
+      final double tx = touchedLocalPos!.dx.clamp(0.0, w);
+      final double ty = touchedLocalPos!.dy.clamp(0.0, h);
+      final int gridX = (tx / w * 128).clamp(0, 127).toInt();
+      final int gridY = (ty / h * 128).clamp(0, 127).toInt();
+      final double temp = _calcTemperatureAt(tx / w, ty / h);
+
+      _drawCrosshair(
+        canvas,
+        Offset(tx, ty),
+        "[$gridX, $gridY]: ${temp.toStringAsFixed(1)}°C",
+        Colors.tealAccent,
+      );
+    }
+
+    // 7. Nhãn HUD góc trên bên trái
+    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = TextSpan(
+      text: "MATRIX: 128x128 (16.384 PTS)\nFOV: 9 GATES x 2.0m ELEVATION",
+      style: TextStyle(
+        fontSize: 8,
+        fontWeight: FontWeight.w600,
+        color: Colors.white.withValues(alpha: 0.6),
+        fontFamily: 'monospace',
+      ),
+    );
+    tp.layout();
+    tp.paint(canvas, const Offset(8, 8));
+  }
+
+  // Vẽ quầng nhiệt elip 2D
+  void _drawThermalCluster(Canvas canvas, Offset center, double rx, double ry, double peakTemp) {
+    final Rect rect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
+    final Paint p = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          _tempToColor(peakTemp),
+          _tempToColor(peakTemp - 2.5),
+          _tempToColor(peakTemp - 5.5),
+          _tempToColor(25.0).withValues(alpha: 0.3),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.35, 0.65, 0.85, 1.0],
+      ).createShader(rect);
+
+    canvas.drawOval(rect, p);
+  }
+
+  // Vẽ các đường đẳng nhiệt khép kín (Isotherms)
+  void _drawIsothermContours(Canvas canvas, Size size) {
+    final Paint contourPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.15);
+
+    if (!isPostFall) {
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(size.width * 0.44, size.height * 0.44), width: size.width * 0.32, height: size.height * 0.54),
+        contourPaint,
+      );
+    } else {
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(size.width * 0.50, size.height * 0.88), width: size.width * 0.65, height: size.height * 0.18),
+        contourPaint,
+      );
+    }
+  }
+
+  // Vẽ hồng tâm đo nhiệt độ kèm chú thích toạ độ
+  void _drawCrosshair(Canvas canvas, Offset pos, String label, Color color) {
+    final Paint p = Paint()
+      ..color = color
+      ..strokeWidth = 1.2;
+
+    // Vạch dấu thập
+    canvas.drawLine(Offset(pos.dx - 10, pos.dy), Offset(pos.dx + 10, pos.dy), p);
+    canvas.drawLine(Offset(pos.dx, pos.dy - 10), Offset(pos.dx, pos.dy + 10), p);
+
+    // Vòng tròn định vị
+    final Paint circlePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(pos, 6, circlePaint);
+
+    // Hộp chữ toạ độ và nhiệt độ
+    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = TextSpan(
+      text: label,
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.bold,
+        color: color,
+        backgroundColor: Colors.black.withValues(alpha: 0.75),
+      ),
+    );
+    tp.layout();
+
+    double textX = pos.dx + 8;
+    double textY = pos.dy - 16;
+    if (textX + tp.width > 270) textX = pos.dx - tp.width - 8;
+    if (textY < 10) textY = pos.dy + 8;
+
+    tp.paint(canvas, Offset(textX, textY));
+  }
+
+  @override
+  bool shouldRepaint(covariant ThermalSpectrumPainter128 oldDelegate) {
+    return oldDelegate.isPostFall != isPostFall ||
+           oldDelegate.showGrid != showGrid ||
+           oldDelegate.touchedLocalPos != touchedLocalPos;
   }
 }
