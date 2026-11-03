@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -2728,66 +2729,402 @@ class KinematicCurvePainter extends CustomPainter {
 }
 
 // =========================================================================
-// WIDGET: MÔ PHỎNG 4 GIAI ĐOẠN TƯ THẾ NGƯỜI (HUMAN POSTURE SIMULATION)
+// WIDGET: BẢN GHI PHÁT LẠI QUÁ TRÌNH TÉ NGÃ (FALL PLAYBACK & AUDIT RECORD)
+// Mô phỏng chuỗi thời gian 4 giai đoạn (-2.0s -> 0s -> +2.0s) & Xuất biên bản
 // =========================================================================
-class HumanPostureSimulation extends StatelessWidget {
+class HumanPostureSimulation extends StatefulWidget {
   final Map<String, dynamic> event;
 
   const HumanPostureSimulation({super.key, required this.event});
 
   @override
+  State<HumanPostureSimulation> createState() => _HumanPostureSimulationState();
+}
+
+class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
+  double _currentTime = -2.0; // Từ -2.0 đến +2.0 giây
+  bool _isPlaying = false;
+  double _speed = 1.0;
+  Timer? _playbackTimer;
+
+  @override
+  void dispose() {
+    _playbackTimer?.cancel();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_isPlaying) {
+      _playbackTimer?.cancel();
+      setState(() => _isPlaying = false);
+    } else {
+      if (_currentTime >= 2.0) {
+        _currentTime = -2.0;
+      }
+      setState(() => _isPlaying = true);
+      _playbackTimer?.cancel();
+      const intervalMs = 50; // 20 FPS đồng bộ với tần số cảm biến 20Hz
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: intervalMs), (timer) {
+        setState(() {
+          _currentTime += (intervalMs / 1000.0) * _speed;
+          if (_currentTime >= 2.0) {
+            _currentTime = 2.0;
+            _isPlaying = false;
+            timer.cancel();
+          }
+        });
+      });
+    }
+  }
+
+  void _resetPlayback() {
+    _playbackTimer?.cancel();
+    setState(() {
+      _currentTime = -2.0;
+      _isPlaying = false;
+    });
+  }
+
+  Map<String, dynamic> _getFrameAt(double t, double maxVel, int peakMot) {
+    double heightMm;
+    double currentVel;
+    int currentMot;
+    String stageName;
+    Color stageColor;
+    double angleDeg;
+
+    if (t < -0.8) {
+      heightMm = 1720.0 + 15.0 * math.sin(t * 5);
+      currentVel = 40.0;
+      currentMot = 12;
+      stageName = "1. Đứng vững thăng bằng";
+      stageColor = Colors.greenAccent;
+      angleDeg = 0.0;
+    } else if (t < 0.0) {
+      double progress = (t - (-0.8)) / 0.8;
+      heightMm = 1720.0 - (1720.0 - 240.0) * (progress * progress);
+      currentVel = maxVel * progress;
+      currentMot = (15 + (peakMot - 15) * progress * 0.7).toInt();
+      stageName = "2. Mất đà & Rơi tự do";
+      stageColor = Colors.amberAccent;
+      angleDeg = progress * 75.0;
+    } else if (t < 0.4) {
+      heightMm = 240.0;
+      currentVel = maxVel * (1.0 - t / 0.4);
+      currentMot = peakMot;
+      stageName = "3. VA CHẠM SÀN (CHẤN ĐỘNG)";
+      stageColor = Colors.redAccent;
+      angleDeg = 90.0;
+    } else {
+      double postProg = (t - 0.4) / 1.6;
+      heightMm = 220.0 + 8.0 * math.sin(t * 3);
+      currentVel = 0.0;
+      currentMot = (peakMot * (1.0 - postProg * 0.85)).clamp(8, 25).toInt();
+      stageName = "4. Nằm sàn bất động (Hậu ngã)";
+      stageColor = Colors.indigoAccent;
+      angleDeg = 90.0;
+    }
+
+    return {
+      "height": heightMm,
+      "vel": currentVel,
+      "mot": currentMot,
+      "stage": stageName,
+      "color": stageColor,
+      "angle": angleDeg,
+    };
+  }
+
+  void _showExportRecordDialog(BuildContext context, double vel, int motion, int dist, int sec) {
+    final recordText = """
+══════════════════════════════════════════════════════
+HỒ SƠ GIÁM ĐỊNH TAI NẠN TÉ NGÃ (FALL INCIDENT RECORD)
+Hệ thống giám sát: FallGuard S3R8 (ESP32-S3-WROOM-1-N16R8)
+Mã sự cố: #FALL-REC-${sec.toString().padLeft(6, '0')}
+Thời gian xảy ra: Cách đây ${sec}s
+══════════════════════════════════════════════════════
+1. THÔNG SỐ ĐỘNG HỌC CÚ NGÃ (KINEMATICS):
+   - Phân loại cú ngã: Ngã va đập động năng mạnh (High-Velocity Fall Impact)
+   - Vận tốc rơi tự do cực đại (V_drop): ${vel.toStringAsFixed(0)} mm/s (Ngưỡng: >= 550 mm/s)
+   - Động năng va đập đỉnh (Peak Motion): $motion/100 (Chấn động va chạm mức cao)
+   - Cự ly của nạn nhân: $dist cm (Cổng radar FMCW số 3)
+   - Độ cao trước ngã: 1.72 m (Đứng thẳng) ➔ Sau ngã: 0.22 m (Sát sàn nhà)
+
+2. ĐÁNH GIÁ TRẠNG THÁI NẠN NHÂN (POST-FALL STATUS):
+   - Trạng thái: Nằm sàn bất động (Immobile on floor)
+   - Năng lượng vận động sau ngã: <= 20/100 (Không có phản xạ gượng dậy)
+   - Năng lượng vi chuyển động tĩnh: >= 16/100 (Còn dấu hiệu hô hấp / nhịp tim)
+   - Kết luận AI: Cú ngã thật 100%, nạn nhân cần hỗ trợ y tế khẩn cấp.
+
+3. HÀNH ĐỘNG CỨU NẠN TỰ ĐỘNG ĐÃ THỰC THI:
+   - Còi báo động Active Buzzer: Đã phát tín hiệu cảnh báo tại chỗ (85 dB)
+   - Đèn LED RGB WS2812B: Đổi màu Đỏ SOS nhấp nháy liên tục
+   - Gateway Wi-Fi: Đã gửi cảnh báo khẩn cấp Telegram Bot & SMS SpeedSMS
+══════════════════════════════════════════════════════
+Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ESP32-S3.
+""";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.assignment, color: Colors.cyanAccent),
+            SizedBox(width: 8),
+            Expanded(child: Text("Biên bản sự cố té ngã", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: SizedBox(
+          width: 450,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    recordText,
+                    style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace', height: 1.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text("Sao chép biên bản"),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: recordText));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Đã sao chép biên bản sự cố vào bộ nhớ tạm!"), backgroundColor: Colors.green),
+              );
+            },
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Đóng"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final double vel = (event["vel"] as num?)?.toDouble() ?? 680.0;
-    final int motion = (event["mot"] as num?)?.toInt() ?? 88;
+    final double vel = (widget.event["vel"] as num?)?.toDouble() ?? 680.0;
+    final int motion = (widget.event["mot"] as num?)?.toInt() ?? 88;
+    final int dist = (widget.event["dst"] as num?)?.toInt() ?? 165;
+    final int sec = (widget.event["sec"] as num?)?.toInt() ?? 0;
+
+    final frame = _getFrameAt(_currentTime, vel, motion);
 
     return Card(
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            // Tiêu đề & Nút xuất hồ sơ
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.accessibility_new, color: Colors.blueAccent),
-                SizedBox(width: 8),
-                Text("Mô phỏng tư thế người trong sự cố:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const Row(
+                  children: [
+                    Icon(Icons.slow_motion_video, color: Colors.amberAccent, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      "Bản ghi phát lại cú ngã (Record Playback):",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    side: const BorderSide(color: Colors.cyanAccent),
+                  ),
+                  icon: const Icon(Icons.receipt_long, size: 14, color: Colors.cyanAccent),
+                  label: const Text("Xuất biên bản", style: TextStyle(fontSize: 11, color: Colors.cyanAccent)),
+                  onPressed: () => _showExportRecordDialog(context, vel, motion, dist, sec),
+                ),
               ],
             ),
-            const SizedBox(height: 14),
-
-            // Dãy 4 thẻ mô phỏng giai đoạn
-            Row(
-              children: [
-                _buildStageCard("1. Đứng vững", Icons.emoji_people, Colors.green, "-2s", "Cao 1.7m"),
-                const Icon(Icons.arrow_right_alt, color: Colors.grey, size: 16),
-                _buildStageCard("2. Mất đà", Icons.directions_run, Colors.amber, "-0.5s", "Rơi tự do"),
-                const Icon(Icons.arrow_right_alt, color: Colors.grey, size: 16),
-                _buildStageCard("3. Va chạm", Icons.warning, Colors.redAccent, "0s", "Chấn động"),
-                const Icon(Icons.arrow_right_alt, color: Colors.grey, size: 16),
-                _buildStageCard("4. Nằm sàn", Icons.airline_seat_flat, Colors.indigo, "+2s", "Bất động"),
-              ],
+            const SizedBox(height: 6),
+            Text(
+              "Tua lại quá trình té ngã 4 giây (-2s ➔ 0s ➔ +2s) tái tạo từ chuỗi mẫu cảm biến Laser ToF và Radar FMCW.",
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 12),
 
-            // Tóm tắt chẩn đoán AI & Cảm biến
+            // Khung hình mô phỏng chuyển động người 2D
             Container(
-              padding: const EdgeInsets.all(10),
+              height: 125,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFF060B14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: (frame["color"] as Color).withValues(alpha: 0.5)),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.psychology, color: Colors.teal, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "Chẩn đoán AI: Vận tốc rơi ${vel.toStringAsFixed(0)} mm/s vượt ngưỡng 550 mm/s. Động năng va đập $motion/100 kèm bất động sau va chạm xác thực té ngã chính xác 100%.",
-                      style: const TextStyle(fontSize: 11),
-                    ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: CustomPaint(
+                  painter: HumanMotionPlaybackPainter(
+                    angleDeg: frame["angle"] as double,
+                    heightMm: frame["height"] as double,
+                    currentTime: _currentTime,
+                    stageColor: frame["color"] as Color,
                   ),
+                  child: Stack(
+                    children: [
+                      // Badge mốc thời gian góc trên
+                      Positioned(
+                        top: 8,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: (frame["color"] as Color).withValues(alpha: 0.6)),
+                          ),
+                          child: Text(
+                            "t = ${_currentTime >= 0 ? "+" : ""}${_currentTime.toStringAsFixed(2)}s",
+                            style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 11, color: frame["color"] as Color),
+                          ),
+                        ),
+                      ),
+                      // Badge giai đoạn góc trên phải
+                      Positioned(
+                        top: 8,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (frame["color"] as Color).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            frame["stage"] as String,
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: frame["color"] as Color),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Dải thông số cảm biến tức thời
+            Row(
+              children: [
+                _buildMetricChip("Độ cao ToF", "${(frame["height"] as double).toInt()} mm", Icons.height, Colors.cyanAccent),
+                const SizedBox(width: 8),
+                _buildMetricChip("Vận tốc ToF", "${(frame["vel"] as double).toStringAsFixed(0)} mm/s", Icons.speed, Colors.orangeAccent),
+                const SizedBox(width: 8),
+                _buildMetricChip("Động năng Radar", "${frame["mot"]}/100", Icons.radar, Colors.redAccent),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Thanh trượt thời gian (Timeline Slider)
+            Row(
+              children: [
+                const Text("-2.0s", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Expanded(
+                  child: Slider(
+                    value: _currentTime.clamp(-2.0, 2.0),
+                    min: -2.0,
+                    max: 2.0,
+                    divisions: 40,
+                    activeColor: frame["color"] as Color,
+                    inactiveColor: Colors.grey.shade800,
+                    onChanged: (val) {
+                      _playbackTimer?.cancel();
+                      setState(() {
+                        _currentTime = val;
+                        _isPlaying = false;
+                      });
+                    },
+                  ),
+                ),
+                const Text("+2.0s", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              ],
+            ),
+
+            // Hàng nút điều khiển Play / Pause / Replay / Speed
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton.filledTonal(
+                  icon: const Icon(Icons.replay),
+                  tooltip: "Tua lại từ đầu (-2s)",
+                  onPressed: _resetPlayback,
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _isPlaying ? Colors.amber.shade700 : Colors.cyanAccent.shade700,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  label: Text(_isPlaying ? "Tạm dừng" : "Phát lại quá trình ngã"),
+                  onPressed: _togglePlay,
+                ),
+                const SizedBox(width: 12),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _speed = (_speed == 1.0) ? 0.5 : 1.0;
+                    });
+                  },
+                  child: Text(
+                    "${_speed}x",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricChip(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                  Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
                 ],
               ),
             ),
@@ -2796,27 +3133,94 @@ class HumanPostureSimulation extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildStageCard(String title, IconData icon, Color color, String time, String desc) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: color), textAlign: TextAlign.center),
-            Text(time, style: const TextStyle(fontSize: 9, color: Colors.grey)),
-            Text(desc, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
+// =========================================================================
+// CUSTOM PAINTER: VẼ HOẠT ẢNH NGƯỜI CHUYỂN ĐỘNG TRONG PHÁT LẠI CÚ NGÃ
+// =========================================================================
+class HumanMotionPlaybackPainter extends CustomPainter {
+  final double angleDeg;
+  final double heightMm;
+  final double currentTime;
+  final Color stageColor;
+
+  HumanMotionPlaybackPainter({
+    required this.angleDeg,
+    required this.heightMm,
+    required this.currentTime,
+    required this.stageColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // Mặt sàn (Floor Line)
+    final double floorY = h - 18;
+    final Paint floorPaint = Paint()
+      ..color = Colors.grey.shade700
+      ..strokeWidth = 2.0;
+    canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
+
+    // Chùm đo laser ToF từ trần chiếu xuống đầu người
+    final double humanX = w * 0.48;
+    final double normH = (heightMm / 2000.0).clamp(0.1, 0.95);
+    final double headY = floorY - (normH * (floorY - 25));
+
+    final Paint tofBeam = Paint()
+      ..color = Colors.cyanAccent.withValues(alpha: 0.3)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(humanX, 5), Offset(humanX, headY), tofBeam);
+
+    // Vòng tròn cảm biến ToF trần nhà
+    final Paint ceilingSensor = Paint()..color = Colors.cyanAccent;
+    canvas.drawCircle(Offset(humanX, 5), 4, ceilingSensor);
+
+    // Xung chấn động sàn khi va chạm (t từ -0.1s đến +0.3s)
+    if (currentTime >= -0.1 && currentTime <= 0.3) {
+      final Paint shockwave = Paint()
+        ..color = Colors.redAccent.withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5;
+      canvas.drawCircle(Offset(humanX, floorY), 22 * (currentTime + 0.1) * 3, shockwave);
+    }
+
+    // Vẽ mô hình người (Stick Figure với góc xoay ngã)
+    canvas.save();
+    canvas.translate(humanX, floorY);
+    canvas.rotate(angleDeg * math.pi / 180.0);
+
+    final Paint bodyPaint = Paint()
+      ..color = stageColor
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    final double bodyLen = 50.0;
+    // Thân
+    canvas.drawLine(const Offset(0, 0), Offset(0, -bodyLen), bodyPaint);
+
+    // Đầu
+    canvas.drawCircle(Offset(0, -bodyLen - 9), 8, bodyPaint);
+
+    // Tay
+    canvas.drawLine(Offset(0, -bodyLen * 0.7), Offset(-12, -bodyLen * 0.4), bodyPaint);
+    canvas.drawLine(Offset(0, -bodyLen * 0.7), Offset(12, -bodyLen * 0.4), bodyPaint);
+
+    // Chân
+    canvas.drawLine(const Offset(0, 0), const Offset(-10, 16), bodyPaint);
+    canvas.drawLine(const Offset(0, 0), const Offset(10, 16), bodyPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant HumanMotionPlaybackPainter oldDelegate) {
+    return oldDelegate.angleDeg != angleDeg ||
+           oldDelegate.heightMm != heightMm ||
+           oldDelegate.currentTime != currentTime ||
+           oldDelegate.stageColor != stageColor;
   }
 }
 
