@@ -482,10 +482,22 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white70),
+            ),
+            icon: const Icon(Icons.medical_services, size: 18),
+            label: const Text("HƯỚNG DẪN SƠ CỨU"),
+            onPressed: () {
+              Navigator.pop(ctx);
+              showFirstAidGuideModal(context);
+            },
+          ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.red),
             icon: const Icon(Icons.check_circle),
-            label: const Text("TẮT BÁO ĐỘNG TỪ XA"),
+            label: const Text("TẮT BÁO ĐỘNG"),
             onPressed: () {
               _sendCommand("CANCEL_ALARM");
               Navigator.pop(ctx);
@@ -3787,46 +3799,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
 
   // Hướng dẫn sơ cứu khi phát hiện người già té ngã
   void _showFirstAidGuide() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.medical_services, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text("Sơ cứu khi người già ngã"),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Quy tắc an toàn từ Hội Chữ Thập Đỏ & Y Tế:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              SizedBox(height: 8),
-              Text(
-                "1. KHÔNG vội đỡ dậy ngay:\n"
-                "• Người cao tuổi bị loãng xương, việc kéo giật mạnh có thể làm gãy cổ xương đùi hoặc chấn thương cột sống nặng hơn.\n\n"
-                "2. Kiểm tra tri giác & vết thương:\n"
-                "• Hỏi thăm: Người nhà có tỉnh táo không, đau ở đâu, có buồn nôn hay choáng váng không.\n"
-                "• Quan sát xem tay chân có bị biến dạng hay bầm tím không.\n\n"
-                "3. Nếu có dấu hiệu nguy kịch:\n"
-                "• Không cử động vùng cổ và lưng.\n"
-                "• Gọi ngay cấp cứu 115 hoặc cơ sở y tế gần nhất.\n\n"
-                "4. Nếu chỉ choáng nhẹ:\n"
-                "• Để người nằm nghỉ ngơi 5-10 phút tại chỗ, kê gối mỏng dưới đầu, sau đó từ từ chuyển sang tư thế ngồi rồi mới đứng dậy.",
-                style: TextStyle(fontSize: 12, height: 1.45),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Đã hiểu"),
-          ),
-        ],
-      ),
-    );
+    showFirstAidGuideModal(context);
   }
 
   // Kích hoạt cập nhật OTA từ Cài đặt chung
@@ -4166,4 +4139,636 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
       ),
     );
   }
+}
+
+// =========================================================================
+// HÀM MỞ HỘP THOẠI CẨM NANG SƠ CỨU NGƯỜI GIÀ TÉ NGÃ
+// =========================================================================
+void showFirstAidGuideModal(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (ctx) => const FirstAidGuideDialog(),
+  );
+}
+
+class FirstAidGuideDialog extends StatefulWidget {
+  const FirstAidGuideDialog({super.key});
+
+  @override
+  State<FirstAidGuideDialog> createState() => _FirstAidGuideDialogState();
+}
+
+class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _call115() async {
+    final uri = Uri.parse("tel:115");
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Widget _buildCitationCard(String org, String docTitle, String text) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.menu_book, color: Colors.cyanAccent, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                "Trích dẫn y khoa: $org",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Colors.cyanAccent),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            docTitle,
+            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 9.5, color: Colors.grey),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 10.5, height: 1.4, color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep1Tab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hình minh họa cấm kéo giật
+          Container(
+            height: 135,
+            decoration: BoxDecoration(
+              color: const Color(0xFF060B14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: CustomPaint(
+                painter: DoNotPullIllustrationPainter(),
+                child: Container(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          const Text(
+            "BƯỚC 1: TUYỆT ĐỐI KHÔNG VỘI ĐỠ DẬY NGAY",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "• Phản xạ thông thường là chạy tới nắm tay kéo người già đứng lên ngay, nhưng đây là SAI LẦM NGUY HIỂM NHẤT.\n"
+            "• Người cao tuổi đa số bị loãng xương (Osteoporosis). Việc kéo giật đột ngột có thể biến vết nứt xương kín thành gãy di lệch hoàn toàn, làm rách mạch máu lớn hoặc đứt tủy sống cổ/lưng.\n"
+            "• Hành động chuẩn: Yêu cầu người bệnh nằm yên hít thở sâu, người sơ cứu quỳ một bên để trấn an tinh thần trong 1-2 phút đầu.",
+            style: TextStyle(fontSize: 11.5, height: 1.45),
+          ),
+          const SizedBox(height: 10),
+
+          _buildCitationCard(
+            "Tổ chức Y tế Thế giới (WHO)",
+            "WHO Global Report on Falls Prevention in Older Age & ICOPE Guidelines",
+            "\"Tuyệt đối không di chuyển người bệnh nếu chưa loại trừ gãy cổ xương đùi hoặc tổn thương cột sống. Hành vi nâng bốc người già sai kỹ thuật làm tăng 45% biến chứng tàn phế vĩnh viễn và sốc chấn thương.\"",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep2Tab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hình minh họa kiểm tra sinh tồn
+          Container(
+            height: 135,
+            decoration: BoxDecoration(
+              color: const Color(0xFF060B14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: CustomPaint(
+                painter: VitalsCheckIllustrationPainter(),
+                child: Container(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          const Text(
+            "BƯỚC 2: KHÁM TRI GIÁC & DẤU HIỆU NGUY CẤP",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amberAccent),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "• Kiểm tra tri giác (AVPU): Gọi tên xem nạn nhân có trả lời rõ ràng không, có nhớ vừa xảy ra chuyện gì không.\n"
+            "• Quan sát 3 dấu hiệu chấn thương nặng cần GỌI 115 NGAY:\n"
+            "   1. Chấn thương sọ não: Đập đầu xuống nền gạch, sưng u, lú lẫn, chảy máu tai/mũi, nôn ói.\n"
+            "   2. Gãy cổ xương đùi: Bàn chân một bên bị xoay đổ hẳn ra ngoài, chân đau ngắn hơn chân lành, đau dữ dội khớp háng.\n"
+            "   3. Chấn thương cột sống: Đau buốt đốt sống cổ/thắt lưng, tê bì hoặc mất cảm giác hai bàn chân.\n"
+            "• Nếu có dấu hiệu trên: Giữ bất động nguyên trạng, đắp chăn mỏng chống hạ thân nhiệt và gọi ngay 115.",
+            style: TextStyle(fontSize: 11.5, height: 1.45),
+          ),
+          const SizedBox(height: 10),
+
+          _buildCitationCard(
+            "CDC Hoa Kỳ (STEADI Initiative)",
+            "Centers for Disease Control - Older Adult Fall Prevention Protocol",
+            "\"Hơn 95% ca gãy xương hông ở người già là do ngã đập bên hông. Người cao tuổi có dùng thuốc chống đông máu có nguy cơ xuất huyết não muộn (TBI) rất cao ngay cả khi cú ngã ban đầu tưởng như nhẹ.\"",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep3Tab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hình minh họa tư thế nằm nghiêng hồi sức
+          Container(
+            height: 135,
+            decoration: BoxDecoration(
+              color: const Color(0xFF060B14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: CustomPaint(
+                painter: RecoveryPositionIllustrationPainter(),
+                child: Container(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          const Text(
+            "BƯỚC 3: TƯ THẾ HỒI SỨC NẰM NGHIÊNG (RECOVERY POSITION)",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.tealAccent),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "• Khi nào áp dụng: Người già BẤT TỈNH, hôn mê nhưng VẪN CÒN THỞ bình thường (lồng ngực vẫn phập phồng).\n"
+            "• Kỹ thuật xoay nghiêng an toàn:\n"
+            "   1. Đặt cánh tay gần bạn vuông góc với thân mình.\n"
+            "   2. Kéo cánh tay đối diện vắt qua ngực, áp mu bàn tay vào má nạn nhân.\n"
+            "   3. Co gập đầu gối chân đối diện lên một góc 90 độ.\n"
+            "   4. Nhẹ nhàng kéo gối để lật toàn bộ cơ thể người bệnh nằm nghiêng về phía bạn.\n"
+            "• Tác dụng: Giữ đường thở mở rộng tối đa, chống tụt lưỡi bịt kín thanh quản và giúp dịch nôn tự trào ra ngoài, tránh sặc vào phổi.",
+            style: TextStyle(fontSize: 11.5, height: 1.45),
+          ),
+          const SizedBox(height: 10),
+
+          _buildCitationCard(
+            "Hội Chữ Thập Đỏ Quốc Tế (IFRC) & AHA",
+            "International First Aid Guidelines - Lateral Recovery Position",
+            "\"Tư thế nằm nghiêng an toàn là kỹ thuật cứu mạng hàng đầu giúp duy trì thông khí thụ động, giảm trên 70% nguy cơ tử vong do tắc nghẽn đường thở cơ học khi chờ xe cấp cứu.\"",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep4Tab() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hình minh họa quy tắc dùng ghế đứng dậy
+          Container(
+            height: 135,
+            decoration: BoxDecoration(
+              color: const Color(0xFF060B14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: CustomPaint(
+                painter: ChairMethodIllustrationPainter(),
+                child: Container(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          const Text(
+            "BƯỚC 4: KỸ THUẬT DÙNG GHẾ ĐỨNG DẬY (THE CHAIR METHOD)",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "• Khi nào áp dụng: Người già hoàn toàn tỉnh táo, KHÔNG gãy xương, KHÔNG đau cột sống, chỉ bị trượt ngã nhẹ.\n"
+            "• Quy trình 4 bước tự đứng dậy an toàn:\n"
+            "   1. Lăn người sang tư thế nằm nghiêng.\n"
+            "   2. Dùng 2 tay chống sàn, từ từ chuyển thành tư thế quỳ 4 điểm (hai tay và hai đầu gối).\n"
+            "   3. Bò từ từ đến một chiếc ghế tựa hoặc mép giường thật chắc chắn, đặt 2 tay lên mặt ghế.\n"
+            "   4. Bước một chân khỏe hơn gập lên phía trước, dồn lực tay và chân đẩy người xoay lại ngồi lên mặt ghế.\n"
+            "• Lưu ý: Bắt buộc ngồi yên nghỉ ngơi tối thiểu 15-30 phút sau khi ngồi lên ghế trước khi đi lại.",
+            style: TextStyle(fontSize: 11.5, height: 1.45),
+          ),
+          const SizedBox(height: 10),
+
+          _buildCitationCard(
+            "Cơ quan Y tế Quốc gia Anh (NHS UK)",
+            "NHS Clinical Guideline: What to do after a fall - The Safe Chair Recovery",
+            "\"Kỹ thuật dùng ghế giúp phân phối tải trọng cơ thể lên các nhóm cơ khỏe, ngăn ngừa tụt huyết áp tư thế đứng (Orthostatic Hypotension) và rách cơ do gượng dậy quá nhanh.\"",
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: const Color(0xFF0F172A),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540, maxHeight: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: const Icon(Icons.medical_services, color: Colors.redAccent, size: 26),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Cẩm nang Sơ cứu Người già Té ngã",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                        ),
+                        Text(
+                          "Phác đồ phản ứng nhanh chuẩn quốc tế: WHO, IFRC, NHS UK, CDC",
+                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // TabBar
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorColor: Colors.redAccent,
+                  labelColor: Colors.redAccent,
+                  unselectedLabelColor: Colors.grey,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  unselectedLabelStyle: const TextStyle(fontSize: 11),
+                  tabs: const [
+                    Tab(text: "1. Không kéo dậy"),
+                    Tab(text: "2. Khám sinh tồn"),
+                    Tab(text: "3. Nằm nghiêng"),
+                    Tab(text: "4. Kỹ thuật ghế"),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // TabBarView
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildStep1Tab(),
+                    _buildStep2Tab(),
+                    _buildStep3Tab(),
+                    _buildStep4Tab(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Bottom Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.phone_in_talk, size: 18),
+                      label: const Text("Gọi Cấp Cứu 115", style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: _call115,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      side: BorderSide(color: Colors.grey.shade700),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Đóng"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 1. Hình vẽ minh họa Bước 1: Cấm kéo đứng dậy ngay
+class DoNotPullIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double floorY = h - 25;
+
+    // Mặt sàn
+    final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
+    canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
+
+    // Người nằm trên sàn
+    final double bodyX = w * 0.40;
+    final Paint bodyPaint = Paint()
+      ..color = Colors.blueGrey.shade300
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    // Đầu gối trên sàn
+    canvas.drawCircle(Offset(bodyX - 50, floorY - 10), 9, bodyPaint);
+    // Thân
+    canvas.drawLine(Offset(bodyX - 40, floorY - 8), Offset(bodyX + 25, floorY - 8), bodyPaint);
+    // Chân
+    canvas.drawLine(Offset(bodyX + 25, floorY - 8), Offset(bodyX + 80, floorY - 8), bodyPaint);
+
+    // Vòng cảnh báo đỏ ở Cổ và Hông
+    final Paint alertRing = Paint()
+      ..color = Colors.redAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(Offset(bodyX - 35, floorY - 8), 16, alertRing); // Cổ
+    canvas.drawCircle(Offset(bodyX + 25, floorY - 8), 18, alertRing); // Hông
+
+    // Bàn tay kéo giật từ trên xuống (Dashed vector)
+    final Paint pullArrow = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(bodyX - 10, floorY - 60), Offset(bodyX - 10, floorY - 18), pullArrow);
+
+    // Biển cấm kéo đứng dậy
+    final Paint signPaint = Paint()..color = Colors.redAccent..style = PaintingStyle.stroke..strokeWidth = 2.5;
+    canvas.drawCircle(Offset(w * 0.78, h * 0.45), 26, signPaint);
+    canvas.drawLine(Offset(w * 0.78 - 18, h * 0.45 - 18), Offset(w * 0.78 + 18, h * 0.45 + 18), signPaint);
+
+    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = const TextSpan(
+      text: "CẤM KÉO DẬY!",
+      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 10),
+    );
+    tp.layout();
+    tp.paint(canvas, Offset(w * 0.78 - tp.width / 2, h * 0.45 + 32));
+
+    // Nhãn vùng nguy hiểm
+    final TextPainter tpLabel = TextPainter(textDirection: TextDirection.ltr);
+    tpLabel.text = const TextSpan(
+      text: "Nguy cơ gãy cổ xương đùi & tổn thương tủy sống",
+      style: TextStyle(color: Colors.white60, fontSize: 9.5),
+    );
+    tpLabel.layout();
+    tpLabel.paint(canvas, const Offset(15, 10));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// 2. Hình vẽ minh họa Bước 2: Kiểm tra tri giác & Gọi 115
+class VitalsCheckIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double floorY = h - 25;
+
+    // Mặt sàn
+    final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
+    canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
+
+    // Nạn nhân nằm
+    final double vicX = w * 0.32;
+    final Paint vicPaint = Paint()..color = Colors.blueGrey.shade400..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(vicX - 45, floorY - 9), 8, vicPaint);
+    canvas.drawLine(Offset(vicX - 35, floorY - 7), Offset(vicX + 35, floorY - 7), vicPaint);
+    canvas.drawLine(Offset(vicX + 35, floorY - 7), Offset(vicX + 85, floorY - 7), vicPaint);
+
+    // Người sơ cứu quỳ một bên kiểm tra
+    final double rescX = vicX - 5;
+    final Paint rescPaint = Paint()..color = Colors.tealAccent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(rescX - 10, floorY - 55), 8, rescPaint); // Đầu người sơ cứu
+    canvas.drawLine(Offset(rescX - 10, floorY - 47), Offset(rescX, floorY - 25), rescPaint); // Thân
+    canvas.drawLine(Offset(rescX, floorY - 25), Offset(rescX - 15, floorY), rescPaint); // Chân quỳ
+    canvas.drawLine(Offset(rescX - 10, floorY - 40), Offset(vicX, floorY - 10), rescPaint); // Tay bắt mạch / kiểm tra
+
+    // Hộp thoại hỏi thăm
+    final Paint bubblePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1)
+      ..style = PaintingStyle.fill;
+    final RRect bubbleRRect = RRect.fromRectAndRadius(Rect.fromLTWH(vicX - 60, 10, 160, 26), const Radius.circular(8));
+    canvas.drawRRect(bubbleRRect, bubblePaint);
+
+    final TextPainter tpMsg = TextPainter(textDirection: TextDirection.ltr);
+    tpMsg.text = const TextSpan(
+      text: "Bác tỉnh không? Có đau ở đâu không?",
+      style: TextStyle(color: Colors.amberAccent, fontSize: 9, fontWeight: FontWeight.bold),
+    );
+    tpMsg.layout();
+    tpMsg.paint(canvas, Offset(vicX - 55, 16));
+
+    // Huy hiệu cấp cứu 115
+    final Paint sosBox = Paint()..color = Colors.red.withValues(alpha: 0.2)..style = PaintingStyle.fill;
+    final RRect sosRRect = RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.72, 25, 95, 60), const Radius.circular(10));
+    canvas.drawRRect(sosRRect, sosBox);
+    canvas.drawRRect(sosRRect, Paint()..color = Colors.redAccent..style = PaintingStyle.stroke..strokeWidth = 1.5);
+
+    final TextPainter tp115 = TextPainter(textDirection: TextDirection.ltr);
+    tp115.text = const TextSpan(
+      text: "CẤP CỨU 115\nKhi bất tỉnh hoặc\nnghi gãy xương",
+      style: TextStyle(color: Colors.redAccent, fontSize: 9.5, fontWeight: FontWeight.bold, height: 1.3),
+    );
+    tp115.layout();
+    tp115.paint(canvas, Offset(w * 0.72 + 8, 32));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// 3. Hình vẽ minh họa Bước 3: Tư thế hồi sức nằm nghiêng
+class RecoveryPositionIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double floorY = h - 25;
+
+    // Mặt sàn
+    final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
+    canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
+
+    // Người nằm nghiêng an toàn
+    final double cx = w * 0.38;
+    final Paint p = Paint()
+      ..color = Colors.tealAccent
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    // Đầu kê lên mu bàn tay
+    canvas.drawCircle(Offset(cx - 55, floorY - 18), 9, p);
+    // Tay đỡ đầu
+    canvas.drawLine(Offset(cx - 35, floorY - 14), Offset(cx - 55, floorY - 10), p);
+    // Thân nằm nghiêng
+    canvas.drawLine(Offset(cx - 45, floorY - 14), Offset(cx + 25, floorY - 14), p);
+    // Chân dưới duỗi thẳng
+    canvas.drawLine(Offset(cx + 25, floorY - 14), Offset(cx + 85, floorY - 14), p..color = Colors.teal.shade700);
+    // Chân trên co vuông góc 90 độ chạm sàn để giữ thăng bằng
+    final Paint pLeg = Paint()..color = Colors.tealAccent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx + 25, floorY - 14), Offset(cx + 35, floorY - 3), pLeg);
+    canvas.drawLine(Offset(cx + 35, floorY - 3), Offset(cx + 65, floorY - 3), pLeg);
+
+    // Mũi tên luồng thở thông thoáng
+    final Paint airwayPaint = Paint()..color = Colors.cyanAccent..strokeWidth = 2.0..style = PaintingStyle.stroke;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx - 68, floorY - 18), radius: 12), 0.5, 2.0, false, airwayPaint);
+
+    // Nhãn chú thích
+    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = const TextSpan(
+      text: "Tư thế nằm nghiêng an toàn (IFRC/AHA):\n• Cằm ngửa nhẹ -> Đường thở mở rộng\n• Chân co 90° giữ thăng bằng vững\n• Chống sặc dịch nôn/nước bọt vào phổi",
+      style: TextStyle(color: Colors.white70, fontSize: 9.5, height: 1.4),
+    );
+    tp.layout();
+    tp.paint(canvas, Offset(w * 0.48, 15));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// 4. Hình vẽ minh họa Bước 4: Quy tắc dùng ghế đứng dậy (NHS UK)
+class ChairMethodIllustrationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double floorY = h - 22;
+
+    // Mặt sàn
+    final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
+    canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
+
+    // Ghế tựa ở bên phải
+    final double chairX = w * 0.82;
+    final Paint chairPaint = Paint()..color = Colors.cyanAccent..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    // Chân ghế
+    canvas.drawLine(Offset(chairX, floorY), Offset(chairX, floorY - 45), chairPaint);
+    canvas.drawLine(Offset(chairX + 30, floorY), Offset(chairX + 30, floorY - 45), chairPaint);
+    // Mặt ghế
+    canvas.drawLine(Offset(chairX - 5, floorY - 45), Offset(chairX + 35, floorY - 45), chairPaint);
+    // Lưng tựa ghế
+    canvas.drawLine(Offset(chairX + 30, floorY - 45), Offset(chairX + 30, floorY - 80), chairPaint);
+
+    // 3 giai đoạn tiến triển
+    final Paint stepPaint = Paint()..color = Colors.white70..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+
+    // A. Nằm nghiêng
+    canvas.drawCircle(Offset(35, floorY - 8), 6, stepPaint);
+    canvas.drawLine(Offset(41, floorY - 6), Offset(65, floorY - 6), stepPaint);
+
+    // Mũi tên sang B
+    canvas.drawLine(Offset(75, floorY - 15), Offset(95, floorY - 15), floorPaint);
+
+    // B. Quỳ 4 điểm (bò)
+    canvas.drawCircle(Offset(125, floorY - 24), 6, stepPaint);
+    canvas.drawLine(Offset(125, floorY - 18), Offset(145, floorY - 18), stepPaint);
+    canvas.drawLine(Offset(125, floorY - 18), Offset(125, floorY), stepPaint);
+    canvas.drawLine(Offset(145, floorY - 18), Offset(145, floorY), stepPaint);
+
+    // Mũi tên sang C
+    canvas.drawLine(Offset(160, floorY - 25), Offset(180, floorY - 25), floorPaint);
+
+    // C. Vịn 2 tay lên ghế
+    canvas.drawCircle(Offset(225, floorY - 42), 6, stepPaint);
+    canvas.drawLine(Offset(225, floorY - 36), Offset(225, floorY - 15), stepPaint);
+    canvas.drawLine(Offset(225, floorY - 15), Offset(215, floorY), stepPaint);
+    canvas.drawLine(Offset(225, floorY - 15), Offset(235, floorY), stepPaint);
+    canvas.drawLine(Offset(225, floorY - 30), Offset(chairX - 5, floorY - 45), Paint()..color = Colors.amberAccent..strokeWidth = 2.5); // Tay vịn ghế
+
+    // Nhãn 4 bước
+    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = const TextSpan(
+      text: "1. Nằm nghiêng ➔ 2. Quỳ 4 điểm ➔ 3. Vịn ghế vững ➔ 4. Đẩy chân ngồi lên ghế",
+      style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 10),
+    );
+    tp.layout();
+    tp.paint(canvas, const Offset(15, 10));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
