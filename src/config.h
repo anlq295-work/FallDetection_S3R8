@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+// Phiên bản Firmware hệ thống
+#define FIRMWARE_VERSION            "v1.1.0"
+
 // =========================================================================
 // 1. PINOUT AN TOÀN CHO ESP32-S3R8
 // (LƯU Ý CỰC KỲ QUAN TRỌNG: TRÁNH TUYỆT ĐỐI CÁC CHÂN TỪ GPIO 33 ĐẾN 37 VÌ DÀNH CHO OCTAL PSRAM/OPI FLASH)

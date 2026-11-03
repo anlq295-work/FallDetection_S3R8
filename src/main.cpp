@@ -120,6 +120,8 @@ void processBleCommands() {
     } else if (cmd == "CLEAR_HISTORY") {
       bleProvision.clearHistory();
       bleProvision.updateStatus("HISTORY_CLEARED_OK");
+    } else if (cmd == "GET_VERSION") {
+      bleProvision.updateStatus(String("FIRMWARE_VERSION:") + FIRMWARE_VERSION);
     } else if (cmd.startsWith("OTA_HTTP:")) {
       String url = cmd.substring(9);
       url.trim();
@@ -127,7 +129,7 @@ void processBleCommands() {
       alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
       otaManager.performHttpOta(url);
     } else if (cmd == "OTA_LATEST" || cmd == "OTA_GITHUB_LATEST") {
-      String latestUrl = "https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/build/firmware.bin";
+      String latestUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/firmware.bin";
       Serial.printf("[BLE] Nhan lenh OTA ban moi nhat tu GitHub: %s\n", latestUrl.c_str());
       alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
       otaManager.performHttpOta(latestUrl);
@@ -250,11 +252,11 @@ void loop() {
         const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
         const char* stateNames[] = {"NORMAL", "SUSPECTED", "PRE_ALARM", "ALERT", "ACK", "RESOLVED", "FAULT"};
 
-        char telemBuf[160];
+        char telemBuf[192];
         snprintf(telemBuf, sizeof(telemBuf), 
-                 "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f}",
+                 "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"ver\":\"%s\"}",
                  stateNames[currentState], classNames[predictedClass], confidence,
-                 (int)features[2], (int)features[0], (int)features[1], features[5]);
+                 (int)features[2], (int)features[0], (int)features[1], features[5], FIRMWARE_VERSION);
         bleProvision.sendTelemetry(String(telemBuf));
       }
 

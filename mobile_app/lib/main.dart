@@ -107,6 +107,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   int _radarMotion = 0;
   int _radarStatic = 0;
   double _dropRate = 0.0;
+  String _deviceFirmwareVersion = "v1.0.0";
   List<dynamic> _eventHistory = [];
   bool _isLoadingHistory = false;
 
@@ -379,6 +380,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 _radarMotion = (data["m"] as num?)?.toInt() ?? 0;
                 _radarStatic = (data["s"] as num?)?.toInt() ?? 0;
                 _dropRate = (data["dr"] as num?)?.toDouble() ?? 0.0;
+                if (data.containsKey("ver") && data["ver"] != null) {
+                  _deviceFirmwareVersion = data["ver"].toString();
+                }
               });
             }
           } catch (_) {}
@@ -387,6 +391,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
       // Tự động tải lịch sử hộp đen ngay sau khi kết nối
       _fetchHistory();
+      _sendCommand("GET_VERSION");
 
     } catch (e) {
       setState(() {
@@ -444,6 +449,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _showSnackbar("Đã xóa sạch nhật ký hộp đen!", Colors.orange);
     } else if (msg == "TEST_EVENT_ADDED") {
       _showSnackbar("Đã thêm sự cố mẫu vào hộp đen NVS!", Colors.green);
+    } else if (msg.startsWith("FIRMWARE_VERSION:")) {
+      setState(() {
+        _deviceFirmwareVersion = msg.replaceFirst("FIRMWARE_VERSION:", "").trim();
+      });
     } else if (msg.startsWith("OTA_")) {
       _otaStatusNotifier.value = msg;
       if (msg == "OTA_SUCCESS_REBOOTING") {
@@ -607,6 +616,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           onRefreshContacts: _readCurrentContacts,
           otaChar: _otaChar,
           otaStatusNotifier: _otaStatusNotifier,
+          firmwareVersion: _deviceFirmwareVersion,
         ),
       ),
     );
@@ -1152,6 +1162,7 @@ class DeviceDetailScreen extends StatefulWidget {
   final Future<void> Function() onRefreshContacts;
   final BluetoothCharacteristic? otaChar;
   final ValueNotifier<String> otaStatusNotifier;
+  final String firmwareVersion;
 
   const DeviceDetailScreen({
     super.key,
@@ -1182,6 +1193,7 @@ class DeviceDetailScreen extends StatefulWidget {
     required this.onRefreshContacts,
     this.otaChar,
     required this.otaStatusNotifier,
+    required this.firmwareVersion,
   });
 
   @override
@@ -2043,7 +2055,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                                 color: Colors.green.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text("v1.0.0 (Oct 2026)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.greenAccent)),
+                              child: Text(widget.firmwareVersion, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.greenAccent)),
                             ),
                           ],
                         ),
@@ -2360,38 +2372,85 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             client.badCertificateCallback = (cert, host, port) => true;
                             final req = await client.getUrl(Uri.parse(urlController.text.trim()));
                             final resp = await req.close();
+                            if (resp.statusCode != 200) {
+                              throw Exception("Máy chủ phản hồi mã lỗi HTTP ${resp.statusCode}");
+                            }
                             final bytes = await consolidateHttpClientResponseBytes(resp);
+                            if (bytes.length < 50000 || bytes[0] != 0xE9) {
+                              throw Exception("File tải về (${bytes.length} bytes) không phải firmware ESP32 hợp lệ (magic byte 0xE9 không khớp)!");
+                            }
+
+                            // Xóa thông báo cũ
+                            widget.otaStatusNotifier.value = "";
 
                             setDialogState(() {
-                              bleProgress = 0.1;
-                              bleStatusText = "Bắt đầu truyền vào ESP32 qua BLE (${(bytes.length / 1024).toStringAsFixed(1)} KB)...";
+                              bleProgress = 0.05;
+                              bleStatusText = "Đang khởi tạo và xóa phân vùng Flash trên ESP32...";
                             });
 
+                            // Gửi lệnh bắt đầu OTA
                             await widget.otaChar!.write(utf8.encode("OTA_BEGIN:${bytes.length}"), withoutResponse: false);
-                            await Future.delayed(const Duration(milliseconds: 250));
+
+                            // Chờ ESP32 thực hiện Flash sector erase (mất khoảng 1-3 giây)
+                            for (int i = 0; i < 40; i++) {
+                              await Future.delayed(const Duration(milliseconds: 100));
+                              final st = widget.otaStatusNotifier.value;
+                              if (st.startsWith("OTA_ERROR:")) {
+                                throw Exception("ESP32 từ chối OTA: ${st.replaceFirst('OTA_ERROR:', '')}");
+                              }
+                              if (st == "OTA_READY") {
+                                break;
+                              }
+                            }
 
                             const chunkSize = 256;
                             int sent = 0;
                             final total = bytes.length;
                             while (sent < total) {
+                              final st = widget.otaStatusNotifier.value;
+                              if (st.startsWith("OTA_ERROR:")) {
+                                throw Exception("ESP32 ngắt quá trình nạp: ${st.replaceFirst('OTA_ERROR:', '')}");
+                              }
                               final end = (sent + chunkSize < total) ? sent + chunkSize : total;
                               final chunk = bytes.sublist(sent, end);
                               await widget.otaChar!.write(chunk, withoutResponse: false);
                               sent = end;
                               setDialogState(() {
-                                bleProgress = 0.1 + (sent / total) * 0.85;
-                                bleStatusText = "Đang truyền: ${(sent / 1024).toStringAsFixed(1)} / ${(total / 1024).toStringAsFixed(1)} KB (${(bleProgress * 100).toInt()}%)";
+                                bleProgress = 0.05 + (sent / total) * 0.90;
+                                bleStatusText = "Đang nạp qua BLE: ${(sent / 1024).toStringAsFixed(1)} / ${(total / 1024).toStringAsFixed(1)} KB (${(bleProgress * 100).toInt()}%)";
                               });
-                              await Future.delayed(const Duration(milliseconds: 15));
+                              await Future.delayed(const Duration(milliseconds: 20));
                             }
 
-                            await Future.delayed(const Duration(milliseconds: 300));
+                            setDialogState(() {
+                              bleProgress = 0.96;
+                              bleStatusText = "Đang kiểm tra tính toàn vẹn (Checksum & Verify) trên chip...";
+                            });
+
+                            await Future.delayed(const Duration(milliseconds: 500));
                             await widget.otaChar!.write(utf8.encode("OTA_END"), withoutResponse: false);
 
-                            setDialogState(() {
-                              bleProgress = 1.0;
-                              bleStatusText = "Hoàn tất 100%! Thiết bị đang khởi động lại...";
-                            });
+                            // Chờ ESP32 xác nhận hoàn tất và reboot trong tối đa 10 giây
+                            bool isRebooting = false;
+                            for (int i = 0; i < 100; i++) {
+                              await Future.delayed(const Duration(milliseconds: 100));
+                              final st = widget.otaStatusNotifier.value;
+                              if (st == "OTA_SUCCESS_REBOOTING") {
+                                isRebooting = true;
+                                break;
+                              } else if (st.startsWith("OTA_ERROR:")) {
+                                throw Exception("Xác thực firmware thất bại: ${st.replaceFirst('OTA_ERROR:', '')}");
+                              }
+                            }
+
+                            if (isRebooting) {
+                              setDialogState(() {
+                                bleProgress = 1.0;
+                                bleStatusText = "Thành công 100%! ESP32 đang khởi động lại vào firmware mới...";
+                              });
+                            } else {
+                              throw Exception("Hết thời gian chờ phản hồi xác nhận từ ESP32 sau khi gửi hết dữ liệu.");
+                            }
                           } catch (e) {
                             setDialogState(() {
                               isBleFlashing = false;

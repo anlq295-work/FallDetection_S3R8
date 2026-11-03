@@ -87,7 +87,7 @@ bool OtaManager::startBleOta(size_t fileSize) {
   _otaInProgress = true;
   _totalBytes = fileSize;
   _writtenBytes = 0;
-  bleProvision.updateStatus("OTA_PROGRESS:0");
+  bleProvision.updateStatus("OTA_READY");
   return true;
 }
 
