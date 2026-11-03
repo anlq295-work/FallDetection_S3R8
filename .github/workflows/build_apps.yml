@@ -79,44 +79,54 @@ jobs:
           mkdir -p Payload
           cp -r Runner.app Payload/
 
+          SIGNED_SUCCESS=false
           if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
-            echo "--> Phát hiện chứng chỉ Apple! Bắt đầu ký số chính thức..."
-            KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-            security create-keychain -p "temp_pass" $KEYCHAIN_PATH
+            echo "--> Phat hien chung chi Apple! Bat dau ky so..."
+            KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
+            security create-keychain -p "temp_pass" $KEYCHAIN_PATH || true
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
             security unlock-keychain -p "temp_pass" $KEYCHAIN_PATH
 
-            # Giải mã p12 và mobileprovision
+            # Them vao danh sach tim kiem keychain
+            security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
+            security default-keychain -s $KEYCHAIN_PATH
+
+            # Giai ma p12 va mobileprovision
             echo "$P12_BASE64" | base64 --decode > $RUNNER_TEMP/cert.p12
             echo "$PROFILE_BASE64" | base64 --decode > $RUNNER_TEMP/cert.mobileprovision
 
-            # Cài đặt provisioning profile vào Runner.app
+            # Cai dat mobileprovision vao app
             cp $RUNNER_TEMP/cert.mobileprovision Payload/Runner.app/embedded.mobileprovision
 
-            # Import chứng chỉ vào Keychain
+            # Import vao Keychain
             security import $RUNNER_TEMP/cert.p12 -k $KEYCHAIN_PATH -P "$P12_PASS" -A -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple: -s -k "temp_pass" $KEYCHAIN_PATH
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "temp_pass" $KEYCHAIN_PATH
 
-            # Lấy tên định danh chữ ký
-            CERT_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -n 1 | awk -F '"' '{print $2}')
-            echo "Đang ký số với chữ ký: $CERT_IDENTITY"
+            # Lay ten chu ky
+            CERT_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -E "iPhone|Apple" | head -n 1 | awk -F '"' '{print $2}')
+            echo "Signing with identity: $CERT_IDENTITY"
 
-            # Trích xuất Entitlements từ mobileprovision
-            security cms -D -i $RUNNER_TEMP/cert.mobileprovision > $RUNNER_TEMP/profile.plist
-            /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+            if [ -n "$CERT_IDENTITY" ]; then
+              # Trich xuat entitlements
+              security cms -D -i $RUNNER_TEMP/cert.mobileprovision > $RUNNER_TEMP/profile.plist
+              /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
 
-            # Ký số toàn bộ Frameworks và App
-            find Payload/Runner.app/Frameworks -name "*.dylib" -o -name "*.framework" | while read -r lib; do
-              codesign --force --sign "$CERT_IDENTITY" --keychain $KEYCHAIN_PATH "$lib" 2>/dev/null || true
-            done
+              # Ky Frameworks
+              find Payload/Runner.app/Frameworks -name "*.dylib" -o -name "*.framework" 2>/dev/null | while read -r lib; do
+                codesign --force --verify --verbose --sign "$CERT_IDENTITY" --keychain $KEYCHAIN_PATH "$lib" 2>/dev/null || true
+              done
 
-            codesign --force --sign "$CERT_IDENTITY" --entitlements $RUNNER_TEMP/entitlements.plist --keychain $KEYCHAIN_PATH Payload/Runner.app
+              # Ky App chinh
+              if codesign --force --verify --verbose --sign "$CERT_IDENTITY" --entitlements $RUNNER_TEMP/entitlements.plist --keychain $KEYCHAIN_PATH Payload/Runner.app; then
+                zip -qr FallGuard_Signed.ipa Payload
+                echo "--> Ky so thanh cong: FallGuard_Signed.ipa"
+                SIGNED_SUCCESS=true
+              fi
+            fi
+          fi
 
-            # Đóng gói Signed IPA
-            zip -qr FallGuard_Signed.ipa Payload
-            echo "--> Ký số hoàn tất: FallGuard_Signed.ipa"
-          else
-            echo "--> Chưa cung cấp Apple Secrets, đóng gói bản Unsigned IPA..."
+          if [ "$SIGNED_SUCCESS" != "true" ]; then
+            echo "--> Dong goi ban Unsigned IPA lam du phong..."
             zip -qr FallGuard_iOS_unsigned.ipa Payload
           fi
 
@@ -124,9 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FallGuard-iOS-IPA
-          path: |
-            mobile_app/build/ios/iphoneos/FallGuard_Signed.ipa
-            mobile_app/build/ios/iphoneos/FallGuard_iOS_unsigned.ipa
+          path: mobile_app/build/ios/iphoneos/*.ipa
           if-no-files-found: error
 
   publish-release:
@@ -166,8 +174,7 @@ jobs:
             - **Manifest**: `manifest.plist`
           files: |
             release_assets/app-release.apk
-            release_assets/FallGuard_Signed.ipa
-            release_assets/FallGuard_iOS_unsigned.ipa
+            release_assets/*.ipa
             release_assets/manifest.plist
           draft: false
           prerelease: false
