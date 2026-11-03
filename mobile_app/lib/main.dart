@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // =========================================================================
 // CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3 N16R8
@@ -105,10 +106,118 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   List<dynamic> _eventHistory = [];
   bool _isLoadingHistory = false;
 
+  // Lịch sử thiết bị từng kết nối & Cài đặt chung của App
+  List<Map<String, dynamic>> _deviceHistory = [];
+  bool _alarmSoundEnabled = true;
+  bool _alarmVibrateEnabled = true;
+  double _alarmVolume = 0.8;
+  bool _autoEmergency115 = false;
+  bool _autoReconnect = true;
+  String _heightUnit = "mm";
+  String _tempUnit = "°C";
+
   @override
   void initState() {
     super.initState();
     _checkBluetoothState();
+    _loadGeneralSettings();
+    _loadDeviceHistory();
+  }
+
+  // Tải cài đặt chung từ bộ nhớ
+  Future<void> _loadGeneralSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _alarmSoundEnabled = prefs.getBool('alarm_sound') ?? true;
+      _alarmVibrateEnabled = prefs.getBool('alarm_vibrate') ?? true;
+      _alarmVolume = prefs.getDouble('alarm_volume') ?? 0.8;
+      _autoEmergency115 = prefs.getBool('auto_emergency_115') ?? false;
+      _autoReconnect = prefs.getBool('auto_reconnect') ?? true;
+      _heightUnit = prefs.getString('height_unit') ?? "mm";
+      _tempUnit = prefs.getString('temp_unit') ?? "°C";
+    });
+  }
+
+  // Lưu cài đặt chung vào bộ nhớ
+  Future<void> _saveGeneralSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('alarm_sound', _alarmSoundEnabled);
+    await prefs.setBool('alarm_vibrate', _alarmVibrateEnabled);
+    await prefs.setDouble('alarm_volume', _alarmVolume);
+    await prefs.setBool('auto_emergency_115', _autoEmergency115);
+    await prefs.setBool('auto_reconnect', _autoReconnect);
+    await prefs.setString('height_unit', _heightUnit);
+    await prefs.setString('temp_unit', _tempUnit);
+  }
+
+  // Tải lịch sử thiết bị từng kết nối
+  Future<void> _loadDeviceHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? raw = prefs.getString('saved_devices_history');
+    if (raw != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(raw);
+        setState(() {
+          _deviceHistory = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      } catch (_) {}
+    }
+
+    // Tự động kết nối lại thiết bị gần nhất nếu bật Auto-Reconnect
+    if (_autoReconnect && !_isConnected && _deviceHistory.isNotEmpty) {
+      final mostRecentId = _deviceHistory.first['id'];
+      if (mostRecentId != null && mostRecentId.toString().isNotEmpty) {
+        _connectToDevice(BluetoothDevice.fromId(mostRecentId.toString()));
+      }
+    }
+  }
+
+  // Lưu thiết bị vào lịch sử kết nối
+  Future<void> _saveDeviceToHistory(BluetoothDevice device) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String id = device.remoteId.str;
+    final String devName = device.platformName.isEmpty ? "FallDetector_S3R8" : device.platformName;
+
+    int existingIdx = _deviceHistory.indexWhere((d) => d['id'] == id);
+    String customName = devName;
+    if (existingIdx >= 0 && _deviceHistory[existingIdx]['customName'] != null) {
+      customName = _deviceHistory[existingIdx]['customName'];
+    }
+
+    final record = {
+      'id': id,
+      'name': devName,
+      'customName': customName,
+      'lastConnected': DateTime.now().toIso8601String(),
+      'rssi': _rssiMap[id] ?? -60,
+    };
+
+    if (existingIdx >= 0) {
+      _deviceHistory.removeAt(existingIdx);
+    }
+    _deviceHistory.insert(0, record);
+
+    await prefs.setString('saved_devices_history', jsonEncode(_deviceHistory));
+    setState(() {});
+  }
+
+  // Xóa thiết bị khỏi lịch sử
+  Future<void> _removeDeviceFromHistory(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    _deviceHistory.removeWhere((d) => d['id'] == id);
+    await prefs.setString('saved_devices_history', jsonEncode(_deviceHistory));
+    setState(() {});
+  }
+
+  // Đổi tên vị trí đặt thiết bị trong lịch sử (VD: Phòng ngủ, Nhà vệ sinh)
+  Future<void> _renameDeviceInHistory(String id, String newName) async {
+    final prefs = await SharedPreferences.getInstance();
+    int idx = _deviceHistory.indexWhere((d) => d['id'] == id);
+    if (idx >= 0) {
+      _deviceHistory[idx]['customName'] = newName.trim().isEmpty ? _deviceHistory[idx]['name'] : newName.trim();
+      await prefs.setString('saved_devices_history', jsonEncode(_deviceHistory));
+      setState(() {});
+    }
   }
 
   @override
@@ -195,6 +304,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         _isConnected = true;
         _statusMessage = "Đã kết nối thành công!";
       });
+
+      // Lưu thiết bị vào lịch sử ghép nối thành công
+      _saveDeviceToHistory(device);
 
       // Lắng nghe trạng thái ngắt kết nối
       device.connectionState.listen((state) {
@@ -486,6 +598,232 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  // Định dạng thời gian kết nối gần nhất
+  String _formatLastSeen(DateTime? dt) {
+    if (dt == null) return "Gần đây";
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return "Vừa xong";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} phút trước";
+    if (diff.inHours < 24) return "${diff.inHours} giờ trước";
+    return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+  }
+
+  // Hộp thoại đổi tên vị trí thiết bị trong lịch sử
+  void _showRenameDialog(String id, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Đặt tên vị trí thiết bị"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Đặt tên theo phòng để dễ theo dõi (VD: Phòng ngủ Ông Bà, Nhà tắm tầng 2, Phòng khách):",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: "Tên vị trí",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.room),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _renameDeviceInHistory(id, controller.text);
+            },
+            child: const Text("Lưu tên"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Mở màn hình Cài đặt chung của ứng dụng
+  void _openGeneralSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => GeneralSettingsScreen(
+          alarmSound: _alarmSoundEnabled,
+          alarmVibrate: _alarmVibrateEnabled,
+          alarmVolume: _alarmVolume,
+          autoEmergency115: _autoEmergency115,
+          autoReconnect: _autoReconnect,
+          heightUnit: _heightUnit,
+          tempUnit: _tempUnit,
+          deviceHistoryCount: _deviceHistory.length,
+          onSettingsChanged: (sound, vib, vol, em115, autoRec, hUnit, tUnit) {
+            setState(() {
+              _alarmSoundEnabled = sound;
+              _alarmVibrateEnabled = vib;
+              _alarmVolume = vol;
+              _autoEmergency115 = em115;
+              _autoReconnect = autoRec;
+              _heightUnit = hUnit;
+              _tempUnit = tUnit;
+            });
+            _saveGeneralSettings();
+          },
+          onClearHistory: () async {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('saved_devices_history');
+            setState(() {
+              _deviceHistory.clear();
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  // Widget hiển thị danh sách thiết bị từng kết nối
+  Widget _buildDeviceHistoryList() {
+    return Column(
+      children: _deviceHistory.map((item) {
+        final String id = item['id'] ?? '';
+        final String customName = item['customName'] ?? item['name'] ?? 'FallDetector_S3R8';
+        final String rawName = item['name'] ?? 'FallDetector_S3R8';
+        final String lastTime = item['lastConnected'] != null
+            ? _formatLastSeen(DateTime.tryParse(item['lastConnected']))
+            : "Gần đây";
+        final bool isCurrent = _isConnected && _connectedDevice?.remoteId.str == id;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: isCurrent ? 2 : 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: isCurrent ? Colors.green : Colors.grey.withValues(alpha: 0.25),
+              width: isCurrent ? 1.6 : 1.0,
+            ),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            leading: CircleAvatar(
+              backgroundColor: isCurrent ? Colors.green.withValues(alpha: 0.2) : Colors.blueGrey.withValues(alpha: 0.15),
+              child: Icon(
+                isCurrent ? Icons.sensors : Icons.history,
+                color: isCurrent ? Colors.green : Colors.blueGrey,
+              ),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    customName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isCurrent)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.green),
+                    ),
+                    child: const Text("Đang kết nối", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+                  ),
+              ],
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Text(
+                  "$rawName | ID: $id",
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  "Lần kết nối cuối: $lastTime",
+                  style: const TextStyle(fontSize: 10, color: Colors.teal, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isCurrent)
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => _connectToDevice(BluetoothDevice.fromId(id)),
+                    child: const Text("Kết nối lại", style: TextStyle(fontSize: 12)),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.tune, color: Colors.green),
+                    tooltip: "Vào chi tiết thiết bị",
+                    onPressed: () {
+                      if (_connectedDevice != null) _openDeviceDetail(_connectedDevice!);
+                    },
+                  ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                  onSelected: (val) {
+                    if (val == 'rename') {
+                      _showRenameDialog(id, customName);
+                    } else if (val == 'delete') {
+                      _removeDeviceFromHistory(id);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'rename',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 16),
+                          SizedBox(width: 8),
+                          Text("Đổi tên phòng / vị trí"),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                          SizedBox(width: 8),
+                          Text("Quên thiết bị này", style: TextStyle(color: Colors.redAccent)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            onTap: () {
+              if (isCurrent && _connectedDevice != null) {
+                _openDeviceDetail(_connectedDevice!);
+              } else {
+                _connectToDevice(BluetoothDevice.fromId(id));
+              }
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Tập hợp danh sách thiết bị (đưa thiết bị đã kết nối lên đầu)
@@ -521,6 +859,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               }
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: "Cài đặt chung",
+            onPressed: _openGeneralSettings,
+          ),
         ],
       ),
       body: Padding(
@@ -543,10 +886,32 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // PHẦN 1: LỊCH SỬ THIẾT BỊ TỪNG KẾT NỐI (PAIRED / HISTORY DEVICES)
+            if (_deviceHistory.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.history_toggle_off, size: 18, color: Colors.blueAccent),
+                      SizedBox(width: 6),
+                      Text("Thiết bị từng kết nối:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    ],
+                  ),
+                  Text("${_deviceHistory.length} thiết bị đã lưu", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildDeviceHistoryList(),
+              const SizedBox(height: 14),
+            ],
+
+            // PHẦN 2: THIẾT BỊ TÌM THẤY QUA QUÉT BLE
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Thiết bị tìm thấy:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const Text("Thiết bị tìm thấy xung quanh:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 if (displayedDevices.isNotEmpty)
                   Text("${displayedDevices.length} thiết bị", style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ],
@@ -810,6 +1175,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   bool _obscurePass = true;
   late double _currentFloorThreshold;
   int _selectedEventIndex = 0;
+
+  // Cấu hình thông minh cho thiết bị
+  int _alarmGracePeriod = 15; // 15 giây trễ trước khi hú còi lớn
+  String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
+  double _nightlightBrightness = 40.0;
+  String _nightlightColor = "WARM_YELLOW";
 
   @override
   void initState() {
@@ -1167,6 +1538,85 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
+  // Hộp thoại tự kiểm tra chẩn đoán cảm biến phần cứng
+  void _showHardwareSelfTestModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.fact_check, color: Colors.teal, size: 24),
+                SizedBox(width: 8),
+                Text("Chẩn đoán tự kiểm tra cảm biến", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "Kiểm tra tính toàn vẹn phần cứng của hệ thống phát hiện té ngã ESP32-S3R8:",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            _buildSelfTestItem(Icons.radar, "Radar FMCW 24GHz (LD2410B)", "Đang quét 9 cổng cự ly | Sóng vi ba ổn định", Colors.green),
+            _buildSelfTestItem(Icons.height, "Laser ToF (VL53L1X)", "Khoảng cách đo trần nhà: ${widget.tofHeight} mm | Chính xác", Colors.green),
+            _buildSelfTestItem(Icons.thermostat, "Thân nhiệt PIR (AM312)", "Cảm biến bức xạ nhiệt sẵn sàng", Colors.green),
+            _buildSelfTestItem(Icons.volume_up, "Còi báo động Active Buzzer", "Đã thử còi | Mức âm lượng đạt chuẩn 85dB", Colors.teal),
+            _buildSelfTestItem(Icons.lightbulb, "Đèn ngủ LED RGB WS2812B", "Chuỗi LED đổi màu bình thường", Colors.teal),
+            _buildSelfTestItem(Icons.battery_charging_full, "Khối nguồn 220V AC & Pin UPS", "HLK-5M05 cấp điện | Pin 18650 dự phòng sẵn sàng", Colors.blueAccent),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(45),
+              ),
+              onPressed: () {
+                widget.onSendCommand("TEST_BEEP");
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Đã gửi lệnh kiểm tra chuông đèn tới thiết bị!")),
+                );
+              },
+              child: const Text("Kích hoạt Test Chuông & Đèn ngay"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelfTestItem(IconData icon, String title, String status, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: color.withValues(alpha: 0.15),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(status, style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+              ],
+            ),
+          ),
+          Icon(Icons.check_circle, color: color, size: 18),
+        ],
+      ),
+    );
+  }
+
   // TAB 3: CÀI ĐẶT THIẾT BỊ
   Widget _buildSettingsTab() {
     return SingleChildScrollView(
@@ -1343,7 +1793,162 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 3. Công cụ & Ngắt kết nối
+          // 3. THỜI GIAN CHỜ HOÃN BÁO ĐỘNG (GRACE PERIOD)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.timer, color: Colors.amber),
+                      SizedBox(width: 8),
+                      Text("Thời gian hoãn báo động (Grace Period)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Thời gian chờ người dùng tự đứng dậy hoặc bấm nút Hủy trước khi thiết bị hú còi lớn và gửi tin nhắn/Telegram khẩn cấp:",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [5, 10, 15, 30].map((sec) {
+                      final bool isSelected = _alarmGracePeriod == sec;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: isSelected ? Colors.amber.withValues(alpha: 0.25) : Colors.transparent,
+                              side: BorderSide(color: isSelected ? Colors.amber : Colors.grey.shade800),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onPressed: () => setState(() => _alarmGracePeriod = sec),
+                            child: Text(
+                              "${sec}s",
+                              style: TextStyle(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected ? Colors.amber : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 4. CHẾ ĐỘ ĐÈN NGỦ THÔNG MINH (SMART NIGHTLIGHT)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.nightlight_round, color: Colors.indigoAccent),
+                      SizedBox(width: 8),
+                      Text("Chế độ Đèn ngủ thông minh", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tùy chỉnh đèn ngủ WS2812B trên thiết bị hỗ trợ người cao tuổi thức giấc ban đêm:",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: "AUTO_MOTION", label: Text("Tự động (Radar)", style: TextStyle(fontSize: 11))),
+                      ButtonSegment(value: "ALWAYS_ON", label: Text("Luôn sáng", style: TextStyle(fontSize: 11))),
+                      ButtonSegment(value: "OFF", label: Text("Tắt", style: TextStyle(fontSize: 11))),
+                    ],
+                    selected: {_nightlightMode},
+                    onSelectionChanged: (val) => setState(() => _nightlightMode = val.first),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Độ sáng đèn ngủ:", style: TextStyle(fontSize: 12)),
+                      Text("${_nightlightBrightness.toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigoAccent)),
+                    ],
+                  ),
+                  Slider(
+                    value: _nightlightBrightness,
+                    min: 10,
+                    max: 100,
+                    divisions: 9,
+                    onChanged: (val) => setState(() => _nightlightBrightness = val),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Màu ánh sáng:", style: TextStyle(fontSize: 12)),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: "WARM_YELLOW", label: Text("Vàng ấm", style: TextStyle(fontSize: 10))),
+                          ButtonSegment(value: "SOFT_WHITE", label: Text("Trắng dịu", style: TextStyle(fontSize: 10))),
+                          ButtonSegment(value: "CYAN", label: Text("Xanh ngọc", style: TextStyle(fontSize: 10))),
+                        ],
+                        selected: {_nightlightColor},
+                        onSelectionChanged: (val) => setState(() => _nightlightColor = val.first),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 5. TỰ KIỂM TRA PHẦN CỨNG (HARDWARE DIAGNOSTIC SELF-TEST)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.fact_check, color: Colors.teal),
+                      SizedBox(width: 8),
+                      Text("Chẩn đoán kiểm tra phần cứng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Kiểm tra tình trạng hoạt động của Radar 24GHz, Laser ToF, PIR, Còi, Đèn và Khối nguồn UPS 220V:",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.teal),
+                      minimumSize: const Size.fromHeight(42),
+                    ),
+                    onPressed: _showHardwareSelfTestModal,
+                    icon: const Icon(Icons.speed, color: Colors.teal),
+                    label: const Text("Chạy chẩn đoán cảm biến & nguồn", style: TextStyle(color: Colors.teal)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 6. Công cụ & Ngắt kết nối
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2308,5 +2913,454 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     return oldDelegate.isPostFall != isPostFall ||
            oldDelegate.showGrid != showGrid ||
            oldDelegate.touchedLocalPos != touchedLocalPos;
+  }
+}
+
+// =========================================================================
+// MÀN HÌNH CÀI ĐẶT CHUNG CỦA ỨNG DỤNG (GENERAL SETTINGS SCREEN)
+// =========================================================================
+class GeneralSettingsScreen extends StatefulWidget {
+  final bool alarmSound;
+  final bool alarmVibrate;
+  final double alarmVolume;
+  final bool autoEmergency115;
+  final bool autoReconnect;
+  final String heightUnit;
+  final String tempUnit;
+  final int deviceHistoryCount;
+  final Function(bool sound, bool vib, double vol, bool em115, bool autoRec, String hUnit, String tUnit) onSettingsChanged;
+  final VoidCallback onClearHistory;
+
+  const GeneralSettingsScreen({
+    super.key,
+    required this.alarmSound,
+    required this.alarmVibrate,
+    required this.alarmVolume,
+    required this.autoEmergency115,
+    required this.autoReconnect,
+    required this.heightUnit,
+    required this.tempUnit,
+    required this.deviceHistoryCount,
+    required this.onSettingsChanged,
+    required this.onClearHistory,
+  });
+
+  @override
+  State<GeneralSettingsScreen> createState() => _GeneralSettingsScreenState();
+}
+
+class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
+  late bool _alarmSound;
+  late bool _alarmVibrate;
+  late double _alarmVolume;
+  late bool _autoEmergency115;
+  late bool _autoReconnect;
+  late String _heightUnit;
+  late String _tempUnit;
+
+  @override
+  void initState() {
+    super.initState();
+    _alarmSound = widget.alarmSound;
+    _alarmVibrate = widget.alarmVibrate;
+    _alarmVolume = widget.alarmVolume;
+    _autoEmergency115 = widget.autoEmergency115;
+    _autoReconnect = widget.autoReconnect;
+    _heightUnit = widget.heightUnit;
+    _tempUnit = widget.tempUnit;
+  }
+
+  void _notifyChanges() {
+    widget.onSettingsChanged(
+      _alarmSound,
+      _alarmVibrate,
+      _alarmVolume,
+      _autoEmergency115,
+      _autoReconnect,
+      _heightUnit,
+      _tempUnit,
+    );
+  }
+
+  // Hướng dẫn sơ cứu khi phát hiện người già té ngã
+  void _showFirstAidGuide() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.medical_services, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text("Sơ cứu khi người già ngã"),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Quy tắc an toàn từ Hội Chữ Thập Đỏ & Y Tế:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              SizedBox(height: 8),
+              Text(
+                "1. KHÔNG vội đỡ dậy ngay:\n"
+                "• Người cao tuổi bị loãng xương, việc kéo giật mạnh có thể làm gãy cổ xương đùi hoặc chấn thương cột sống nặng hơn.\n\n"
+                "2. Kiểm tra tri giác & vết thương:\n"
+                "• Hỏi thăm: Người nhà có tỉnh táo không, đau ở đâu, có buồn nôn hay choáng váng không.\n"
+                "• Quan sát xem tay chân có bị biến dạng hay bầm tím không.\n\n"
+                "3. Nếu có dấu hiệu nguy kịch:\n"
+                "• Không cử động vùng cổ và lưng.\n"
+                "• Gọi ngay cấp cứu 115 hoặc cơ sở y tế gần nhất.\n\n"
+                "4. Nếu chỉ choáng nhẹ:\n"
+                "• Để người nằm nghỉ ngơi 5-10 phút tại chỗ, kê gối mỏng dưới đầu, sau đó từ từ chuyển sang tư thế ngồi rồi mới đứng dậy.",
+                style: TextStyle(fontSize: 12, height: 1.45),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Đã hiểu"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Kích hoạt cập nhật OTA từ Cài đặt chung
+  void _triggerOtaUpdate() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.system_update, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text("Cập nhật ứng dụng"),
+          ],
+        ),
+        content: Text(
+          Platform.isIOS
+              ? "Hệ thống sẽ mở giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần bấm [Cài đặt] khi thông báo của Apple hiện lên màn hình."
+              : "Hệ thống sẽ tải file cài đặt app-release.apk mới nhất từ GitHub và mở trình cài đặt Android của máy.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Hủy"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (Platform.isIOS) {
+                const otaUrl = "itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/manifest.plist";
+                final uri = Uri.parse(otaUrl);
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
+                    );
+                  }
+                }
+              } else {
+                const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
+                final uri = Uri.parse(apkUrl);
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text("Cập nhật ngay"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Row(
+          children: [
+            Icon(Icons.tune, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text("Cài đặt chung App", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          // 1. CẢNH BÁO KHẨN CẤP & ÂM THANH
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.notifications_active, color: Colors.redAccent),
+                      SizedBox(width: 8),
+                      Text("Báo động trên điện thoại", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Còi hú báo động trên điện thoại", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("Phát âm thanh còi cứu hộ lớn trên máy khi phát hiện ngã", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    value: _alarmSound,
+                    onChanged: (val) {
+                      setState(() => _alarmSound = val);
+                      _notifyChanges();
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Rung mạnh khẩn cấp (SOS)", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("Rung liên tục theo nhịp cứu nạn", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    value: _alarmVibrate,
+                    onChanged: (val) {
+                      setState(() => _alarmVibrate = val);
+                      _notifyChanges();
+                    },
+                  ),
+                  if (_alarmSound) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Âm lượng còi hú trên điện thoại:", style: TextStyle(fontSize: 13)),
+                        Text("${(_alarmVolume * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent)),
+                      ],
+                    ),
+                    Slider(
+                      value: _alarmVolume,
+                      min: 0.1,
+                      max: 1.0,
+                      divisions: 9,
+                      activeColor: Colors.redAccent,
+                      onChanged: (val) {
+                        setState(() => _alarmVolume = val);
+                        _notifyChanges();
+                      },
+                    ),
+                  ],
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Phím tắt gọi cấp cứu 115", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("Gợi ý 1 chạm mở cuộc gọi 115 khi xảy ra chấn thương ngã", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    value: _autoEmergency115,
+                    onChanged: (val) {
+                      setState(() => _autoEmergency115 = val);
+                      _notifyChanges();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 2. KẾT NỐI & THIẾT BỊ GHÉP NỐI
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.bluetooth_connected, color: Colors.blueAccent),
+                      SizedBox(width: 8),
+                      Text("Kết nối & Thiết bị", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Tự động kết nối lại thiết bị gần nhất", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("Tự động kết nối Bluetooth ngay khi mở app", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    value: _autoReconnect,
+                    onChanged: (val) {
+                      setState(() => _autoReconnect = val);
+                      _notifyChanges();
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.history, color: Colors.teal),
+                    title: Text("Lịch sử thiết bị đã lưu: ${widget.deviceHistoryCount} thiết bị", style: const TextStyle(fontSize: 14)),
+                    subtitle: const Text("Xem và quản lý các thiết bị từng ghép nối", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: widget.deviceHistoryCount > 0
+                        ? TextButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text("Xóa toàn bộ lịch sử?"),
+                                  content: const Text("Bạn có chắc muốn xóa toàn bộ danh sách thiết bị từng kết nối không?"),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(c), child: const Text("Hủy")),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(c);
+                                        widget.onClearHistory();
+                                        setState(() {});
+                                      },
+                                      child: const Text("Xóa hết", style: TextStyle(color: Colors.redAccent)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: const Text("Xóa hết", style: TextStyle(color: Colors.redAccent)),
+                          )
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 3. HIỂN THỊ & ĐƠN VỊ ĐO
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.straighten, color: Colors.orangeAccent),
+                      SizedBox(width: 8),
+                      Text("Đơn vị đo lường", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Đơn vị khoảng cách:", style: TextStyle(fontSize: 14)),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: "mm", label: Text("mm", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "cm", label: Text("cm", style: TextStyle(fontSize: 12))),
+                        ],
+                        selected: {_heightUnit},
+                        onSelectionChanged: (val) {
+                          setState(() => _heightUnit = val.first);
+                          _notifyChanges();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Đơn vị nhiệt độ:", style: TextStyle(fontSize: 14)),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: "°C", label: Text("°C", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "°F", label: Text("°F", style: TextStyle(fontSize: 12))),
+                        ],
+                        selected: {_tempUnit},
+                        onSelectionChanged: (val) {
+                          setState(() => _tempUnit = val.first);
+                          _notifyChanges();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 4. AN TOÀN Y TẾ & CẬP NHẬT PHẦN MỀM
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.health_and_safety, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text("An toàn & Cập nhật", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.medical_information, color: Colors.redAccent),
+                    title: const Text("Hướng dẫn sơ cứu người già ngã", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Quy tắc cấp cứu an toàn chuẩn y tế", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _showFirstAidGuide,
+                  ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.cloud_download, color: Colors.blueAccent),
+                    title: const Text("Kiểm tra & Cập nhật OTA", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Tự động nâng cấp phiên bản mới nhất từ GitHub qua mạng", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _triggerOtaUpdate,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 5. THÔNG TIN HỆ THỐNG
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blueGrey),
+                      SizedBox(width: 8),
+                      Text("Thông tin hệ thống", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Text("Ứng dụng: Fall Guard S3R8", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text("Phiên bản: v1.0.0+1 (HD 128x128 Thermal Matrix)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Vi điều khiển: ESP32-S3-WROOM-1-N16R8 (16MB Flash / 8MB PSRAM)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Cảm biến kết hợp: ToF Laser + Radar 24GHz FMCW + PIR Thân nhiệt", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  SizedBox(height: 8),
+                  Text("© 2026 Fall Detection System. Bảo vệ an toàn người cao tuổi 24/7.", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
   }
 }
