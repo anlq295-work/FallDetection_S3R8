@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch: # Cho phép nhấn nút "Run workflow" thủ công bất cứ lúc nào
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     name: Build Android APK
@@ -61,19 +64,112 @@ jobs:
           cd mobile_app
           flutter pub get
 
-      - name: Build iOS Archive (Unsigned IPA)
+      - name: Build iOS App Bundle
         run: |
           cd mobile_app
           flutter build ios --release --no-codesign
-          
-          # Đóng gói thành file .ipa chuẩn
-          mkdir -p build/ios/iphoneos/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          cd build/ios/iphoneos
-          zip -r FallGuard_iOS_unsigned.ipa Payload
 
-      - name: Upload iOS IPA Artifact
+      - name: Code Sign IPA with Certificate
+        env:
+          P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          P12_PASS: ${{ secrets.APPLE_CERT_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.APPLE_PROVISION_PROFILE_BASE64 }}
+        run: |
+          cd mobile_app/build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+
+          if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
+            echo "--> Phát hiện chứng chỉ Apple! Bắt đầu ký số chính thức..."
+            KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+            security create-keychain -p "temp_pass" $KEYCHAIN_PATH
+            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+            security unlock-keychain -p "temp_pass" $KEYCHAIN_PATH
+
+            # Giải mã p12 và mobileprovision
+            echo "$P12_BASE64" | base64 --decode > $RUNNER_TEMP/cert.p12
+            echo "$PROFILE_BASE64" | base64 --decode > $RUNNER_TEMP/cert.mobileprovision
+
+            # Cài đặt provisioning profile vào Runner.app
+            cp $RUNNER_TEMP/cert.mobileprovision Payload/Runner.app/embedded.mobileprovision
+
+            # Import chứng chỉ vào Keychain
+            security import $RUNNER_TEMP/cert.p12 -k $KEYCHAIN_PATH -P "$P12_PASS" -A -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: -s -k "temp_pass" $KEYCHAIN_PATH
+
+            # Lấy tên định danh chữ ký
+            CERT_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -n 1 | awk -F '"' '{print $2}')
+            echo "Đang ký số với chữ ký: $CERT_IDENTITY"
+
+            # Trích xuất Entitlements từ mobileprovision
+            security cms -D -i $RUNNER_TEMP/cert.mobileprovision > $RUNNER_TEMP/profile.plist
+            /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+
+            # Ký số toàn bộ Frameworks và App
+            find Payload/Runner.app/Frameworks -name "*.dylib" -o -name "*.framework" | while read -r lib; do
+              codesign --force --sign "$CERT_IDENTITY" --keychain $KEYCHAIN_PATH "$lib" 2>/dev/null || true
+            done
+
+            codesign --force --sign "$CERT_IDENTITY" --entitlements $RUNNER_TEMP/entitlements.plist --keychain $KEYCHAIN_PATH Payload/Runner.app
+
+            # Đóng gói Signed IPA
+            zip -qr FallGuard_Signed.ipa Payload
+            echo "--> Ký số hoàn tất: FallGuard_Signed.ipa"
+          else
+            echo "--> Chưa cung cấp Apple Secrets, đóng gói bản Unsigned IPA..."
+            zip -qr FallGuard_iOS_unsigned.ipa Payload
+          fi
+
+      - name: Upload Signed or Unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: FallGuard-iOS-IPA
-          path: mobile_app/build/ios/iphoneos/FallGuard_iOS_unsigned.ipa
+          path: |
+            mobile_app/build/ios/iphoneos/FallGuard_Signed.ipa
+            mobile_app/build/ios/iphoneos/FallGuard_iOS_unsigned.ipa
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release (OTA Assets)
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FallGuard-Android-APK
+          path: release_assets/
+
+      - name: Download iOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FallGuard-iOS-IPA
+          path: release_assets/
+
+      - name: Copy Manifest
+        run: |
+          cp ios_ota/manifest.plist release_assets/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Fall Guard S3R8 Latest Release"
+          body: |
+            ## Fall Guard S3R8 - Tự động cập nhật OTA
+            - **Android APK**: `app-release.apk` (Hỗ trợ tự cài đặt in-app)
+            - **iOS Signed IPA**: `FallGuard_Signed.ipa` (Hỗ trợ cài đặt OTA qua `itms-services`)
+            - **Manifest**: `manifest.plist`
+          files: |
+            release_assets/app-release.apk
+            release_assets/FallGuard_Signed.ipa
+            release_assets/FallGuard_iOS_unsigned.ipa
+            release_assets/manifest.plist
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
