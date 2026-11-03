@@ -33,6 +33,14 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Ứng dụng cần quyền Bluetooth để trao đổi dữ liệu cấu hình và trạng thái an toàn với thiết bị ESP32-S3R8.</string>
 
+	<!-- Quyền quét mạng cục bộ & thiết bị xung quanh trên iOS -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Ứng dụng cần quyền tìm kiếm và kết nối với thiết bị giám sát té ngã ESP32-S3 trong mạng và khu vực xung quanh.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
