@@ -1077,7 +1077,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           FallKinematicGraph(event: currentEvent),
           const SizedBox(height: 14),
 
-          // 2. MÔ PHỎNG 4 GIAI ĐOẠN TƯ THẾ NGƯỜI
+          // 2. PHỔ NHIỆT KHÔNG GIAN ẢO 8x8 (TÁI TẠO TỪ TOF + 9 CỔNG RADAR + PIR)
+          VirtualThermalSpectrum(event: currentEvent),
+          const SizedBox(height: 14),
+
+          // 3. MÔ PHỎNG 4 GIAI ĐOẠN TƯ THẾ NGƯỜI
           HumanPostureSimulation(event: currentEvent),
           const SizedBox(height: 16),
 
@@ -1713,6 +1717,272 @@ class HumanPostureSimulation extends StatelessWidget {
             Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: color), textAlign: TextAlign.center),
             Text(time, style: const TextStyle(fontSize: 9, color: Colors.grey)),
             Text(desc, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =========================================================================
+// WIDGET: PHỔ NHIỆT KHÔNG GIAN ẢO 8x8 (VIRTUAL 8x8 THERMAL SPECTRUM)
+// Tái tạo ma trận nhiệt 8x8 từ ToF + 8 Cổng Radar + PIR không cần AMG8833
+// =========================================================================
+class VirtualThermalSpectrum extends StatefulWidget {
+  final Map<String, dynamic> event;
+
+  const VirtualThermalSpectrum({super.key, required this.event});
+
+  @override
+  State<VirtualThermalSpectrum> createState() => _VirtualThermalSpectrumState();
+}
+
+class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
+  bool _showPostFall = true; // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
+
+  // Sinh ma trận nhiệt 8x8 dựa trên dữ liệu ToF và Radar
+  List<List<double>> _generateThermalMatrix(bool isLying) {
+    // Nhiệt độ phòng nền: ~23.5 - 24.5 °C
+    List<List<double>> matrix = List.generate(
+      8,
+      (r) => List.generate(8, (c) => 23.5 + ((r * 3 + c * 5) % 10) * 0.1),
+    );
+
+    // Cổng radar phát hiện mục tiêu (mặc định cổng 3 ~ 2.25m)
+    final int targetGate = 3;
+
+    if (!isLying) {
+      // TRƯỚC KHI NGÃ: Người đứng thẳng (Cột targetGate, từ hàng 1 đến 5)
+      // Thân nhiệt vùng đầu/ngực ~36.8°C, chân ~33.5°C
+      for (int r = 1; r <= 5; r++) {
+        double temp = (r == 1 || r == 2) ? 36.8 : (r == 3 ? 35.5 : 33.5);
+        matrix[r][targetGate] = temp;
+        // Bức xạ nhiệt lan tỏa nhẹ sang 2 bên
+        if (targetGate > 0) matrix[r][targetGate - 1] = (matrix[r][targetGate - 1] + temp * 0.6) / 1.6;
+        if (targetGate < 7) matrix[r][targetGate + 1] = (matrix[r][targetGate + 1] + temp * 0.6) / 1.6;
+      }
+    } else {
+      // SAU KHI NGÃ: Người nằm sát sàn (Hàng 6 và 7 sát đáy), trải dài theo chiều ngang
+      for (int c = targetGate - 1; c <= targetGate + 2; c++) {
+        if (c >= 0 && c < 8) {
+          matrix[6][c] = (c == targetGate || c == targetGate + 1) ? 36.5 : 34.8;
+          matrix[7][c] = (c == targetGate || c == targetGate + 1) ? 36.0 : 34.2;
+        }
+      }
+    }
+
+    return matrix;
+  }
+
+  // Chuyển đổi nhiệt độ sang mã màu phổ nhiệt (Deep Blue -> Cyan -> Yellow -> Orange -> Crimson)
+  Color _getHeatColor(double temp) {
+    if (temp < 25.0) {
+      // 23 - 25: Nền phòng (Xanh biển đậm)
+      return Color.lerp(const Color(0xFF0D1B2A), const Color(0xFF1B4965), (temp - 23.0) / 2.0)!;
+    } else if (temp < 29.0) {
+      // 25 - 29: Không khí ấm / rìa thân nhiệt (Xanh lơ -> Xanh lá mạ)
+      return Color.lerp(const Color(0xFF1B4965), const Color(0xFF2A9D8F), (temp - 25.0) / 4.0)!;
+    } else if (temp < 33.0) {
+      // 29 - 33: Thân nhiệt ngoại vi (Vàng cam)
+      return Color.lerp(const Color(0xFF2A9D8F), const Color(0xFFE76F51), (temp - 29.0) / 4.0)!;
+    } else {
+      // 33 - 37: Thân nhiệt lõi người (Đỏ hồng ngoại rực rỡ)
+      return Color.lerp(const Color(0xFFE76F51), const Color(0xFFFF0054), (temp - 33.0) / 4.0)!;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final matrix = _generateThermalMatrix(_showPostFall);
+    final String postureText = _showPostFall ? "Tư thế hiện tại: NẰM SÀN (Phổ nhiệt nằm ngang sát đáy)" : "Trạng thái trước ngã: ĐỨNG (Phổ nhiệt đứng dọc)";
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tiêu đề & Nút chuyển đổi pha
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.gradient, color: Colors.deepOrangeAccent),
+                    SizedBox(width: 8),
+                    Text(
+                      "Phổ nhiệt không gian ảo 8x8:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.5)),
+                  ),
+                  child: const Text("AI Reconstructed", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.deepOrangeAccent)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Tái tạo ma trận bức xạ nhiệt hồng ngoại từ ToF + 9 Cổng Radar FMCW + PIR (không cần cảm biến AMG8833)",
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 12),
+
+            // Nút bấm chuyển pha Trước / Sau khi ngã
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: !_showPostFall ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
+                      side: BorderSide(color: !_showPostFall ? Colors.blueAccent : Colors.grey.shade800),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    icon: const Icon(Icons.accessibility, size: 16),
+                    label: const Text("Trước ngã (-2s: Đứng)", style: TextStyle(fontSize: 11)),
+                    onPressed: () => setState(() => _showPostFall = false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _showPostFall ? Colors.redAccent.withValues(alpha: 0.2) : Colors.transparent,
+                      side: BorderSide(color: _showPostFall ? Colors.redAccent : Colors.grey.shade800),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    icon: const Icon(Icons.airline_seat_flat, size: 16),
+                    label: const Text("Sau ngã (+2s: Sàn)", style: TextStyle(fontSize: 11)),
+                    onPressed: () => setState(() => _showPostFall = true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Hiển thị lưới Ma trận nhiệt 8x8
+            Center(
+              child: Container(
+                width: 250,
+                height: 250,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_showPostFall ? Colors.redAccent : Colors.blueAccent).withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: List.generate(8, (rowIdx) {
+                    return Expanded(
+                      child: Row(
+                        children: List.generate(8, (colIdx) {
+                          final temp = matrix[rowIdx][colIdx];
+                          final color = _getHeatColor(temp);
+                          return Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  temp >= 33.0 ? "${temp.toStringAsFixed(0)}°" : "",
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Chú giải trục X và Trục Y của phổ nhiệt
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Trục dọc Y: Độ cao từ sàn (0m) -> Trần (2m)", style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+                Text("Trục ngang X: Cổng radar (0.75m -> 6m)", style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Thanh thang đo nhiệt độ màu (Gradient Bar)
+            Row(
+              children: [
+                const Text("23°C", style: TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF0D1B2A),
+                          Color(0xFF1B4965),
+                          Color(0xFF2A9D8F),
+                          Color(0xFFE76F51),
+                          Color(0xFFFF0054),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text("37°C", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Giải thích kết luận
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _showPostFall ? Icons.fiber_manual_record : Icons.check_circle_outline,
+                    color: _showPostFall ? Colors.redAccent : Colors.green,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      postureText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _showPostFall ? Colors.redAccent.shade100 : Colors.green.shade200,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
