@@ -7,9 +7,10 @@
 #define FIRMWARE_VERSION            "v1.1.0"
 
 // =========================================================================
-// 1. PINOUT AN TOÀN CHO ESP32-S3R8
+// 1. PINOUT AN TOÀN CHO ESP32-S3R8 & CẤU HÌNH CẢM BIẾN
 // (LƯU Ý CỰC KỲ QUAN TRỌNG: TRÁNH TUYỆT ĐỐI CÁC CHÂN TỪ GPIO 33 ĐẾN 37 VÌ DÀNH CHO OCTAL PSRAM/OPI FLASH)
 // =========================================================================
+#define ENABLE_PIR_SENSOR     0     // Đặt 0: Vô hiệu hóa/ẩn PIR khi test mạch chưa có cảm biến PIR (chân GPIO 4 kéo pulldown chống nhiễu)
 #define PIN_PIR               4     // PIR AM312 (Ngắt ngoài RTC)
 #define PIN_BUZZER            5     // Active Buzzer 5V
 #ifdef PIN_NEOPIXEL

@@ -263,7 +263,12 @@ void loop() {
       // Đèn ngủ thông minh: Tự động soi đường khi phát hiện người thức dậy ban đêm
       if (currentState == STATE_NORMAL) {
         SensorSample s = sensorMgr.getLatestSample();
+#if ENABLE_PIR_SENSOR
         bool humanMoving = s.pir_active || (s.radar_motion_max >= 15);
+#else
+        // Khi không có PIR, dùng 100% Radar FMCW 24GHz (LD2410B) để nhận diện chuyển động & hiện diện
+        bool humanMoving = (s.radar_motion_max >= 15);
+#endif
         alertSys.updateNightlight(humanMoving);
       }
 

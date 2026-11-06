@@ -90,8 +90,15 @@ bool SensorManager::init() {
   if (!windowBuffer) return false;
 
   // 2. Cảm biến chuyển động hồng ngoại PIR
+#if ENABLE_PIR_SENSOR
   pinMode(PIN_PIR, INPUT);
   attachInterrupt(digitalPinToInterrupt(PIN_PIR), pirISR, RISING);
+  Serial.println("[SENSORS] Khoi dong PIR AM312 thanh cong.");
+#else
+  // Chế độ test tạm khi chưa gắn PIR: Kéo chân GPIO 4 xuống PULLDOWN để chống nhiễu điện từ nổi
+  pinMode(PIN_PIR, INPUT_PULLDOWN);
+  Serial.println("[SENSORS] PIR tam an / vo hieu hoa khi test: Su dung 100% Radar FMCW 24GHz.");
+#endif
 
   // 3. Phục hồi và khởi động bus I2C cho ToF VL53L1X
   recoverI2CBus(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -231,8 +238,12 @@ void SensorManager::update() {
 
   parseRadarStream();
 
+#if ENABLE_PIR_SENSOR
   bool pirState = digitalRead(PIN_PIR) || pirTriggered;
   pirTriggered = false;
+#else
+  bool pirState = false; // Tạm ẩn PIR: không cần ngắt hay đọc chân nổi
+#endif
 
   // Theo dõi nạn nhân nằm sát sàn bất động kéo dài (Slow fall / Slump detection)
   bool floorCondition = (tofDistances[2] > 50 && tofDistances[2] <= floorThresholdMm) &&
