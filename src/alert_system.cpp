@@ -17,13 +17,7 @@ AlertSystem::AlertSystem()
     nightlightEndTime(0) {}
 
 void AlertSystem::earlyHardwareMute() {
-  // 1. Đưa chân GPIO 5 về trạng thái High-Z (INPUT không kéo) ngay lập tức
-  // Điều này ngắt hoàn toàn mạch điện, ngăn chặn dòng rò cho cả module Active-LOW lẫn Active-HIGH
-  pinMode(PIN_BUZZER, INPUT);
-  gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_FLOATING);
-  buzzerPinState = false;
-
-  // 2. Đọc phân cực còi và trạng thái Mute đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
+  // 1. Đọc phân cực còi và trạng thái Mute đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
   Preferences p;
   if (p.begin("sys_cfg", true)) {
     buzzerActiveHigh = p.getBool("buz_high", BUZZER_ACTIVE_HIGH);
@@ -33,24 +27,29 @@ void AlertSystem::earlyHardwareMute() {
     buzzerActiveHigh = BUZZER_ACTIVE_HIGH;
     buzzerMuted = BUZZER_DEFAULT_MUTED;
   }
+
+  // 2. Mức điện áp để ngắt còi:
+  // • Với còi kích mức Thấp (Active-LOW, nối nguồn 3.3V): Chân GPIO 5 xuất HIGH (3.3V) -> V_diff = 0V -> Còi tắt hẳn.
+  // • Với còi kích mức Cao (Active-HIGH): Chân GPIO 5 xuất LOW (0V) -> Còi tắt.
+  pinMode(PIN_BUZZER, OUTPUT);
+  uint8_t muteLevel = buzzerActiveHigh ? LOW : HIGH;
+  digitalWrite(PIN_BUZZER, muteLevel);
+  buzzerPinState = false;
 }
 
 void AlertSystem::setBuzzerHardware(bool on) {
+  pinMode(PIN_BUZZER, OUTPUT);
   if (buzzerMuted || !on) {
-    // Trạng thái IM LẶNG: Đưa chân GPIO 5 về High-Z (INPUT không kéo)
-    pinMode(PIN_BUZZER, INPUT);
-    gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_FLOATING);
+    // Trạng thái IM LẶNG:
+    uint8_t muteLevel = buzzerActiveHigh ? LOW : HIGH;
+    digitalWrite(PIN_BUZZER, muteLevel);
     buzzerPinState = false;
     return;
   }
 
-  // Trạng thái BẬT CÒI:
-  pinMode(PIN_BUZZER, OUTPUT);
-  if (buzzerActiveHigh) {
-    digitalWrite(PIN_BUZZER, HIGH);
-  } else {
-    digitalWrite(PIN_BUZZER, LOW);
-  }
+  // Trạng thái BẬT CÒI BÁO ĐỘNG:
+  uint8_t activeLevel = buzzerActiveHigh ? HIGH : LOW;
+  digitalWrite(PIN_BUZZER, activeLevel);
   buzzerPinState = true;
 }
 

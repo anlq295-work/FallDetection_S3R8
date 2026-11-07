@@ -177,9 +177,10 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
-  Serial.printf("[BUZZER] Boot initial: Polarity=%s | Muted=%s | GPIO5 mode=High-Z (Tri-State Silence)\n",
-                alertSys.isBuzzerActiveHigh() ? "ACTIVE-HIGH" : "ACTIVE-LOW",
-                alertSys.isMuted() ? "YES" : "NO");
+  Serial.printf("[BUZZER] Boot initial: Polarity=%s | Muted=%s | GPIO5=%d (3.3V quiet for 3V3 Active-LOW)\n",
+                alertSys.isBuzzerActiveHigh() ? "ACTIVE-HIGH (0V quiet)" : "ACTIVE-LOW (3.3V quiet)",
+                alertSys.isMuted() ? "YES" : "NO",
+                digitalRead(PIN_BUZZER));
 
   // 3. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
