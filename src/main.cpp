@@ -177,10 +177,9 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
-  Serial.printf("[BUZZER] Boot initial: Polarity=%s | Muted=%s | GPIO5=%d\n",
-                alertSys.isBuzzerActiveHigh() ? "ACTIVE-HIGH (0V quiet)" : "ACTIVE-LOW (3.3V quiet)",
-                alertSys.isMuted() ? "YES" : "NO",
-                digitalRead(PIN_BUZZER));
+  Serial.printf("[BUZZER] Boot initial: Polarity=%s | Muted=%s | GPIO5 mode=High-Z (Tri-State Silence)\n",
+                alertSys.isBuzzerActiveHigh() ? "ACTIVE-HIGH" : "ACTIVE-LOW",
+                alertSys.isMuted() ? "YES" : "NO");
 
   // 3. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
@@ -251,6 +250,32 @@ void setup() {
   }
 }
 
+void handleSerialCommands() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == 'T' || c == 't') {
+      Serial.println("[CMD] Thu coi: Phat tieng beep 200ms...");
+      alertSys.playBeep(200);
+      Serial.println("[CMD] Thu coi xong.");
+    } else if (c == 'H' || c == 'h') {
+      alertSys.setMuted(false);
+      alertSys.setBuzzerActiveHigh(true);
+      Serial.println("[CMD] Chuyen phan cuc: Active-HIGH (Mute=High-Z, Beep=3.3V)");
+    } else if (c == 'L' || c == 'l') {
+      alertSys.setMuted(false);
+      alertSys.setBuzzerActiveHigh(false);
+      Serial.println("[CMD] Chuyen phan cuc: Active-LOW (Mute=High-Z, Beep=0V)");
+    } else if (c == 'M' || c == 'm') {
+      alertSys.setMuted(!alertSys.isMuted());
+      Serial.printf("[CMD] Trang thai Mute: %s\n", alertSys.isMuted() ? "BAT (Yen lang)" : "TAT (Co coi)");
+    } else if (c == 'S' || c == 's') {
+      Serial.printf("[STATUS] State=%d | Pattern=%d | BuzHigh=%d | Muted=%d | PinVal=%d\n",
+                    currentState, alertSys.getCurrentPattern(), alertSys.isBuzzerActiveHigh(),
+                    alertSys.isMuted(), digitalRead(PIN_BUZZER));
+    }
+  }
+}
+
 void loop() {
   // Reset Watchdog Timer ngăn chip bị treo
   esp_task_wdt_reset();
@@ -260,9 +285,10 @@ void loop() {
   // 1. Cập nhật âm thanh còi phi chặn (Non-blocking buzzer patterns)
   alertSys.updateBuzzer();
 
-  // 2. Xử lý nút bấm vật lý và lệnh điều khiển từ xa qua BLE
+  // 2. Xử lý nút bấm vật lý, lệnh điều khiển từ xa qua BLE và Serial
   handleButtonInput();
   processBleCommands();
+  handleSerialCommands();
 
   // 3. Duy trì kết nối Wi-Fi ngầm (non-blocking)
   alertSys.maintainWiFi(wifiSSID, wifiPass);

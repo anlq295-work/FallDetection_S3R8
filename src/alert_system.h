@@ -19,6 +19,7 @@ public:
   void init();
   void setIndicator(uint32_t color, bool buzzer);
   void setBuzzerPattern(BuzzerPattern pattern);
+  BuzzerPattern getCurrentPattern() const;
   void updateBuzzer();
   void updateNightlight(bool motionDetected);
   void playBeep(uint16_t durationMs);

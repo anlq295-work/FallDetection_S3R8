@@ -2044,7 +2044,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
-  bool _buzzerActiveHigh = true; // Mặc định chuẩn phần cứng: Active-HIGH (0V tắt còi, chống tự kêu khi cắm điện)
+  bool _buzzerActiveHigh = false; // Mặc định khớp với module còi 3 chân: Active-LOW (High-Z im lặng, 0V báo động)
   bool _buzzerMuted = false;
 
   @override
@@ -2058,7 +2058,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   Future<void> _loadBuzzerPolarity() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _buzzerActiveHigh = prefs.getBool('dev_buzzer_active_high_${widget.device.remoteId.str}') ?? true;
+      _buzzerActiveHigh = prefs.getBool('dev_buzzer_active_high_${widget.device.remoteId.str}') ?? false;
       _buzzerMuted = prefs.getBool('dev_buzzer_muted_${widget.device.remoteId.str}') ?? false;
     });
   }

@@ -15,9 +15,11 @@
 #define PIN_BUZZER            5     // Active Buzzer 5V
 
 // Cấu hình phân cực Còi Báo Động (Active Buzzer Module Polarity):
-// • Đặt 1: Mặc định chuẩn phần cứng - chân GPIO 5 mức 0V là TẮT (Active-HIGH, chống tự kêu khi cắm nguồn).
-// • Đặt 0: Dành cho module còi kích mức Thấp (Active-LOW, chân IN mức 0 mới kêu).
-#define BUZZER_ACTIVE_HIGH    1     // 1: Active HIGH (0V = Tắt, chống tự kêu khi cắm nguồn); 0: Active LOW
+// • Đặt 0: Mặc định chuẩn module còi 3 chân kích mức Thấp (Active-LOW, chân IN nối đất 0V mới kêu).
+// • Đặt 1: Dành cho còi kích mức Cao (Active-HIGH, chân IN mức 3.3V mới kêu).
+// Ở trạng thái im lặng, hệ thống luôn đưa chân GPIO 5 về chế độ High-Z (Tri-State),
+// triệt tiêu 100% dòng điện cho cả hai loại còi và chống tự kêu khi cắm nguồn.
+#define BUZZER_ACTIVE_HIGH    0     // 0: Active LOW (Mặc định chuẩn module 3 chân); 1: Active HIGH
 #define ENABLE_STARTUP_BEEP   0     // 0: TẮT HOÀN TOÀN âm bíp khởi động khi cắm nguồn; 1: Bật 2 tiếng bíp chào mừng
 #define BUZZER_DEFAULT_MUTED  0     // 0: Còi sẵn sàng báo động; 1: Mute hoàn toàn còi khi test lab yên tĩnh
 #ifdef PIN_NEOPIXEL

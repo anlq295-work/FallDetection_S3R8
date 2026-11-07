@@ -17,10 +17,11 @@ AlertSystem::AlertSystem()
     nightlightEndTime(0) {}
 
 void AlertSystem::earlyHardwareMute() {
-  // 1. Kéo chân GPIO 5 xuống GND ngay lập tức ở tầng phần cứng thấp nhất (triệt tiêu xung nhiễu)
-  gpio_reset_pin((gpio_num_t)PIN_BUZZER);
-  gpio_set_direction((gpio_num_t)PIN_BUZZER, GPIO_MODE_OUTPUT);
-  gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_PULLDOWN_ONLY);
+  // 1. Đưa chân GPIO 5 về trạng thái High-Z (INPUT không kéo) ngay lập tức
+  // Điều này ngắt hoàn toàn mạch điện, ngăn chặn dòng rò cho cả module Active-LOW lẫn Active-HIGH
+  pinMode(PIN_BUZZER, INPUT);
+  gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_FLOATING);
+  buzzerPinState = false;
 
   // 2. Đọc phân cực còi và trạng thái Mute đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
   Preferences p;
@@ -32,23 +33,29 @@ void AlertSystem::earlyHardwareMute() {
     buzzerActiveHigh = BUZZER_ACTIVE_HIGH;
     buzzerMuted = BUZZER_DEFAULT_MUTED;
   }
-
-  // 3. Mức điện áp để ngắt còi: Active-HIGH -> 0 (0V); Active-LOW -> 1 (3.3V)
-  uint8_t muteLevel = buzzerActiveHigh ? 0 : 1;
-  gpio_set_level((gpio_num_t)PIN_BUZZER, muteLevel);
-  buzzerPinState = false;
 }
 
 void AlertSystem::setBuzzerHardware(bool on) {
-  if (buzzerMuted) {
-    uint8_t muteLevel = buzzerActiveHigh ? 0 : 1;
-    gpio_set_level((gpio_num_t)PIN_BUZZER, muteLevel);
+  if (buzzerMuted || !on) {
+    // Trạng thái IM LẶNG: Đưa chân GPIO 5 về High-Z (INPUT không kéo)
+    pinMode(PIN_BUZZER, INPUT);
+    gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_FLOATING);
     buzzerPinState = false;
     return;
   }
-  uint8_t level = buzzerActiveHigh ? (on ? 1 : 0) : (on ? 0 : 1);
-  gpio_set_level((gpio_num_t)PIN_BUZZER, level);
-  buzzerPinState = on;
+
+  // Trạng thái BẬT CÒI:
+  pinMode(PIN_BUZZER, OUTPUT);
+  if (buzzerActiveHigh) {
+    digitalWrite(PIN_BUZZER, HIGH);
+  } else {
+    digitalWrite(PIN_BUZZER, LOW);
+  }
+  buzzerPinState = true;
+}
+
+BuzzerPattern AlertSystem::getCurrentPattern() const {
+  return currentPattern;
 }
 
 void AlertSystem::setBuzzerActiveHigh(bool high) {
