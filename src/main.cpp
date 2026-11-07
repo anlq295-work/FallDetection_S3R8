@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 #include <esp_idf_version.h>
+#include <nvs_flash.h>
 
 SensorManager sensorMgr;
 EdgeAIEngine  aiEngine;
@@ -130,6 +131,14 @@ void processBleCommands() {
       alertSys.setBuzzerActiveHigh(true);
       bleProvision.updateStatus("BUZZER_MODE:ACTIVE_HIGH");
       Serial.println("[BLE] Da chuyen sang coi kich muc Cao (Active-HIGH)!");
+    } else if (cmd == "BUZZER_MUTE") {
+      alertSys.setMuted(true);
+      bleProvision.updateStatus("BUZZER_MUTED");
+      Serial.println("[BLE] Da tat coi hoan toan (Mute)!");
+    } else if (cmd == "BUZZER_UNMUTE") {
+      alertSys.setMuted(false);
+      bleProvision.updateStatus("BUZZER_UNMUTED");
+      Serial.println("[BLE] Da bat lai coi (Unmute)!");
     } else if (cmd == "TEST_BEEP") {
       alertSys.playBeep(200);
       bleProvision.updateStatus("BEEP_TEST_OK");
@@ -155,13 +164,25 @@ void processBleCommands() {
 }
 
 void setup() {
-  // 1. TẮT CÒI NGAY LẬP TỨC TRONG MICROGIÂY ĐẦU TIÊN (Trước mọi delay và Serial)
+  // 1. KHỞI TẠO NVS FLASH AN TOÀN (Tự động format/sửa lỗi nếu trắng flash hoặc thiếu trang)
+  esp_err_t nvs_err = nvs_flash_init();
+  if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND || nvs_err == ESP_ERR_NVS_NOT_FOUND) {
+    nvs_flash_erase();
+    nvs_flash_init();
+  }
+
+  // 2. TẮT CÒI PHẦN CỨNG NGAY TRONG MICROGIÂY ĐẦU TIÊN (Trước mọi delay và Serial)
   alertSys.earlyHardwareMute();
 
   Serial.begin(115200);
   delay(100);
 
-  // 2. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
+  Serial.printf("[BUZZER] Boot initial: Polarity=%s | Muted=%s | GPIO5=%d\n",
+                alertSys.isBuzzerActiveHigh() ? "ACTIVE-HIGH (0V quiet)" : "ACTIVE-LOW (3.3V quiet)",
+                alertSys.isMuted() ? "YES" : "NO",
+                digitalRead(PIN_BUZZER));
+
+  // 3. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   esp_task_wdt_config_t twdt_config = {
       .timeout_ms = WDT_TIMEOUT_SECONDS * 1000,

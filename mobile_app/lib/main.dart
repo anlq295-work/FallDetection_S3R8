@@ -2044,7 +2044,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
-  bool _buzzerActiveHigh = false; // Mặc định khớp với firmware: Active-LOW (chống tự kêu khi cắm điện)
+  bool _buzzerActiveHigh = true; // Mặc định chuẩn phần cứng: Active-HIGH (0V tắt còi, chống tự kêu khi cắm điện)
+  bool _buzzerMuted = false;
 
   @override
   void initState() {
@@ -2057,7 +2058,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   Future<void> _loadBuzzerPolarity() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _buzzerActiveHigh = prefs.getBool('dev_buzzer_active_high_${widget.device.remoteId.str}') ?? false;
+      _buzzerActiveHigh = prefs.getBool('dev_buzzer_active_high_${widget.device.remoteId.str}') ?? true;
+      _buzzerMuted = prefs.getBool('dev_buzzer_muted_${widget.device.remoteId.str}') ?? false;
     });
   }
 
@@ -2835,7 +2837,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Nếu còi tự kêu inh ỏi không dứt ngay khi cắm nguồn: Module còi của bạn là loại kích mức Thấp (Active-LOW). Hãy chọn 'Kích mức Thấp' bên dưới:",
+                    "Mặc định chuẩn: Kích mức Cao (Active-HIGH, chân GPIO 5 ở 0V tắt còi). Nếu còi tự kêu khi cắm điện, thử chọn 'Mức Thấp' hoặc bật 'Tắt hoàn toàn còi' để test yên tĩnh:",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
@@ -2858,7 +2860,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(isHigh ? "Đã gửi lệnh: Còi kích mức Cao (Active-HIGH)" : "Đã gửi lệnh: Còi kích mức Thấp (Active-LOW)"),
+                              content: Text(isHigh ? "Đã gửi lệnh: Còi kích mức Cao (Active-HIGH, 0V Tắt)" : "Đã gửi lệnh: Còi kích mức Thấp (Active-LOW, 3.3V Tắt)"),
                               backgroundColor: Colors.teal,
                             ),
                           );
@@ -2867,6 +2869,26 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     ],
                   ),
                   const SizedBox(height: 10),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Tắt hoàn toàn còi (Mute khi test)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    subtitle: const Text("Vô hiệu hóa còi vật lý, chỉ báo động qua LED và điện thoại", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    value: _buzzerMuted,
+                    onChanged: (val) async {
+                      setState(() => _buzzerMuted = val);
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('dev_buzzer_muted_${widget.device.remoteId.str}', val);
+                      widget.onSendCommand(val ? "BUZZER_MUTE" : "BUZZER_UNMUTE");
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(val ? "Đã tắt hoàn toàn còi (Muted)" : "Đã kích hoạt lại còi (Unmuted)"),
+                          backgroundColor: val ? Colors.deepOrange : Colors.teal,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 6),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(38)),
                     onPressed: widget.isConnected ? () => widget.onSendCommand("TEST_BEEP") : null,

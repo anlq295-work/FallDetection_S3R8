@@ -25,6 +25,8 @@ public:
   void setBuzzerHardware(bool on);
   void setBuzzerActiveHigh(bool high);
   bool isBuzzerActiveHigh() const;
+  void setMuted(bool mute);
+  bool isMuted() const;
   
   bool connectWiFi(const String& ssid, const String& pass);
   void maintainWiFi(const String& ssid, const String& pass);
@@ -38,6 +40,7 @@ private:
   unsigned long lastWiFiReconnectAttempt;
   bool buzzerPinState;
   bool buzzerActiveHigh;
+  bool buzzerMuted;
   BuzzerPattern currentPattern;
   unsigned long patternTimer;
   uint8_t patternStep;

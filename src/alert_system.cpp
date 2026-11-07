@@ -9,6 +9,7 @@ AlertSystem::AlertSystem()
     lastWiFiReconnectAttempt(0),
     buzzerPinState(false),
     buzzerActiveHigh(BUZZER_ACTIVE_HIGH),
+    buzzerMuted(BUZZER_DEFAULT_MUTED),
     currentPattern(BUZZER_SILENT),
     patternTimer(0),
     patternStep(0),
@@ -16,22 +17,37 @@ AlertSystem::AlertSystem()
     nightlightEndTime(0) {}
 
 void AlertSystem::earlyHardwareMute() {
-  // Đọc phân cực còi đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
-  Preferences p;
-  p.begin("sys_cfg", true);
-  buzzerActiveHigh = p.getBool("buz_high", BUZZER_ACTIVE_HIGH);
-  p.end();
+  // 1. Kéo chân GPIO 5 xuống GND ngay lập tức ở tầng phần cứng thấp nhất (triệt tiêu xung nhiễu)
+  gpio_reset_pin((gpio_num_t)PIN_BUZZER);
+  gpio_set_direction((gpio_num_t)PIN_BUZZER, GPIO_MODE_OUTPUT);
+  gpio_set_pull_mode((gpio_num_t)PIN_BUZZER, GPIO_PULLDOWN_ONLY);
 
-  pinMode(PIN_BUZZER, OUTPUT);
-  // Mức điện áp để ngắt còi: Active-HIGH -> LOW (0V); Active-LOW -> HIGH (3.3V)
-  uint8_t muteLevel = buzzerActiveHigh ? LOW : HIGH;
-  digitalWrite(PIN_BUZZER, muteLevel);
+  // 2. Đọc phân cực còi và trạng thái Mute đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
+  Preferences p;
+  if (p.begin("sys_cfg", true)) {
+    buzzerActiveHigh = p.getBool("buz_high", BUZZER_ACTIVE_HIGH);
+    buzzerMuted = p.getBool("buz_mute", (bool)BUZZER_DEFAULT_MUTED);
+    p.end();
+  } else {
+    buzzerActiveHigh = BUZZER_ACTIVE_HIGH;
+    buzzerMuted = BUZZER_DEFAULT_MUTED;
+  }
+
+  // 3. Mức điện áp để ngắt còi: Active-HIGH -> 0 (0V); Active-LOW -> 1 (3.3V)
+  uint8_t muteLevel = buzzerActiveHigh ? 0 : 1;
+  gpio_set_level((gpio_num_t)PIN_BUZZER, muteLevel);
   buzzerPinState = false;
 }
 
 void AlertSystem::setBuzzerHardware(bool on) {
-  uint8_t level = buzzerActiveHigh ? (on ? HIGH : LOW) : (on ? LOW : HIGH);
-  digitalWrite(PIN_BUZZER, level);
+  if (buzzerMuted) {
+    uint8_t muteLevel = buzzerActiveHigh ? 0 : 1;
+    gpio_set_level((gpio_num_t)PIN_BUZZER, muteLevel);
+    buzzerPinState = false;
+    return;
+  }
+  uint8_t level = buzzerActiveHigh ? (on ? 1 : 0) : (on ? 0 : 1);
+  gpio_set_level((gpio_num_t)PIN_BUZZER, level);
   buzzerPinState = on;
 }
 
@@ -41,13 +57,29 @@ void AlertSystem::setBuzzerActiveHigh(bool high) {
 
   // Lưu vĩnh viễn vào NVS Flash để nhớ trạng thái qua các lần rút cắm nguồn
   Preferences p;
-  p.begin("sys_cfg", false);
-  p.putBool("buz_high", high);
-  p.end();
+  if (p.begin("sys_cfg", false)) {
+    p.putBool("buz_high", high);
+    p.end();
+  }
 }
 
 bool AlertSystem::isBuzzerActiveHigh() const {
   return buzzerActiveHigh;
+}
+
+void AlertSystem::setMuted(bool mute) {
+  buzzerMuted = mute;
+  setBuzzerHardware(false);
+
+  Preferences p;
+  if (p.begin("sys_cfg", false)) {
+    p.putBool("buz_mute", mute);
+    p.end();
+  }
+}
+
+bool AlertSystem::isMuted() const {
+  return buzzerMuted;
 }
 
 void AlertSystem::init() {
