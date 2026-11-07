@@ -7,24 +7,42 @@ AlertSystem::AlertSystem()
   : strip(NUM_LEDS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800),
     lastWiFiReconnectAttempt(0),
     buzzerPinState(false),
+    buzzerActiveHigh(BUZZER_ACTIVE_HIGH),
     currentPattern(BUZZER_SILENT),
     patternTimer(0),
     patternStep(0),
     nightlightActive(false),
     nightlightEndTime(0) {}
 
+void AlertSystem::setBuzzerHardware(bool on) {
+  uint8_t level = buzzerActiveHigh ? (on ? HIGH : LOW) : (on ? LOW : HIGH);
+  digitalWrite(PIN_BUZZER, level);
+  buzzerPinState = on;
+}
+
+void AlertSystem::setBuzzerActiveHigh(bool high) {
+  buzzerActiveHigh = high;
+  setBuzzerHardware(false); // Ngắt còi ngay lập tức khi đổi phân cực
+}
+
+bool AlertSystem::isBuzzerActiveHigh() const {
+  return buzzerActiveHigh;
+}
+
 void AlertSystem::init() {
   pinMode(PIN_BUZZER, OUTPUT);
-  digitalWrite(PIN_BUZZER, LOW);
+  setBuzzerHardware(false); // Đảm bảo còi TẮT ngay khi cấp nguồn
 
   strip.begin();
   strip.setBrightness(70);
   setIndicator(strip.Color(0, 0, 50), false); // Đèn xanh dương báo đang khởi động
 
+#if ENABLE_STARTUP_BEEP
   // Âm báo Welcome khởi động hệ thống
   playBeep(80);
   delay(100);
   playBeep(80);
+#endif
 }
 
 void AlertSystem::setIndicator(uint32_t color, bool buzzer) {
@@ -34,11 +52,9 @@ void AlertSystem::setIndicator(uint32_t color, bool buzzer) {
   strip.show();
 
   if (buzzer) {
-    digitalWrite(PIN_BUZZER, HIGH);
-    buzzerPinState = true;
+    setBuzzerHardware(true);
   } else if (currentPattern == BUZZER_SILENT) {
-    digitalWrite(PIN_BUZZER, LOW);
-    buzzerPinState = false;
+    setBuzzerHardware(false);
   }
 }
 
@@ -48,8 +64,7 @@ void AlertSystem::setBuzzerPattern(BuzzerPattern pattern) {
     patternTimer = millis();
     patternStep = 0;
     if (pattern == BUZZER_SILENT) {
-      digitalWrite(PIN_BUZZER, LOW);
-      buzzerPinState = false;
+      setBuzzerHardware(false);
     }
   }
 }
@@ -64,19 +79,19 @@ void AlertSystem::updateBuzzer() {
     case BUZZER_PRE_ALARM_PULSE:
       // Chuỗi âm thanh Pre-alarm: Bíp (100ms) -> Nghỉ (100ms) -> Bíp (100ms) -> Nghỉ (1200ms)
       if (patternStep == 0 && now - patternTimer >= 0) {
-        digitalWrite(PIN_BUZZER, HIGH);
+        setBuzzerHardware(true);
         patternStep = 1;
         patternTimer = now;
       } else if (patternStep == 1 && now - patternTimer >= 100) {
-        digitalWrite(PIN_BUZZER, LOW);
+        setBuzzerHardware(false);
         patternStep = 2;
         patternTimer = now;
       } else if (patternStep == 2 && now - patternTimer >= 100) {
-        digitalWrite(PIN_BUZZER, HIGH);
+        setBuzzerHardware(true);
         patternStep = 3;
         patternTimer = now;
       } else if (patternStep == 3 && now - patternTimer >= 100) {
-        digitalWrite(PIN_BUZZER, LOW);
+        setBuzzerHardware(false);
         patternStep = 4;
         patternTimer = now;
       } else if (patternStep == 4 && now - patternTimer >= 1200) {
@@ -88,11 +103,11 @@ void AlertSystem::updateBuzzer() {
     case BUZZER_ALERT_SIREN:
       // Còi báo động dồn dập SOS Tầng 2: Hú 250ms -> Nghỉ 150ms
       if (patternStep == 0 && now - patternTimer >= 150) {
-        digitalWrite(PIN_BUZZER, HIGH);
+        setBuzzerHardware(true);
         patternStep = 1;
         patternTimer = now;
       } else if (patternStep == 1 && now - patternTimer >= 250) {
-        digitalWrite(PIN_BUZZER, LOW);
+        setBuzzerHardware(false);
         patternStep = 0;
         patternTimer = now;
       }
@@ -101,19 +116,19 @@ void AlertSystem::updateBuzzer() {
     case BUZZER_CONFIRM_BEEP:
       // Kêu xác nhận 2 tiếng rồi tự tắt
       if (patternStep == 0) {
-        digitalWrite(PIN_BUZZER, HIGH);
+        setBuzzerHardware(true);
         patternStep = 1;
         patternTimer = now;
       } else if (patternStep == 1 && now - patternTimer >= 70) {
-        digitalWrite(PIN_BUZZER, LOW);
+        setBuzzerHardware(false);
         patternStep = 2;
         patternTimer = now;
       } else if (patternStep == 2 && now - patternTimer >= 70) {
-        digitalWrite(PIN_BUZZER, HIGH);
+        setBuzzerHardware(true);
         patternStep = 3;
         patternTimer = now;
       } else if (patternStep == 3 && now - patternTimer >= 70) {
-        digitalWrite(PIN_BUZZER, LOW);
+        setBuzzerHardware(false);
         currentPattern = BUZZER_SILENT;
       }
       break;
@@ -122,8 +137,7 @@ void AlertSystem::updateBuzzer() {
       // Âm báo khẩn cấp tức thời khi nhấn giữ nút cứu nạn
       if (now - patternTimer >= 80) {
         patternTimer = now;
-        buzzerPinState = !buzzerPinState;
-        digitalWrite(PIN_BUZZER, buzzerPinState ? HIGH : LOW);
+        setBuzzerHardware(!buzzerPinState);
       }
       break;
   }
@@ -153,9 +167,9 @@ void AlertSystem::updateNightlight(bool motionDetected) {
 }
 
 void AlertSystem::playBeep(uint16_t durationMs) {
-  digitalWrite(PIN_BUZZER, HIGH);
+  setBuzzerHardware(true);
   delay(durationMs);
-  digitalWrite(PIN_BUZZER, LOW);
+  setBuzzerHardware(false);
 }
 
 bool AlertSystem::connectWiFi(const String& ssid, const String& pass) {

@@ -21,6 +21,9 @@ public:
   void updateBuzzer();
   void updateNightlight(bool motionDetected);
   void playBeep(uint16_t durationMs);
+  void setBuzzerHardware(bool on);
+  void setBuzzerActiveHigh(bool high);
+  bool isBuzzerActiveHigh() const;
   
   bool connectWiFi(const String& ssid, const String& pass);
   void maintainWiFi(const String& ssid, const String& pass);
@@ -33,6 +36,7 @@ private:
   Adafruit_NeoPixel strip;
   unsigned long lastWiFiReconnectAttempt;
   bool buzzerPinState;
+  bool buzzerActiveHigh;
   BuzzerPattern currentPattern;
   unsigned long patternTimer;
   uint8_t patternStep;

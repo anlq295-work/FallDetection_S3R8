@@ -2044,6 +2044,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
+  bool _buzzerActiveHigh = true;
 
   @override
   void initState() {
@@ -2809,9 +2810,63 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               ),
             ),
           ),
+          // Cấu hình phân cực Còi Báo Động (Active HIGH / Active LOW)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.volume_up, color: Colors.orangeAccent),
+                      SizedBox(width: 8),
+                      Text("Cấu hình Còi Báo Động (Buzzer)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Nếu còi tự kêu inh ỏi không dứt ngay khi cắm nguồn: Module còi của bạn là loại kích mức Thấp (Active-LOW). Hãy chọn 'Kích mức Thấp' bên dưới:",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Phân cực còi:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(value: true, label: Text("Mức Cao (HIGH)", style: TextStyle(fontSize: 11))),
+                          ButtonSegment(value: false, label: Text("Mức Thấp (LOW)", style: TextStyle(fontSize: 11))),
+                        ],
+                        selected: {_buzzerActiveHigh},
+                        onSelectionChanged: (val) {
+                          final isHigh = val.first;
+                          setState(() => _buzzerActiveHigh = isHigh);
+                          widget.onSendCommand(isHigh ? "BUZZER_ACTIVE_HIGH" : "BUZZER_ACTIVE_LOW");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isHigh ? "Đã gửi lệnh: Còi kích mức Cao (Active-HIGH)" : "Đã gửi lệnh: Còi kích mức Thấp (Active-LOW)"),
+                              backgroundColor: Colors.teal,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(38)),
+                    onPressed: widget.isConnected ? () => widget.onSendCommand("TEST_BEEP") : null,
+                    icon: const Icon(Icons.speaker, size: 18),
+                    label: const Text("Bấm thử tiếng còi (Test Beep 200ms)", style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
-
-          // 6. Công cụ & Ngắt kết nối
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),

@@ -13,6 +13,12 @@
 #define ENABLE_PIR_SENSOR     0     // Đặt 0: Vô hiệu hóa/ẩn PIR khi test mạch chưa có cảm biến PIR (chân GPIO 4 kéo pulldown chống nhiễu)
 #define PIN_PIR               4     // PIR AM312 (Ngắt ngoài RTC)
 #define PIN_BUZZER            5     // Active Buzzer 5V
+
+// Cấu hình phân cực Còi Báo Động (Active Buzzer Module Polarity):
+// • Đặt 1 nếu module còi là loại Kích Mức Cao (Active-HIGH, chân IN mức 1 mới kêu).
+// • Đặt 0 nếu module còi là loại Kích Mức Thấp (Active-LOW, dùng transistor PNP - thường gặp trên các module 3 chân VCC/GND/I-O; nếu còi cứ cắm nguồn là kêu inh ỏi không tắt thì đặt = 0).
+#define BUZZER_ACTIVE_HIGH    1     // 1: Active HIGH, 0: Active LOW
+#define ENABLE_STARTUP_BEEP   1     // 1: Bíp chào mừng 2 tiếng ngắn khi bật nguồn; 0: Tắt hoàn toàn âm chào mừng
 #ifdef PIN_NEOPIXEL
   #undef PIN_NEOPIXEL
 #endif

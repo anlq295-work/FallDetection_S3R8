@@ -122,6 +122,17 @@ void processBleCommands() {
       bleProvision.updateStatus("HISTORY_CLEARED_OK");
     } else if (cmd == "GET_VERSION") {
       bleProvision.updateStatus(String("FIRMWARE_VERSION:") + FIRMWARE_VERSION);
+    } else if (cmd == "BUZZER_ACTIVE_LOW" || cmd == "SET_BUZZER_LOW") {
+      alertSys.setBuzzerActiveHigh(false);
+      bleProvision.updateStatus("BUZZER_MODE:ACTIVE_LOW");
+      Serial.println("[BLE] Da chuyen sang coi kich muc Thap (Active-LOW)!");
+    } else if (cmd == "BUZZER_ACTIVE_HIGH" || cmd == "SET_BUZZER_HIGH") {
+      alertSys.setBuzzerActiveHigh(true);
+      bleProvision.updateStatus("BUZZER_MODE:ACTIVE_HIGH");
+      Serial.println("[BLE] Da chuyen sang coi kich muc Cao (Active-HIGH)!");
+    } else if (cmd == "TEST_BEEP") {
+      alertSys.playBeep(200);
+      bleProvision.updateStatus("BEEP_TEST_OK");
     } else if (cmd.startsWith("OTA_HTTP:")) {
       String url = cmd.substring(9);
       url.trim();
