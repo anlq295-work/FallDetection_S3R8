@@ -2044,13 +2044,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
-  bool _buzzerActiveHigh = true;
+  bool _buzzerActiveHigh = false; // Mặc định khớp với firmware: Active-LOW (chống tự kêu khi cắm điện)
 
   @override
   void initState() {
     super.initState();
     _deviceTabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     _currentFloorThreshold = widget.floorThreshold;
+    _loadBuzzerPolarity();
+  }
+
+  Future<void> _loadBuzzerPolarity() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _buzzerActiveHigh = prefs.getBool('dev_buzzer_active_high_${widget.device.remoteId.str}') ?? false;
+    });
   }
 
   @override
@@ -2841,10 +2849,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           ButtonSegment(value: false, label: Text("Mức Thấp (LOW)", style: TextStyle(fontSize: 11))),
                         ],
                         selected: {_buzzerActiveHigh},
-                        onSelectionChanged: (val) {
+                        onSelectionChanged: (val) async {
                           final isHigh = val.first;
                           setState(() => _buzzerActiveHigh = isHigh);
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool('dev_buzzer_active_high_${widget.device.remoteId.str}', isHigh);
                           widget.onSendCommand(isHigh ? "BUZZER_ACTIVE_HIGH" : "BUZZER_ACTIVE_LOW");
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(isHigh ? "Đã gửi lệnh: Còi kích mức Cao (Active-HIGH)" : "Đã gửi lệnh: Còi kích mức Thấp (Active-LOW)"),

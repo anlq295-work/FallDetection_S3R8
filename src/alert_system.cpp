@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 AlertSystem::AlertSystem() 
   : strip(NUM_LEDS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800),
@@ -14,6 +15,20 @@ AlertSystem::AlertSystem()
     nightlightActive(false),
     nightlightEndTime(0) {}
 
+void AlertSystem::earlyHardwareMute() {
+  // Đọc phân cực còi đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
+  Preferences p;
+  p.begin("sys_cfg", true);
+  buzzerActiveHigh = p.getBool("buz_high", BUZZER_ACTIVE_HIGH);
+  p.end();
+
+  pinMode(PIN_BUZZER, OUTPUT);
+  // Mức điện áp để ngắt còi: Active-HIGH -> LOW (0V); Active-LOW -> HIGH (3.3V)
+  uint8_t muteLevel = buzzerActiveHigh ? LOW : HIGH;
+  digitalWrite(PIN_BUZZER, muteLevel);
+  buzzerPinState = false;
+}
+
 void AlertSystem::setBuzzerHardware(bool on) {
   uint8_t level = buzzerActiveHigh ? (on ? HIGH : LOW) : (on ? LOW : HIGH);
   digitalWrite(PIN_BUZZER, level);
@@ -23,6 +38,12 @@ void AlertSystem::setBuzzerHardware(bool on) {
 void AlertSystem::setBuzzerActiveHigh(bool high) {
   buzzerActiveHigh = high;
   setBuzzerHardware(false); // Ngắt còi ngay lập tức khi đổi phân cực
+
+  // Lưu vĩnh viễn vào NVS Flash để nhớ trạng thái qua các lần rút cắm nguồn
+  Preferences p;
+  p.begin("sys_cfg", false);
+  p.putBool("buz_high", high);
+  p.end();
 }
 
 bool AlertSystem::isBuzzerActiveHigh() const {
@@ -30,8 +51,7 @@ bool AlertSystem::isBuzzerActiveHigh() const {
 }
 
 void AlertSystem::init() {
-  pinMode(PIN_BUZZER, OUTPUT);
-  setBuzzerHardware(false); // Đảm bảo còi TẮT ngay khi cấp nguồn
+  earlyHardwareMute(); // Đảm bảo còi tắt tuyệt đối và đọc phân cực từ NVS
 
   strip.begin();
   strip.setBrightness(70);

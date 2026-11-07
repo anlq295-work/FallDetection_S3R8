@@ -155,10 +155,13 @@ void processBleCommands() {
 }
 
 void setup() {
-  Serial.begin(115200);
-  delay(1000);
+  // 1. TẮT CÒI NGAY LẬP TỨC TRONG MICROGIÂY ĐẦU TIÊN (Trước mọi delay và Serial)
+  alertSys.earlyHardwareMute();
 
-  // 1. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
+  Serial.begin(115200);
+  delay(100);
+
+  // 2. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   esp_task_wdt_config_t twdt_config = {
       .timeout_ms = WDT_TIMEOUT_SECONDS * 1000,

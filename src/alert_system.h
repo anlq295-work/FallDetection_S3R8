@@ -15,6 +15,7 @@ enum BuzzerPattern {
 class AlertSystem {
 public:
   AlertSystem();
+  void earlyHardwareMute();
   void init();
   void setIndicator(uint32_t color, bool buzzer);
   void setBuzzerPattern(BuzzerPattern pattern);
