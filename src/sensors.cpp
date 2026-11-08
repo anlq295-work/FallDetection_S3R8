@@ -7,19 +7,18 @@ static void IRAM_ATTR pirISR() {
   pirTriggered = true;
 }
 
-// Tâm SPAD Array 16x16 cho ToF VL53L1X: 
-// 0: Cao (ROI 199), 1: Giữa (ROI 175), 2: Thấp (ROI 151)
-const uint8_t ROI_CENTERS[3] = {199, 175, 151};
-
 // Lệnh cấu hình LD2410B
 static const uint8_t CMD_ENABLE_CONF[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x04, 0x00, 0xFF, 0x00, 0x01, 0x00, 0x04, 0x03, 0x02, 0x01};
 static const uint8_t CMD_ENABLE_ENG[]  = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x62, 0x00, 0x04, 0x03, 0x02, 0x01};
 static const uint8_t CMD_END_CONF[]    = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0xFE, 0x00, 0x04, 0x03, 0x02, 0x01};
 
 SensorManager::SensorManager() 
-  : currentRoiIdx(0), tofHealthy(false), lastTofReadTime(0),
+  : currentRoiIdx(0), primaryTofDistance(0), tofHealthy(false), 
+    lastTofReadTime(0), lastTofAttemptTime(0),
     radarTargetDist(0), radarPeakMotion(0), radarPeakStatic(0),
     radarTargetState(0), radarHealthy(false), lastRadarFrameTime(0),
+    radarState(RADAR_WAIT_H0), radarExpectedLen(0), radarPayloadIdx(0),
+    radarBaudRate(256000), lastBaudSwitchTime(0), radarBaudLocked(false),
     floorThresholdMm(FLOOR_HEIGHT_DEFAULT_MM),
     floorStartTime(0), isCurrentlyAtFloor(false),
     windowBuffer(nullptr), bufferHead(0), sampleCount(0) {
@@ -28,17 +27,17 @@ SensorManager::SensorManager()
   memset(historyIdx, 0, sizeof(historyIdx));
   memset(radarMotionEnergies, 0, sizeof(radarMotionEnergies));
   memset(radarStaticEnergies, 0, sizeof(radarStaticEnergies));
+  memset(radarPayload, 0, sizeof(radarPayload));
 }
 
 void SensorManager::recoverI2CBus(uint8_t sdaPin, uint8_t sclPin) {
-  // Chuẩn công nghiệp: Nếu slave I2C treo đường SDA ở mức LOW, phát 9 xung clock trên SCL để nhả bus
   pinMode(sdaPin, INPUT_PULLUP);
   pinMode(sclPin, OUTPUT_OPEN_DRAIN);
   digitalWrite(sclPin, HIGH);
   delayMicroseconds(10);
 
   if (digitalRead(sdaPin) == LOW) {
-    Serial.println("[I2C] Phat hien bus SDA bi treo LOW. Dang thuc hien Bus Recovery (9 clock pulses)...");
+    Serial.println("[I2C] Bus SDA bi treo LOW. Dang giai phong bus I2C (9 clock pulses)...");
     for (int i = 0; i < 9; i++) {
       digitalWrite(sclPin, LOW);
       delayMicroseconds(10);
@@ -46,7 +45,6 @@ void SensorManager::recoverI2CBus(uint8_t sdaPin, uint8_t sclPin) {
       delayMicroseconds(10);
       if (digitalRead(sdaPin) == HIGH) break;
     }
-    // Tao dieu kien STOP tren I2C
     pinMode(sdaPin, OUTPUT_OPEN_DRAIN);
     digitalWrite(sdaPin, LOW);
     delayMicroseconds(10);
@@ -66,6 +64,41 @@ uint16_t SensorManager::computeMedian(uint16_t* arr, uint8_t size) {
   return temp[1];
 }
 
+bool SensorManager::initTofSensor() {
+  lastTofAttemptTime = millis();
+  recoverI2CBus(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(100000); // 100 kHz chuan on dinh tren breadboard va day noi
+  tof.setTimeout(500);
+
+  // Scan I2C xem co thiet bi nao tren bus khong
+  bool addressFound = false;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      if (addr == 0x29) addressFound = true;
+    }
+  }
+
+  if (!addressFound) {
+    tofHealthy = false;
+    return false;
+  }
+
+  if (tof.init()) {
+    tof.setDistanceMode(VL53L1X::Medium);
+    tof.setMeasurementTimingBudget(40000); // 40ms budget
+    tof.startContinuous(40);
+    tofHealthy = true;
+    lastTofReadTime = millis();
+    Serial.println("[SENSORS] ToF VL53L1X khoi dong thanh cong tren dia chi 0x29!");
+    return true;
+  } else {
+    tofHealthy = false;
+    return false;
+  }
+}
+
 void SensorManager::configureRadarLD2410() {
   Serial2.write(CMD_ENABLE_CONF, sizeof(CMD_ENABLE_CONF));
   delay(50);
@@ -75,178 +108,207 @@ void SensorManager::configureRadarLD2410() {
   delay(50);
 }
 
+void SensorManager::checkBaudRateAutoDetect() {
+  if (!radarBaudLocked && (millis() - lastBaudSwitchTime >= 2000)) {
+    lastBaudSwitchTime = millis();
+    radarBaudRate = (radarBaudRate == 256000) ? 115200 : 256000;
+    Serial2.updateBaudRate(radarBaudRate);
+    radarState = RADAR_WAIT_H0;
+    configureRadarLD2410();
+  }
+}
+
 bool SensorManager::init() {
-  // 1. Cấp phát Circular Buffer trên Octal PSRAM của ESP32-S3R8
+  // 1. Cap phat Circular Buffer tren Octal PSRAM cua ESP32-S3R8
   if (psramFound()) {
     windowBuffer = (SensorSample*)heap_caps_malloc(sizeof(SensorSample) * WINDOW_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (windowBuffer) {
-      Serial.printf("[SENSORS] Cap phat thanh cong circular buffer tren Octal PSRAM (%d bytes)\n", (int)(sizeof(SensorSample) * WINDOW_SIZE));
+      Serial.printf("[SENSORS] Cap phat circular buffer tren Octal PSRAM (%d bytes)\n", (int)(sizeof(SensorSample) * WINDOW_SIZE));
     }
   }
   if (!windowBuffer) {
     windowBuffer = (SensorSample*)malloc(sizeof(SensorSample) * WINDOW_SIZE);
-    Serial.println("[SENSORS] Cap phat buffer tren SRAM noi.");
   }
-  if (!windowBuffer) return false;
 
-  // 2. Cảm biến chuyển động hồng ngoại PIR
+  // 2. Cam bien hong ngoai PIR AM312
 #if ENABLE_PIR_SENSOR
   pinMode(PIN_PIR, INPUT);
   attachInterrupt(digitalPinToInterrupt(PIN_PIR), pirISR, RISING);
-  Serial.println("[SENSORS] Khoi dong PIR AM312 thanh cong.");
+  Serial.println("[SENSORS] Khoi dong PIR AM312 thanh cong (GPIO4).");
 #else
-  // Chế độ test tạm khi chưa gắn PIR: Kéo chân GPIO 4 xuống PULLDOWN để chống nhiễu điện từ nổi
   pinMode(PIN_PIR, INPUT_PULLDOWN);
-  Serial.println("[SENSORS] PIR tam an / vo hieu hoa khi test: Su dung 100% Radar FMCW 24GHz.");
 #endif
 
-  // 3. Phục hồi và khởi động bus I2C cho ToF VL53L1X
-  recoverI2CBus(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.setClock(400000);
-  tof.setTimeout(500);
+  // 3. Khoi dong ToF VL53L1X
+  initTofSensor();
 
-  if (tof.init()) {
-    tof.setDistanceMode(VL53L1X::Medium);
-    tof.setMeasurementTimingBudget(33000); // 33ms budget
-    setTofRoi(0);
-    tof.startContinuous(33);
-    tofHealthy = true;
-    lastTofReadTime = millis();
-    Serial.println("[SENSORS] Khoi dong ToF VL53L1X thanh cong!");
-  } else {
-    Serial.println("[CANH BAO] Khong tim thay ToF VL53L1X tren bus I2C!");
-    tofHealthy = false;
-  }
-
-  // 4. Radar mmWave FMCW LD2410B qua Serial2 (256000 bps)
+  // 4. Khoi dong Radar FMCW LD2410B qua Serial2 voi pullup an toan
+  pinMode(PIN_RADAR_RX, INPUT_PULLUP);
+  pinMode(PIN_RADAR_TX, OUTPUT);
   Serial2.begin(256000, SERIAL_8N1, PIN_RADAR_RX, PIN_RADAR_TX);
-  delay(100);
+  radarBaudRate = 256000;
+  lastBaudSwitchTime = millis();
+  radarBaudLocked = false;
+  radarState = RADAR_WAIT_H0;
   configureRadarLD2410();
   lastRadarFrameTime = millis();
 
   return true;
 }
 
-void SensorManager::setTofRoi(uint8_t roiIdx) {
-  tof.setROISize(16, 6);
-  tof.setROICenter(ROI_CENTERS[roiIdx]);
-}
+void SensorManager::processRadarPayload(uint8_t* payload, uint16_t len) {
+  if (len < 10) return;
+  uint8_t dataType = payload[0];
 
-void SensorManager::parseRadarStream() {
-  while (Serial2.available() >= 10) {
-    if (Serial2.peek() != 0xF4) {
-      Serial2.read();
-      continue;
-    }
-    
-    if (Serial2.available() < 4) return;
-    uint8_t h[4];
-    Serial2.readBytes(h, 4);
-    if (h[0] != 0xF4 || h[1] != 0xF3 || h[2] != 0xF2 || h[3] != 0xF1) {
-      continue;
-    }
+  if (dataType == 0x01 || dataType == 0x02) {
+    radarTargetState = payload[2];
+    uint16_t moveDist = payload[3] | ((uint16_t)payload[4] << 8);
+    uint8_t  moveEnergy = payload[5];
+    uint16_t statDist = payload[6] | ((uint16_t)payload[7] << 8);
+    uint8_t  statEnergy = payload[8];
+    uint16_t detectDist = (len >= 11) ? (payload[9] | ((uint16_t)payload[10] << 8)) : 0;
 
-    if (Serial2.available() < 2) return;
-    uint8_t lenBytes[2];
-    Serial2.readBytes(lenBytes, 2);
-    uint16_t frameLen = lenBytes[0] | (lenBytes[1] << 8);
+    radarPeakMotion = moveEnergy;
+    radarPeakStatic = statEnergy;
+    radarTargetDist = (radarTargetState == 1) ? moveDist : ((radarTargetState == 2) ? statDist : detectDist);
 
-    if (frameLen > 64 || frameLen < 4) {
-      continue;
-    }
-
-    unsigned long waitStart = millis();
-    while (Serial2.available() < (frameLen + 4) && (millis() - waitStart < 15)) {
-      delayMicroseconds(50);
-    }
-    if (Serial2.available() < (frameLen + 4)) return;
-
-    uint8_t payload[64];
-    Serial2.readBytes(payload, frameLen);
-
-    uint8_t tail[4];
-    Serial2.readBytes(tail, 4);
-    if (tail[0] != 0xF8 || tail[1] != 0xF7 || tail[2] != 0xF6 || tail[3] != 0xF5) {
-      continue;
-    }
-
-    radarHealthy = true;
-    lastRadarFrameTime = millis();
-
-    uint8_t dataType = payload[0];
-    if (dataType == 0x01) {
-      radarTargetState = payload[2];
-      uint16_t moveDist = payload[3] | (payload[4] << 8);
-      uint8_t  moveEnergy = payload[5];
-      uint16_t statDist = payload[6] | (payload[7] << 8);
-      uint8_t  statEnergy = payload[8];
-      uint16_t detectDist = payload[9] | (payload[10] << 8);
-
-      radarPeakMotion = moveEnergy;
-      radarPeakStatic = statEnergy;
-      radarTargetDist = (radarTargetState == 1) ? moveDist : ((radarTargetState == 2) ? statDist : detectDist);
-    } else if (dataType == 0x02) {
-      radarTargetState = payload[2];
-      uint16_t moveDist = payload[3] | (payload[4] << 8);
-      uint8_t  moveEnergy = payload[5];
-      uint16_t statDist = payload[6] | (payload[7] << 8);
-      uint8_t  statEnergy = payload[8];
-      uint16_t detectDist = payload[9] | (payload[10] << 8);
-
-      radarTargetDist = (radarTargetState == 1) ? moveDist : ((radarTargetState == 2) ? statDist : detectDist);
-      radarPeakMotion = moveEnergy;
-      radarPeakStatic = statEnergy;
-
-      if (frameLen >= 30) {
-        for (int i = 0; i < 9 && (13 + i < frameLen); i++) {
-          radarMotionEnergies[i] = payload[13 + i];
-          if (radarMotionEnergies[i] > radarPeakMotion) {
-            radarPeakMotion = radarMotionEnergies[i];
-          }
+    if (dataType == 0x01 && len >= 30) {
+      // Che do Engineering Mode: 9 cong dong nang va 9 cong tinh
+      for (int i = 0; i < 9 && (13 + i < len); i++) {
+        radarMotionEnergies[i] = payload[13 + i];
+        if (radarMotionEnergies[i] > radarPeakMotion) {
+          radarPeakMotion = radarMotionEnergies[i];
         }
-        for (int i = 0; i < 9 && (22 + i < frameLen); i++) {
-          radarStaticEnergies[i] = payload[22 + i];
-          if (radarStaticEnergies[i] > radarPeakStatic) {
-            radarPeakStatic = radarStaticEnergies[i];
-          }
+      }
+      for (int i = 0; i < 9 && (22 + i < len); i++) {
+        radarStaticEnergies[i] = payload[22 + i];
+        if (radarStaticEnergies[i] > radarPeakStatic) {
+          radarPeakStatic = radarStaticEnergies[i];
+        }
+      }
+    } else {
+      // Che do Normal Mode: Tong hop nang luong theo cong cu ly (moi cong ~75cm)
+      int targetGate = (radarTargetDist > 0) ? (radarTargetDist / 75) : 0;
+      if (targetGate > 8) targetGate = 8;
+      for (int i = 0; i < 9; i++) {
+        if (i == targetGate) {
+          radarMotionEnergies[i] = moveEnergy;
+          radarStaticEnergies[i] = statEnergy;
+        } else if (abs(i - targetGate) == 1) {
+          radarMotionEnergies[i] = moveEnergy / 2;
+          radarStaticEnergies[i] = statEnergy / 2;
+        } else {
+          radarMotionEnergies[i] = 0;
+          radarStaticEnergies[i] = 0;
         }
       }
     }
   }
 }
 
+void SensorManager::parseRadarStream() {
+  while (Serial2.available() > 0) {
+    uint8_t b = Serial2.read();
+    switch (radarState) {
+      case RADAR_WAIT_H0:
+        if (b == 0xF4) radarState = RADAR_WAIT_H1;
+        break;
+      case RADAR_WAIT_H1:
+        radarState = (b == 0xF3) ? RADAR_WAIT_H2 : ((b == 0xF4) ? RADAR_WAIT_H1 : RADAR_WAIT_H0);
+        break;
+      case RADAR_WAIT_H2:
+        radarState = (b == 0xF2) ? RADAR_WAIT_H3 : ((b == 0xF4) ? RADAR_WAIT_H1 : RADAR_WAIT_H0);
+        break;
+      case RADAR_WAIT_H3:
+        radarState = (b == 0xF1) ? RADAR_READ_LEN0 : ((b == 0xF4) ? RADAR_WAIT_H1 : RADAR_WAIT_H0);
+        break;
+      case RADAR_READ_LEN0:
+        radarExpectedLen = b;
+        radarState = RADAR_READ_LEN1;
+        break;
+      case RADAR_READ_LEN1:
+        radarExpectedLen |= ((uint16_t)b << 8);
+        if (radarExpectedLen >= 4 && radarExpectedLen <= 60) {
+          radarPayloadIdx = 0;
+          radarState = RADAR_READ_PAYLOAD;
+        } else {
+          radarState = RADAR_WAIT_H0;
+        }
+        break;
+      case RADAR_READ_PAYLOAD:
+        if (radarPayloadIdx < sizeof(radarPayload)) {
+          radarPayload[radarPayloadIdx++] = b;
+        }
+        if (radarPayloadIdx >= radarExpectedLen) {
+          radarState = RADAR_WAIT_T0;
+        }
+        break;
+      case RADAR_WAIT_T0:
+        radarState = (b == 0xF8) ? RADAR_WAIT_T1 : RADAR_WAIT_H0;
+        break;
+      case RADAR_WAIT_T1:
+        radarState = (b == 0xF7) ? RADAR_WAIT_T2 : RADAR_WAIT_H0;
+        break;
+      case RADAR_WAIT_T2:
+        radarState = (b == 0xF6) ? RADAR_WAIT_T3 : RADAR_WAIT_H0;
+        break;
+      case RADAR_WAIT_T3:
+        if (b == 0xF5) {
+          radarHealthy = true;
+          radarBaudLocked = true;
+          lastRadarFrameTime = millis();
+          processRadarPayload(radarPayload, radarExpectedLen);
+        }
+        radarState = RADAR_WAIT_H0;
+        break;
+    }
+  }
+  checkBaudRateAutoDetect();
+}
+
 void SensorManager::update() {
   bool currentTofValid = false;
 
-  if (tofHealthy && tof.dataReady()) {
-    uint16_t rawDist = tof.read(false);
-    uint8_t rangeStatus = tof.ranging_data.range_status;
+  // 1. Doc ToF VL53L1X
+  if (tofHealthy) {
+    if (tof.dataReady()) {
+      uint16_t rawDist = tof.read(false);
+      uint8_t rangeStatus = tof.ranging_data.range_status;
 
-    if (rangeStatus == 0 && rawDist > 50 && rawDist < 4000) {
-      tofHistory[currentRoiIdx][historyIdx[currentRoiIdx]] = rawDist;
-      historyIdx[currentRoiIdx] = (historyIdx[currentRoiIdx] + 1) % 3;
-      tofDistances[currentRoiIdx] = computeMedian(tofHistory[currentRoiIdx], 3);
-      currentTofValid = true;
-      lastTofReadTime = millis();
+      // rangeStatus 0 = Valid, 1 = Sigma Fail (nhung khoang cach van tot), 2 = Signal Fail
+      if ((rangeStatus == 0 || rangeStatus == 1 || rangeStatus == 2) && rawDist > 40 && rawDist < 4000) {
+        primaryTofDistance = rawDist;
+        tofDistances[0] = rawDist;
+        tofDistances[1] = rawDist;
+        tofDistances[2] = rawDist;
+
+        tofHistory[0][historyIdx[0]] = rawDist;
+        historyIdx[0] = (historyIdx[0] + 1) % 3;
+        currentTofValid = true;
+        lastTofReadTime = millis();
+      }
+    } else if (millis() - lastTofReadTime > 2500) {
+      // ToF bi nghen dataReady -> Thu khoi dong lai
+      initTofSensor();
     }
-
-    currentRoiIdx = (currentRoiIdx + 1) % 3;
-    setTofRoi(currentRoiIdx);
-    tof.startContinuous(33);
+  } else if (millis() - lastTofAttemptTime > 3000) {
+    // Thu khoi tao lai ToF neu truoc do chua tim thay
+    initTofSensor();
   }
 
+  // 2. Parse du lieu Radar LD2410
   parseRadarStream();
 
+  // 3. Trang thai PIR AM312
 #if ENABLE_PIR_SENSOR
   bool pirState = digitalRead(PIN_PIR) || pirTriggered;
   pirTriggered = false;
 #else
-  bool pirState = false; // Tạm ẩn PIR: không cần ngắt hay đọc chân nổi
+  bool pirState = (radarPeakMotion >= 15);
 #endif
 
-  // Theo dõi nạn nhân nằm sát sàn bất động kéo dài (Slow fall / Slump detection)
-  bool floorCondition = (tofDistances[2] > 50 && tofDistances[2] <= floorThresholdMm) &&
+  // Theo doi nam san bat dong keo dai
+  bool floorCondition = (primaryTofDistance > 50 && primaryTofDistance <= floorThresholdMm) &&
                         (radarPeakMotion <= POST_FALL_RADAR_MOTION_MAX) &&
                         (radarPeakStatic >= POST_FALL_RADAR_STATIC_MIN);
 
@@ -260,6 +322,7 @@ void SensorManager::update() {
     floorStartTime = 0;
   }
 
+  // 4. Luu vao Circular Buffer
   if (windowBuffer) {
     SensorSample s;
     s.tof_high = tofDistances[0];
@@ -297,6 +360,15 @@ bool SensorManager::isWindowReady() {
 SensorSample SensorManager::getLatestSample() {
   if (!windowBuffer || sampleCount == 0) {
     SensorSample dummy = {0};
+    dummy.tof_high = primaryTofDistance;
+    dummy.tof_mid = primaryTofDistance;
+    dummy.tof_low = primaryTofDistance;
+    dummy.radar_motion_max = radarPeakMotion;
+    dummy.radar_static_max = radarPeakStatic;
+    dummy.radar_target_dist_cm = radarTargetDist;
+    dummy.pir_active = false;
+    dummy.tof_valid = tofHealthy;
+    dummy.timestamp_ms = millis();
     return dummy;
   }
   int lastIdx = (bufferHead - 1 + WINDOW_SIZE) % WINDOW_SIZE;
@@ -306,6 +378,12 @@ SensorSample SensorManager::getLatestSample() {
 void SensorManager::extractFeatures(float* features) {
   if (!windowBuffer || sampleCount < WINDOW_SIZE) {
     for (int i = 0; i < NUM_FEATURES; i++) features[i] = 0.0f;
+    features[0] = (float)radarPeakMotion;
+    features[1] = (float)radarPeakStatic;
+    features[2] = (float)primaryTofDistance;
+    features[3] = (float)primaryTofDistance;
+    features[4] = (float)primaryTofDistance;
+    features[6] = (float)radarTargetDist;
     return;
   }
 
@@ -348,20 +426,20 @@ void SensorManager::extractFeatures(float* features) {
     if (tofDropRate < 0.0f) tofDropRate = 0.0f;
   }
 
-  features[0] = maxMotion;                                          // Đỉnh xung động năng radar (0-100)
-  features[1] = maxStatic;                                          // Năng lượng tĩnh cuối (0-100)
-  features[2] = (float)windowBuffer[newestIdx].tof_high;            // Cự ly ROI cao (mm)
-  features[3] = (float)windowBuffer[newestIdx].tof_mid;             // Cự ly ROI giữa (mm)
-  features[4] = (float)windowBuffer[newestIdx].tof_low;             // Cự ly ROI thấp (mm)
-  features[5] = tofDropRate;                                        // Tốc độ sụt giảm chiều cao (mm/s)
-  features[6] = (float)windowBuffer[newestIdx].radar_target_dist_cm;// Khoảng cách tới mục tiêu (cm)
+  features[0] = maxMotion;                                          // Dinh xung dong nang radar (0-100)
+  features[1] = maxStatic;                                          // Nang luong tinh cuoi (0-100)
+  features[2] = (float)windowBuffer[newestIdx].tof_high;            // Cu ly ToF cao (mm)
+  features[3] = (float)windowBuffer[newestIdx].tof_mid;             // Cu ly ToF giua (mm)
+  features[4] = (float)windowBuffer[newestIdx].tof_low;             // Cu ly ToF thap (mm)
+  features[5] = tofDropRate;                                        // Toc do sut giam chieu cao (mm/s)
+  features[6] = (float)windowBuffer[newestIdx].radar_target_dist_cm;// Khoang cach toi muc tieu (cm)
 }
 
 bool SensorManager::isSensorsHealthy() {
   unsigned long now = millis();
-  bool radarOk = (now - lastRadarFrameTime < 3000);
-  bool tofOk = !tofHealthy || (now - lastTofReadTime < 3000);
-  return radarOk && tofOk;
+  bool radarOk = (now - lastRadarFrameTime < 4000);
+  bool tofOk = (now - lastTofReadTime < 4000);
+  return radarOk || tofOk;
 }
 
 void SensorManager::setFloorThreshold(uint16_t floorMm) {
@@ -373,8 +451,8 @@ uint16_t SensorManager::getFloorThreshold() const {
 }
 
 void SensorManager::calibrateFloor() {
-  if (tofDistances[2] > 200 && tofDistances[2] < 3000) {
-    floorThresholdMm = tofDistances[2];
+  if (primaryTofDistance > 200 && primaryTofDistance < 3500) {
+    floorThresholdMm = primaryTofDistance;
     Serial.printf("[SENSORS] Da hieu chuan do cao san moi: %d mm\n", floorThresholdMm);
   }
 }

@@ -34,14 +34,24 @@ public:
   bool isProlongedFloorInactivity(uint32_t durationMs);
   void resetFloorTracking();
 
+  uint16_t getPrimaryTofDistance() const { return primaryTofDistance; }
+  uint8_t  getRadarPeakMotion() const { return radarPeakMotion; }
+  uint8_t  getRadarPeakStatic() const { return radarPeakStatic; }
+  uint16_t getRadarTargetDist() const { return radarTargetDist; }
+  uint8_t  getRadarTargetState() const { return radarTargetState; }
+  bool     isTofHealthy() const { return tofHealthy; }
+  bool     isRadarHealthy() const { return radarHealthy; }
+
 private:
   VL53L1X tof;
   uint8_t currentRoiIdx;
   uint16_t tofDistances[3];
+  uint16_t primaryTofDistance;
   uint16_t tofHistory[3][3]; // Bộ lọc trung vị 3 mẫu cho 3 vùng ROI
   uint8_t  historyIdx[3];
   bool     tofHealthy;
   uint32_t lastTofReadTime;
+  uint32_t lastTofAttemptTime;
   
   uint8_t  radarMotionEnergies[9];
   uint8_t  radarStaticEnergies[9];
@@ -51,6 +61,28 @@ private:
   uint8_t  radarTargetState;
   bool     radarHealthy;
   uint32_t lastRadarFrameTime;
+
+  // Radar State Machine Parser & Auto-Baud Detection
+  enum RadarParserState {
+    RADAR_WAIT_H0 = 0,
+    RADAR_WAIT_H1,
+    RADAR_WAIT_H2,
+    RADAR_WAIT_H3,
+    RADAR_READ_LEN0,
+    RADAR_READ_LEN1,
+    RADAR_READ_PAYLOAD,
+    RADAR_WAIT_T0,
+    RADAR_WAIT_T1,
+    RADAR_WAIT_T2,
+    RADAR_WAIT_T3
+  };
+  RadarParserState radarState;
+  uint16_t radarExpectedLen;
+  uint16_t radarPayloadIdx;
+  uint8_t  radarPayload[64];
+  uint32_t radarBaudRate;
+  uint32_t lastBaudSwitchTime;
+  bool     radarBaudLocked;
 
   uint16_t floorThresholdMm;
 
@@ -62,8 +94,10 @@ private:
   int bufferHead;
   int sampleCount;
 
-  void setTofRoi(uint8_t roiIdx);
+  bool initTofSensor();
+  void checkBaudRateAutoDetect();
   void parseRadarStream();
+  void processRadarPayload(uint8_t* payload, uint16_t len);
   void configureRadarLD2410();
   uint16_t computeMedian(uint16_t* arr, uint8_t size);
   void recoverI2CBus(uint8_t sdaPin, uint8_t sclPin);

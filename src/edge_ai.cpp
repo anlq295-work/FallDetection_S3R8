@@ -238,20 +238,38 @@ AIClass EdgeAIEngine::predictWithDiagnostics(float* inputFeatures, float* confid
     }
   }
 
-  // Khử nhiễu dựa trên cự ly ToF thực tế
-  float tofHigh = inputFeatures[2];
-  float tofMid  = inputFeatures[3];
-  float tofLow  = inputFeatures[4];
+  // Khử nhiễu và phân loại tư thế dựa trên cự ly ToF và Radar thực tế
+  float tofDist = (inputFeatures[2] > 0) ? inputFeatures[2] : inputFeatures[4];
+  float radarMotion = inputFeatures[0];
+  float radarStatic = inputFeatures[1];
+  float radarDist = inputFeatures[6];
 
-  if (tofHigh >= STAND_HEIGHT_MIN_MM) {
-    bestClass = CLASS_STAND;
-    maxP = 0.85f;
-  } else if (tofMid >= SIT_HEIGHT_MIN_MM && tofHigh < STAND_HEIGHT_MIN_MM) {
-    bestClass = CLASS_SIT;
-    maxP = 0.82f;
-  } else if (tofLow <= FLOOR_HEIGHT_DEFAULT_MM && tofHigh < STAND_HEIGHT_MIN_MM && tofMid < SIT_HEIGHT_MIN_MM) {
-    bestClass = CLASS_LIE;
-    maxP = 0.88f;
+  if (tofDist > 40) {
+    if (tofDist >= STAND_HEIGHT_MIN_MM) {
+      bestClass = CLASS_STAND;
+      maxP = 0.92f;
+    } else if (tofDist >= SIT_HEIGHT_MIN_MM && tofDist < STAND_HEIGHT_MIN_MM) {
+      bestClass = CLASS_SIT;
+      maxP = 0.88f;
+    } else if (tofDist <= FLOOR_HEIGHT_DEFAULT_MM) {
+      bestClass = CLASS_LIE;
+      maxP = 0.90f;
+    } else {
+      bestClass = CLASS_STAND;
+      maxP = 0.85f;
+    }
+  } else {
+    // Khi ToF chưa bắt được cự ly phản hồi (hoặc phòng trống không người)
+    if (radarMotion < 10 && radarStatic < 10) {
+      bestClass = CLASS_STAND; // Phong yen tinh binh thuong
+      maxP = 0.95f;
+    } else if (radarMotion >= 25) {
+      bestClass = CLASS_STAND; // Nguoi dang di lai van dong
+      maxP = 0.88f;
+    } else {
+      bestClass = CLASS_STAND;
+      maxP = 0.80f;
+    }
   }
 
   *confidenceScore = maxP;

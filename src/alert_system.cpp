@@ -235,10 +235,17 @@ bool AlertSystem::connectWiFi(const String& ssid, const String& pass) {
 
   Serial.printf("[WIFI] Dang ket noi toi SSID: %s ...\n", ssid.c_str());
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid.c_str(), pass.c_str());
+  WiFi.setSleep(false); // Tat che do tiet kiem nang luong WiFi de duy tri ket noi sieu on dinh va do tre thap
+  WiFi.setAutoReconnect(true);
+
+  if (pass.length() > 0) {
+    WiFi.begin(ssid.c_str(), pass.c_str());
+  } else {
+    WiFi.begin(ssid.c_str());
+  }
   
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 25) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 35) {
     delay(300);
     Serial.print(".");
     attempts++;
@@ -250,7 +257,7 @@ bool AlertSystem::connectWiFi(const String& ssid, const String& pass) {
                   WiFi.localIP().toString().c_str(), WiFi.RSSI());
     return true;
   } else {
-    Serial.println("[WIFI] Ket noi that bai (Timeout)!");
+    Serial.println("[WIFI] Ket noi ban dau timeout. He thong se tiep tuc thu ket noi lai ngam trong nen!");
     return false;
   }
 }
@@ -259,13 +266,19 @@ void AlertSystem::maintainWiFi(const String& ssid, const String& pass) {
   if (ssid.length() == 0) return;
   unsigned long now = millis();
 
-  // Kiểm tra mỗi 15 giây nếu Wi-Fi bị ngắt
+  // Kiem tra moi 10 giay neu Wi-Fi chua ket noi hoac bi rot mang
   if (WiFi.status() != WL_CONNECTED) {
-    if (now - lastWiFiReconnectAttempt >= 15000) {
+    if (now - lastWiFiReconnectAttempt >= 10000) {
       lastWiFiReconnectAttempt = now;
-      Serial.println("[WIFI] Phat hien mat mang. Dang thu ket noi lai non-blocking...");
-      WiFi.disconnect();
-      WiFi.reconnect();
+      Serial.println("[WIFI] Dang ket noi lai WiFi ngam (non-blocking)...");
+      WiFi.mode(WIFI_STA);
+      WiFi.setSleep(false);
+      WiFi.setAutoReconnect(true);
+      if (pass.length() > 0) {
+        WiFi.begin(ssid.c_str(), pass.c_str());
+      } else {
+        WiFi.begin(ssid.c_str());
+      }
     }
   }
 }

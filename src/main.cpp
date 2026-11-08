@@ -31,11 +31,15 @@ String getSystemTelemetryJson() {
   const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
   const char* stateNames[] = {"NORMAL", "SUSPECTED", "PRE_ALARM", "ALERT", "ACK", "RESOLVED", "FAULT"};
 
+  int h = (lastFeatures[2] > 0) ? (int)lastFeatures[2] : (int)sensorMgr.getPrimaryTofDistance();
+  int m = (lastFeatures[0] > 0) ? (int)lastFeatures[0] : (int)sensorMgr.getRadarPeakMotion();
+  int s = (lastFeatures[1] > 0) ? (int)lastFeatures[1] : (int)sensorMgr.getRadarPeakStatic();
+
   char telemBuf[256];
   snprintf(telemBuf, sizeof(telemBuf),
     "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"ver\":\"%s\"}",
     stateNames[currentState], classNames[lastPredictedClass], lastConfidence,
-    (int)lastFeatures[2], (int)lastFeatures[0], (int)lastFeatures[1], lastFeatures[5],
+    h, m, s, lastFeatures[5],
     (int)lastPirState, (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString().c_str() : "0.0.0.0",
     (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0, (millis() / 1000), FIRMWARE_VERSION);
   return String(telemBuf);
@@ -350,7 +354,9 @@ void loop() {
 
   // 3. Duy trì kết nối Wi-Fi ngầm (non-blocking) & Web Server API
   alertSys.maintainWiFi(wifiSSID, wifiPass);
-  if (WiFi.status() == WL_CONNECTED) {
+  static bool lastWifiConnectedState = false;
+  bool isWifiNow = (WiFi.status() == WL_CONNECTED);
+  if (isWifiNow) {
     if (!deviceWebServer.isRunning()) {
       deviceWebServer.begin(
         getSystemTelemetryJson,
@@ -360,16 +366,33 @@ void loop() {
       );
     }
     deviceWebServer.handle();
+
+    if (!lastWifiConnectedState) {
+      lastWifiConnectedState = true;
+      String ipNotice = "CONNECTED_IP:" + WiFi.localIP().toString();
+      bleProvision.updateStatus(ipNotice);
+      Serial.printf("[WIFI] Da cap IP thanh cong: %s\n", WiFi.localIP().toString().c_str());
+    }
   } else {
     if (deviceWebServer.isRunning()) {
       deviceWebServer.stop();
     }
+    lastWifiConnectedState = false;
+  }
+
+  // Luôn gửi Telemetry thời gian thực qua BLE mỗi 250ms cho App điện thoại
+  if (now - lastTelemetryTime >= 250) {
+    lastTelemetryTime = now;
+    bleProvision.sendTelemetry(getSystemTelemetryJson());
   }
 
   // 4. Chu kỳ lấy mẫu 20 Hz (50ms)
   if (now - lastSampleTime >= (1000 / SAMPLE_RATE_HZ)) {
     lastSampleTime = now;
     sensorMgr.update();
+
+    // Cập nhật giá trị tức thời từ cảm biến
+    lastPirState = sensorMgr.getLatestSample().pir_active;
 
     // 5. Suy luận trạng thái khi cửa sổ trượt đủ 40 mẫu (2 giây)
     if (sensorMgr.isWindowReady() && currentState != STATE_DEVICE_FAULT) {
@@ -384,13 +407,6 @@ void loop() {
       lastPredictedClass = predictedClass;
       lastConfidence = confidence;
       memcpy(lastFeatures, features, sizeof(features));
-      lastPirState = sensorMgr.getLatestSample().pir_active;
-
-      // Gửi Telemetry thời gian thực qua BLE mỗi 250ms cho App điện thoại
-      if (now - lastTelemetryTime >= 250) {
-        lastTelemetryTime = now;
-        bleProvision.sendTelemetry(getSystemTelemetryJson());
-      }
 
       // Đèn ngủ thông minh: Tự động soi đường khi phát hiện người thức dậy ban đêm
       if (currentState == STATE_NORMAL) {
