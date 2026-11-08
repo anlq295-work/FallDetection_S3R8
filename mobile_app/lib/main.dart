@@ -3603,57 +3603,214 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   void _triggerOtaUpdate() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.system_update, color: Colors.blueAccent),
-            SizedBox(width: 8),
-            Text("Cập nhật ứng dụng"),
-          ],
-        ),
-        content: Text(
-          Platform.isIOS
-              ? "Hệ thống sẽ kích hoạt giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần nhấn [Cài đặt] khi cửa sổ xác nhận của iOS xuất hiện trên màn hình."
-              : "Hệ thống sẽ tải file cài đặt app-release.apk mới nhất từ GitHub và mở trình cài đặt Android của máy.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Hủy"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (Platform.isIOS) {
-                const otaUrl = "itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/manifest.plist";
-                final uri = Uri.parse(otaUrl);
+      builder: (ctx) {
+        bool isLoading = true;
+        Map<String, dynamic>? releaseInfo;
+
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            if (isLoading && releaseInfo == null) {
+              () async {
                 try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
-                    );
+                  final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+                  final request = await client.getUrl(
+                    Uri.parse('https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases/latest'),
+                  );
+                  request.headers.set('User-Agent', 'FallGuardApp');
+                  request.headers.set('Accept', 'application/vnd.github.v3+json');
+                  final response = await request.close();
+                  if (response.statusCode == 200) {
+                    final body = await response.transform(utf8.decoder).join();
+                    final data = jsonDecode(body) as Map<String, dynamic>;
+                    if (dialogCtx.mounted) {
+                      setDialogState(() {
+                        releaseInfo = data;
+                        isLoading = false;
+                      });
+                    }
+                  } else {
+                    if (dialogCtx.mounted) {
+                      setDialogState(() {
+                        isLoading = false;
+                      });
+                    }
+                  }
+                } catch (_) {
+                  if (dialogCtx.mounted) {
+                    setDialogState(() {
+                      isLoading = false;
+                    });
                   }
                 }
-              } else {
-                const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
-                final uri = Uri.parse(apkUrl);
-                try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
-                    );
-                  }
+              }();
+            }
+
+            int? apkSize;
+            if (releaseInfo != null && releaseInfo!['assets'] is List) {
+              for (var asset in (releaseInfo!['assets'] as List)) {
+                if (asset is Map && asset['name'] == 'app-release.apk') {
+                  apkSize = asset['size'] as int?;
+                  break;
                 }
               }
-            },
-            child: const Text("Cập nhật ngay"),
-          ),
-        ],
-      ),
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.system_update, color: Colors.blueAccent, size: 28),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text("Cập nhật ứng dụng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_done, color: Colors.blueAccent, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("GitHub Releases (Cloud)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  Text(
+                                    Platform.isIOS ? "Apple In-House OTA (manifest.plist)" : "Android APK Release (app-release.apk)",
+                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                                SizedBox(height: 10),
+                                Text("Đang kiểm tra phiên bản mới nhất từ GitHub...", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Text(
+                                    releaseInfo?['name']?.toString() ?? "Fall Guard Latest Release",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                  ),
+                                ],
+                              ),
+                              if (apkSize != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    Text(
+                                      "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          Platform.isIOS
+                              ? "Hệ thống sẽ kích hoạt giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần nhấn [Cài đặt] khi cửa sổ xác nhận của iOS xuất hiện."
+                              : "Hệ thống sẽ tải file cài đặt APK mới nhất trực tiếp từ GitHub Releases và tự động kích hoạt trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                          style: const TextStyle(fontSize: 12, height: 1.4),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Đóng"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    if (Platform.isIOS) {
+                      const otaUrl = "itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/manifest.plist";
+                      final uri = Uri.parse(otaUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
+                          );
+                        }
+                      }
+                    } else {
+                      const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
+                      final uri = Uri.parse(apkUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.cloud_download),
+                  label: const Text("Cài đặt cập nhật ngay"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -4571,57 +4728,214 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
   void _triggerOtaUpdate() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.system_update, color: Colors.blueAccent),
-            SizedBox(width: 8),
-            Text("Cập nhật ứng dụng"),
-          ],
-        ),
-        content: Text(
-          Platform.isIOS
-              ? "Hệ thống sẽ mở giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần bấm [Cài đặt] khi thông báo của Apple hiện lên màn hình."
-              : "Hệ thống sẽ tải file cài đặt app-release.apk mới nhất từ GitHub và mở trình cài đặt Android của máy.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Hủy"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (Platform.isIOS) {
-                const otaUrl = "itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/manifest.plist";
-                final uri = Uri.parse(otaUrl);
+      builder: (ctx) {
+        bool isLoading = true;
+        Map<String, dynamic>? releaseInfo;
+
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            if (isLoading && releaseInfo == null) {
+              () async {
                 try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
-                    );
+                  final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+                  final request = await client.getUrl(
+                    Uri.parse('https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases/latest'),
+                  );
+                  request.headers.set('User-Agent', 'FallGuardApp');
+                  request.headers.set('Accept', 'application/vnd.github.v3+json');
+                  final response = await request.close();
+                  if (response.statusCode == 200) {
+                    final body = await response.transform(utf8.decoder).join();
+                    final data = jsonDecode(body) as Map<String, dynamic>;
+                    if (dialogCtx.mounted) {
+                      setDialogState(() {
+                        releaseInfo = data;
+                        isLoading = false;
+                      });
+                    }
+                  } else {
+                    if (dialogCtx.mounted) {
+                      setDialogState(() {
+                        isLoading = false;
+                      });
+                    }
+                  }
+                } catch (_) {
+                  if (dialogCtx.mounted) {
+                    setDialogState(() {
+                      isLoading = false;
+                    });
                   }
                 }
-              } else {
-                const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
-                final uri = Uri.parse(apkUrl);
-                try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
-                    );
-                  }
+              }();
+            }
+
+            int? apkSize;
+            if (releaseInfo != null && releaseInfo!['assets'] is List) {
+              for (var asset in (releaseInfo!['assets'] as List)) {
+                if (asset is Map && asset['name'] == 'app-release.apk') {
+                  apkSize = asset['size'] as int?;
+                  break;
                 }
               }
-            },
-            child: const Text("Cập nhật ngay"),
-          ),
-        ],
-      ),
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.system_update, color: Colors.blueAccent, size: 28),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text("Cập nhật ứng dụng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_done, color: Colors.blueAccent, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("GitHub Releases (Cloud)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  Text(
+                                    Platform.isIOS ? "Apple In-House OTA (manifest.plist)" : "Android APK Release (app-release.apk)",
+                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                                SizedBox(height: 10),
+                                Text("Đang kiểm tra phiên bản mới nhất từ GitHub...", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Text(
+                                    releaseInfo?['name']?.toString() ?? "Fall Guard Latest Release",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                  ),
+                                ],
+                              ),
+                              if (apkSize != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    Text(
+                                      "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          Platform.isIOS
+                              ? "Hệ thống sẽ kích hoạt giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần nhấn [Cài đặt] khi cửa sổ xác nhận của iOS xuất hiện."
+                              : "Hệ thống sẽ tải file cài đặt APK mới nhất trực tiếp từ GitHub Releases và tự động kích hoạt trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                          style: const TextStyle(fontSize: 12, height: 1.4),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Đóng"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    if (Platform.isIOS) {
+                      const otaUrl = "itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/manifest.plist";
+                      final uri = Uri.parse(otaUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
+                          );
+                        }
+                      }
+                    } else {
+                      const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
+                      final uri = Uri.parse(apkUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.cloud_download),
+                  label: const Text("Cài đặt cập nhật ngay"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
