@@ -65,7 +65,14 @@ jobs:
       - name: Build Release APK
         run: |
           cd mobile_app
-          flutter build apk --release
+          flutter build apk --release -v 2>&1 | tee ../flutter_build.log
+
+      - name: Upload Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Build-Log
+          path: flutter_build.log
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
