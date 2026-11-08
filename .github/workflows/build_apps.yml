@@ -36,6 +36,19 @@ jobs:
           cd mobile_app
           flutter pub get
 
+      - name: Configure Flutter Tools Maven Mirror
+        run: |
+          FLUTTER_BIN=$(which flutter)
+          FLUTTER_DIR=$(cd "$(dirname "$FLUTTER_BIN")/.." && pwd)
+          echo "Flutter directory is: $FLUTTER_DIR"
+          for f in "$FLUTTER_DIR/packages/flutter_tools/gradle/settings.gradle.kts" "$FLUTTER_DIR/packages/flutter_tools/gradle/build.gradle.kts"; do
+            if [ -f "$f" ]; then
+              echo "Patching Maven mirror into $f"
+              sed -i 's|mavenCentral()|maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/") }\n        mavenCentral()|g' "$f"
+              cat "$f"
+            fi
+          done
+
       - name: Pre-cache Kotlin Compiler Embeddable
         run: |
           DEST_DIR="$HOME/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-compiler-embeddable/2.2.20"
