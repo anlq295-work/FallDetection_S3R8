@@ -3538,7 +3538,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                                 color: Colors.purple.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text("v1.0.1 (Mới nhất)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purpleAccent)),
+                              child: const Text("v1.2.0 (Mới nhất)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purpleAccent)),
                             ),
                           ],
                         ),
@@ -3578,7 +3578,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Phiên bản: v1.0.0 (Build 128x128 HD)\nTự động tải và cập nhật trực tiếp phiên bản mới nhất từ GitHub qua mạng không cần cắm cáp máy tính.",
+                    "Phiên bản: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)\nTự động tải và cập nhật trực tiếp phiên bản mới nhất từ GitHub qua mạng không cần cắm cáp máy tính.",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 14),
