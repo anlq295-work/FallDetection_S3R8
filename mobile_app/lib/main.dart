@@ -3898,9 +3898,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("GitHub Releases (Cloud)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  const Text("GitHub Releases (Trực tiếp)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
                                   Text(
-                                    Platform.isIOS ? "Apple In-House OTA (manifest.plist)" : "Android APK Release (app-release.apk)",
+                                    Platform.isIOS ? "Apple In-House OTA (FallGuard_iOS_unsigned.ipa)" : "Android APK Release (app-release.apk)",
                                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                                   ),
                                 ],
@@ -3910,71 +3910,56 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         ),
                       ),
                       const SizedBox(height: 14),
-                      if (isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                            child: Column(
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                                SizedBox(height: 10),
-                                Text("Đang kiểm tra phiên bản mới nhất từ GitHub...", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
                               ],
                             ),
-                          ),
-                        )
-                      else ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                  Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
-                                ],
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(
+                                  releaseInfo?['name']?.toString() ?? (isLoading ? "Đang kết nối..." : "Fall Guard Latest Release"),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                ),
+                              ],
+                            ),
+                            if (apkSize != null) ...[
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   Text(
-                                    releaseInfo?['name']?.toString() ?? "Fall Guard Latest Release",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                    "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ],
                               ),
-                              if (apkSize != null) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                    Text(
-                                      "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ],
                             ],
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          Platform.isIOS
-                              ? "Hệ thống sẽ kích hoạt giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần nhấn [Cài đặt] khi cửa sổ xác nhận của iOS xuất hiện."
-                              : "Hệ thống sẽ tải file cài đặt APK mới nhất trực tiếp từ GitHub Releases và tự động kích hoạt trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
-                          style: const TextStyle(fontSize: 12, height: 1.4),
-                        ),
-                      ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        Platform.isIOS
+                            ? "Hệ thống sẽ mở đường dẫn cài đặt trực tiếp từ GitHub Releases. Nhấn [Cài đặt] để nâng cấp."
+                            : "Hệ thống kết nối trực tiếp tới bản APK mới nhất trên GitHub Releases và mở trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                        style: const TextStyle(fontSize: 12, height: 1.4),
+                      ),
                     ],
                   ),
                 ),
@@ -3983,6 +3968,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text("Đóng"),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final releasesPage = Uri.parse("https://github.com/anlq295-work/FallDetection_S3R8/releases/latest");
+                    try {
+                      await launchUrl(releasesPage, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                  icon: const Icon(Icons.open_in_browser, size: 16),
+                  label: const Text("Xem Release GitHub"),
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
@@ -3993,11 +3989,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       try {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
-                          );
-                        }
+                        final ipaUrl = Uri.parse("https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/FallGuard_iOS_unsigned.ipa");
+                        await launchUrl(ipaUrl, mode: LaunchMode.externalApplication);
                       }
                     } else {
                       const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";
@@ -4100,6 +4093,36 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () {
+                                urlController.text = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/firmware.bin";
+                              },
+                              child: const Text("GitHub Releases", style: TextStyle(fontSize: 10)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () {
+                                urlController.text = "https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/firmware.bin";
+                              },
+                              child: const Text("GitHub Raw", style: TextStyle(fontSize: 10)),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       ValueListenableBuilder<String>(
                         valueListenable: widget.otaStatusNotifier,
@@ -4160,10 +4183,43 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           );
                         },
                       ),
+                      if (widget.deviceIp.isNotEmpty) ...[
+                        const Divider(height: 28),
+                        const Text(
+                          "2. Nạp trực tiếp qua Web OTA nội bộ (Siêu nhanh)",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.greenAccent),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Mở trang nạp http://${widget.deviceIp}/update trực tiếp trong mạng Wi-Fi để nạp file firmware.bin không cần Internet.",
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.greenAccent),
+                            minimumSize: const Size.fromHeight(40),
+                          ),
+                          onPressed: () async {
+                            final uri = Uri.parse("http://${widget.deviceIp}/update");
+                            try {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Lỗi mở Web OTA: $e")),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.language, size: 18, color: Colors.greenAccent),
+                          label: Text("Mở Web OTA (http://${widget.deviceIp}/update)", style: const TextStyle(color: Colors.greenAccent)),
+                        ),
+                      ],
                       const Divider(height: 32),
-                      const Text(
-                        "2. Nạp qua Bluetooth Low Energy (BLE OTA)",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent),
+                      Text(
+                        widget.deviceIp.isNotEmpty ? "3. Nạp qua Bluetooth Low Energy (BLE OTA)" : "2. Nạp qua Bluetooth Low Energy (BLE OTA)",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent),
                       ),
                       const SizedBox(height: 6),
                       const Text(
@@ -4206,6 +4262,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             final client = HttpClient();
                             client.badCertificateCallback = (cert, host, port) => true;
                             final req = await client.getUrl(Uri.parse(urlController.text.trim()));
+                            req.followRedirects = true;
+                            req.maxRedirects = 5;
                             final resp = await req.close();
                             if (resp.statusCode != 200) {
                               throw Exception("Máy chủ phản hồi mã lỗi HTTP ${resp.statusCode}");
@@ -5744,9 +5802,9 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("GitHub Releases (Cloud)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  const Text("GitHub Releases (Trực tiếp)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
                                   Text(
-                                    Platform.isIOS ? "Apple In-House OTA (manifest.plist)" : "Android APK Release (app-release.apk)",
+                                    Platform.isIOS ? "Apple In-House OTA (FallGuard_iOS_unsigned.ipa)" : "Android APK Release (app-release.apk)",
                                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                                   ),
                                 ],
@@ -5756,71 +5814,56 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      if (isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                            child: Column(
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                                SizedBox(height: 10),
-                                Text("Đang kiểm tra phiên bản mới nhất từ GitHub...", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
                               ],
                             ),
-                          ),
-                        )
-                      else ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                  Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
-                                ],
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(
+                                  releaseInfo?['name']?.toString() ?? (isLoading ? "Đang kết nối..." : "Fall Guard Latest Release"),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                ),
+                              ],
+                            ),
+                            if (apkSize != null) ...[
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   Text(
-                                    releaseInfo?['name']?.toString() ?? "Fall Guard Latest Release",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
+                                    "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ],
                               ),
-                              if (apkSize != null) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                    Text(
-                                      "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ],
                             ],
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          Platform.isIOS
-                              ? "Hệ thống sẽ kích hoạt giao thức cài đặt Apple OTA (itms-services). Bạn chỉ cần nhấn [Cài đặt] khi cửa sổ xác nhận của iOS xuất hiện."
-                              : "Hệ thống sẽ tải file cài đặt APK mới nhất trực tiếp từ GitHub Releases và tự động kích hoạt trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
-                          style: const TextStyle(fontSize: 12, height: 1.4),
-                        ),
-                      ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        Platform.isIOS
+                            ? "Hệ thống sẽ mở đường dẫn cài đặt trực tiếp từ GitHub Releases. Nhấn [Cài đặt] để nâng cấp."
+                            : "Hệ thống kết nối trực tiếp tới bản APK mới nhất trên GitHub Releases và mở trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                        style: const TextStyle(fontSize: 12, height: 1.4),
+                      ),
                     ],
                   ),
                 ),
@@ -5829,6 +5872,17 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text("Đóng"),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final releasesPage = Uri.parse("https://github.com/anlq295-work/FallDetection_S3R8/releases/latest");
+                    try {
+                      await launchUrl(releasesPage, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                  icon: const Icon(Icons.open_in_browser, size: 16),
+                  label: const Text("Xem Release GitHub"),
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
@@ -5839,11 +5893,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                       try {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Lỗi mở liên kết OTA: $e")),
-                          );
-                        }
+                        final ipaUrl = Uri.parse("https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/FallGuard_iOS_unsigned.ipa");
+                        await launchUrl(ipaUrl, mode: LaunchMode.externalApplication);
                       }
                     } else {
                       const apkUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/app-release.apk";

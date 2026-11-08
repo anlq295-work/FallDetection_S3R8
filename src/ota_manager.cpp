@@ -34,6 +34,7 @@ bool OtaManager::performHttpOta(const String& url) {
 
   httpUpdate.setLedPin(-1); // Khong dung den LED mac dinh cua thu vien
   httpUpdate.rebootOnUpdate(false); // Tu reboot thu cong sau khi gui status bao ve App
+  httpUpdate.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); // Cho phep tu dong follow HTTP 302 redirect tu GitHub Releases sang Cloud Storage CDN
 
   httpUpdate.onProgress([](size_t current, size_t total) {
     esp_task_wdt_reset();

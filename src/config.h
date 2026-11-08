@@ -25,9 +25,10 @@
 #ifdef PIN_NEOPIXEL
   #undef PIN_NEOPIXEL
 #endif
-#define PIN_NEOPIXEL          6     // WS2812B DIN (6 bóng RGB)
+#define PIN_NEOPIXEL          6     // WS2812B DIN (8 bóng RGB)
 #define PIN_CANCEL_BTN        0     // Nút bấm BOOT GPIO 0 (Active LOW)
-#define NUM_LEDS              6
+#define NUM_LEDS              8     // Cấu hình 8 bóng LED cho thanh LED WS2812B
+#define LED_BRIGHTNESS        255   // Độ sáng LED (0 - 255): 200 (~80%) sáng rõ đẹp, không bị mờ
 
 #define PIN_I2C_SDA           8     // ToF VL53L1X SDA
 #define PIN_I2C_SCL           9     // ToF VL53L1X SCL

@@ -92,8 +92,12 @@ void AlertSystem::init() {
   earlyHardwareMute(); // Đảm bảo còi tắt tuyệt đối và đọc phân cực từ NVS
 
   strip.begin();
-  strip.setBrightness(70);
-  setIndicator(strip.Color(0, 0, 50), false); // Đèn xanh dương báo đang khởi động
+#ifdef LED_BRIGHTNESS
+  strip.setBrightness(LED_BRIGHTNESS);
+#else
+  strip.setBrightness(200);
+#endif
+  setIndicator(strip.Color(0, 100, 255), false); // Đèn xanh dương báo đang khởi động tươi sáng rõ nét
 
 #if ENABLE_STARTUP_BEEP
   // Âm báo Welcome khởi động hệ thống
@@ -209,7 +213,7 @@ void AlertSystem::updateNightlight(bool motionDetected) {
     nightlightEndTime = now + NIGHTLIGHT_TIMEOUT_MS;
     // Bật đèn vàng ấm dịu nhẹ soi đường đi (Warm Golden Light)
     for (int i = 0; i < NUM_LEDS; i++) {
-      strip.setPixelColor(i, strip.Color(60, 40, 10));
+      strip.setPixelColor(i, strip.Color(150, 100, 30));
     }
     strip.show();
   } else if (nightlightActive) {
@@ -217,7 +221,7 @@ void AlertSystem::updateNightlight(bool motionDetected) {
       nightlightActive = false;
       // Trở về đèn ngủ ambient tối nhẹ (Warm dim)
       for (int i = 0; i < NUM_LEDS; i++) {
-        strip.setPixelColor(i, strip.Color(15, 10, 5));
+        strip.setPixelColor(i, strip.Color(35, 22, 10));
       }
       strip.show();
     }

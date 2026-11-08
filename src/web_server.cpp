@@ -1,6 +1,8 @@
 #include "web_server.h"
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <Update.h>
+#include <esp_task_wdt.h>
 
 DeviceWebServer deviceWebServer;
 
@@ -85,6 +87,52 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
   server.on("/api/command", HTTP_POST, handleCommand);
   server.on("/api/command", HTTP_OPTIONS, handleCommand);
 
+  // Endpoint 5: Web OTA trực tiếp qua trình duyệt trên cùng mạng Wi-Fi
+  server.on("/update", HTTP_GET, [this]() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    String html = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>FallGuard S3R8 Firmware Update</title>"
+                  "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                  "<style>body{font-family:sans-serif;padding:24px;background:#0d1117;color:#c9d1d9;text-align:center}"
+                  ".card{background:#161b22;border:1px solid #30363d;border-radius:12px;max-width:480px;margin:30px auto;padding:24px}"
+                  "h2{color:#58a6ff;margin-top:0}input[type=file]{margin:20px 0;color:#c9d1d9}"
+                  "input[type=submit]{background:#238636;color:#fff;border:none;padding:12px 24px;font-size:16px;border-radius:6px;cursor:pointer;font-weight:bold}"
+                  "input[type=submit]:hover{background:#2ea043}.note{font-size:12px;color:#8b949e;margin-top:16px}</style></head>"
+                  "<body><div class='card'><h2>FallGuard S3R8 Web OTA</h2>"
+                  "<p>Nap truc tiep file <b>firmware.bin</b> qua Wi-Fi noi bo toc do cao</p>"
+                  "<form method='POST' action='/update' enctype='multipart/form-data'>"
+                  "<input type='file' name='update' accept='.bin' required><br>"
+                  "<input type='submit' value='Bat dau nap Firmware'>"
+                  "</form><div class='note'>Sau khi nap xong, ESP32 se tu dong kiem tra va khoi dong lai.</div></div></body></html>";
+    server.send(200, "text/html", html);
+  });
+
+  server.on("/update", HTTP_POST, [this]() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "UPDATE FAILED" : "UPDATE SUCCESS! REBOOTING...");
+    delay(1000);
+    ESP.restart();
+  }, [this]() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("[WEB OTA] Bat dau nhan file: %s\n", upload.filename.c_str());
+      esp_task_wdt_reset();
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      esp_task_wdt_reset();
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) {
+        Serial.printf("[WEB OTA] Nap hoan tat: %u bytes! Khoi dong lai...\n", (unsigned int)upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+
   // Trang chủ mặc định: Thông tin trực quan về API
   server.on("/", HTTP_GET, [this]() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -98,6 +146,7 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
                   "<li><a href='/api/telemetry'>GET /api/telemetry</a> - Du lieu giam sat truc tiep</li>"
                   "<li><a href='/api/events'>GET /api/events</a> - Nhat ky hop den NVS Flash</li>"
                   "<li><a href='/api/status'>GET /api/status</a> - Thong so phan cung & he thong</li>"
+                  "<li><a href='/update'>GET /update</a> - Web OTA nap firmware truc tiep qua Wi-Fi</li>"
                   "<li>POST /api/command?cmd=&lt;CMD&gt; - Gui lenh dieu khien tu xa</li>"
                   "</ul>"
                   "</body></html>";
