@@ -36,49 +36,63 @@ jobs:
           cd mobile_app
           flutter pub get
 
-      - name: Configure Flutter Tools Maven Mirror
+      - name: Configure Maven Mirrors via Gradle Init Script
         run: |
-          FLUTTER_BIN=$(which flutter)
-          FLUTTER_DIR=$(cd "$(dirname "$FLUTTER_BIN")/.." && pwd)
-          echo "Flutter directory is: $FLUTTER_DIR"
-          for f in "$FLUTTER_DIR/packages/flutter_tools/gradle/settings.gradle.kts" "$FLUTTER_DIR/packages/flutter_tools/gradle/build.gradle.kts"; do
-            if [ -f "$f" ]; then
-              echo "Patching Maven mirror into $f"
-              sed -i 's|mavenCentral()|maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/") }\n        mavenCentral()|g' "$f"
-              cat "$f"
-            fi
-          done
-
-      - name: Pre-cache Kotlin Compiler Embeddable
-        run: |
-          DEST_DIR="$HOME/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-compiler-embeddable/2.2.20"
-          JAR_DIR="$DEST_DIR/bb8331b7585e36ea311825b01a1c06860c055fd1"
-          POM_DIR="$DEST_DIR/b0e635c9dc54ff7f8bee3ffe88a6e0947332d14b"
-          mkdir -p "$JAR_DIR" "$POM_DIR"
-          echo "Pre-caching kotlin-compiler-embeddable 2.2.20 from Google Maven Mirror..."
-          curl -sSL --retry 5 --retry-delay 2 -o "$JAR_DIR/kotlin-compiler-embeddable-2.2.20.jar" \
-            "https://maven-central.storage-download.googleapis.com/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.2.20/kotlin-compiler-embeddable-2.2.20.jar"
-          curl -sSL --retry 5 --retry-delay 2 -o "$POM_DIR/kotlin-compiler-embeddable-2.2.20.pom" \
-            "https://maven-central.storage-download.googleapis.com/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.2.20/kotlin-compiler-embeddable-2.2.20.pom"
-          ls -lh "$JAR_DIR" "$POM_DIR"
+          mkdir -p "$HOME/.gradle/init.d"
+          cat << 'EOF' > "$HOME/.gradle/init.d/mirror.init.gradle"
+          allprojects {
+              buildscript {
+                  repositories {
+                      all { ArtifactRepository repo ->
+                          if (repo instanceof MavenArtifactRepository) {
+                              if (repo.url.toString().contains("repo.maven.apache.org") || repo.url.toString().contains("repo1.maven.org")) {
+                                  repo.url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+                              }
+                          }
+                      }
+                  }
+              }
+              repositories {
+                  all { ArtifactRepository repo ->
+                      if (repo instanceof MavenArtifactRepository) {
+                          if (repo.url.toString().contains("repo.maven.apache.org") || repo.url.toString().contains("repo1.maven.org")) {
+                              repo.url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+                          }
+                      }
+                  }
+              }
+          }
+          gradle.settingsEvaluated { settings ->
+              settings.pluginManagement.repositories.all { repo ->
+                  if (repo instanceof MavenArtifactRepository) {
+                      if (repo.url.toString().contains("repo.maven.apache.org") || repo.url.toString().contains("repo1.maven.org")) {
+                          repo.url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+                      }
+                  }
+              }
+              settings.dependencyResolutionManagement.repositories.all { repo ->
+                  if (repo instanceof MavenArtifactRepository) {
+                      if (repo.url.toString().contains("repo.maven.apache.org") || repo.url.toString().contains("repo1.maven.org")) {
+                          repo.url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+                      }
+                  }
+              }
+          }
+          EOF
+          echo "Successfully created ~/.gradle/init.d/mirror.init.gradle"
 
       - name: Build Release APK
         run: |
           cd mobile_app
-          flutter build apk --release -v 2>&1 | tee ../flutter_build.log
-
-      - name: Upload Build Log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Android-Build-Log
-          path: flutter_build.log
+          flutter build apk --release
+          ls -la build/app/outputs/flutter-apk/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FallGuard-Android-APK
           path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
   build-ios:
     name: Build iOS IPA
