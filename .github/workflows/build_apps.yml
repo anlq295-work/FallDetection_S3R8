@@ -36,6 +36,19 @@ jobs:
           cd mobile_app
           flutter pub get
 
+      - name: Pre-cache Kotlin Compiler Embeddable
+        run: |
+          DEST_DIR="$HOME/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-compiler-embeddable/2.2.20"
+          JAR_DIR="$DEST_DIR/bb8331b7585e36ea311825b01a1c06860c055fd1"
+          POM_DIR="$DEST_DIR/b0e635c9dc54ff7f8bee3ffe88a6e0947332d14b"
+          mkdir -p "$JAR_DIR" "$POM_DIR"
+          echo "Pre-caching kotlin-compiler-embeddable 2.2.20 from Google Maven Mirror..."
+          curl -sSL --retry 5 --retry-delay 2 -o "$JAR_DIR/kotlin-compiler-embeddable-2.2.20.jar" \
+            "https://maven-central.storage-download.googleapis.com/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.2.20/kotlin-compiler-embeddable-2.2.20.jar"
+          curl -sSL --retry 5 --retry-delay 2 -o "$POM_DIR/kotlin-compiler-embeddable-2.2.20.pom" \
+            "https://maven-central.storage-download.googleapis.com/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.2.20/kotlin-compiler-embeddable-2.2.20.pom"
+          ls -lh "$JAR_DIR" "$POM_DIR"
+
       - name: Build Release APK
         run: |
           cd mobile_app
