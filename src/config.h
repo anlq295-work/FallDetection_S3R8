@@ -10,7 +10,7 @@
 // 1. PINOUT AN TOÀN CHO ESP32-S3R8 & CẤU HÌNH CẢM BIẾN
 // (LƯU Ý CỰC KỲ QUAN TRỌNG: TRÁNH TUYỆT ĐỐI CÁC CHÂN TỪ GPIO 33 ĐẾN 37 VÌ DÀNH CHO OCTAL PSRAM/OPI FLASH)
 // =========================================================================
-#define ENABLE_PIR_SENSOR     0     // Đặt 0: Vô hiệu hóa/ẩn PIR khi test mạch chưa có cảm biến PIR (chân GPIO 4 kéo pulldown chống nhiễu)
+#define ENABLE_PIR_SENSOR     1     // Đặt 1: Bật cảm biến hồng ngoại PIR AM312 (chân GPIO 4 ngắt ngoài RTC)
 #define PIN_PIR               4     // PIR AM312 (Ngắt ngoài RTC)
 #define PIN_BUZZER            5     // Active Buzzer 5V
 
