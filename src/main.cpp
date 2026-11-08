@@ -4,10 +4,12 @@
 #include "alert_system.h"
 #include "ble_provision.h"
 #include "ota_manager.h"
+#include "web_server.h"
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 #include <esp_idf_version.h>
 #include <nvs_flash.h>
+#include <ArduinoJson.h>
 
 SensorManager sensorMgr;
 EdgeAIEngine  aiEngine;
@@ -15,6 +17,47 @@ AlertSystem   alertSys;
 
 SystemState currentState = STATE_NORMAL;
 FallEventType currentEventType = EVENT_NONE;
+
+String wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken;
+uint16_t configuredFloorMm = FLOOR_HEIGHT_DEFAULT_MM;
+
+// Dữ liệu Telemetry thời gian thực được cập nhật cho cả BLE và Wi-Fi Web Server
+AIClass lastPredictedClass = CLASS_STAND;
+float lastConfidence = 0.0f;
+float lastFeatures[NUM_FEATURES] = {0};
+bool lastPirState = false;
+
+String getSystemTelemetryJson() {
+  const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
+  const char* stateNames[] = {"NORMAL", "SUSPECTED", "PRE_ALARM", "ALERT", "ACK", "RESOLVED", "FAULT"};
+
+  char telemBuf[256];
+  snprintf(telemBuf, sizeof(telemBuf),
+    "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"ver\":\"%s\"}",
+    stateNames[currentState], classNames[lastPredictedClass], lastConfidence,
+    (int)lastFeatures[2], (int)lastFeatures[0], (int)lastFeatures[1], lastFeatures[5],
+    (int)lastPirState, (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString().c_str() : "0.0.0.0",
+    (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0, (millis() / 1000), FIRMWARE_VERSION);
+  return String(telemBuf);
+}
+
+String getSystemStatusJson() {
+  StaticJsonDocument<384> doc;
+  doc["version"] = FIRMWARE_VERSION;
+  doc["state"] = currentState;
+  doc["ip"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : "DISCONNECTED";
+  doc["rssi"] = (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0;
+  doc["floor_mm"] = configuredFloorMm;
+  doc["buzzer_active_high"] = alertSys.isBuzzerActiveHigh();
+  doc["buzzer_muted"] = alertSys.isMuted();
+  doc["pir_enabled"] = ENABLE_PIR_SENSOR;
+  doc["pir_active"] = lastPirState;
+  doc["free_heap"] = ESP.getFreeHeap();
+  doc["uptime_sec"] = millis() / 1000;
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
 
 unsigned long lastSampleTime = 0;
 unsigned long lastTelemetryTime = 0;
@@ -27,9 +70,6 @@ bool recoveryTracking = false;
 float recordedImpactVelocity = 0.0f;
 uint8_t recordedImpactMotion = 0;
 uint16_t recordedTargetDist = 0;
-
-String wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken;
-uint16_t configuredFloorMm = FLOOR_HEIGHT_DEFAULT_MM;
 
 // Quản lý nút bấm vật lý GPIO 0 (BOOT): Nhấn nhả (Hủy) vs Nhấn giữ 3s (SOS thủ công)
 static unsigned long btnPressStartTime = 0;
@@ -79,81 +119,92 @@ void handleButtonInput() {
   }
 }
 
+void executeSystemCommand(const String& cmd) {
+  if (cmd == "CALIBRATE_FLOOR") {
+    sensorMgr.calibrateFloor();
+    configuredFloorMm = sensorMgr.getFloorThreshold();
+    bleProvision.saveFloorThreshold(configuredFloorMm);
+    bleProvision.updateStatus("FLOOR_CALIBRATED_OK:" + String(configuredFloorMm));
+  } else if (cmd == "CANCEL_ALARM") {
+    Serial.println("[CMD] Nhan lenh: Huy canh bao khan cap");
+    currentState = STATE_RESOLVED;
+    alertSys.setIndicator(0x00FF00, false);
+    alertSys.setBuzzerPattern(BUZZER_CONFIRM_BEEP);
+    sensorMgr.resetFloorTracking();
+    delay(1000);
+    currentState = STATE_NORMAL;
+    alertSys.setBuzzerPattern(BUZZER_SILENT);
+    bleProvision.updateStatus("ALARM_CANCELLED_REMOTE");
+  } else if (cmd == "TEST_ALARM") {
+    Serial.println("[CMD] Nhan lenh: Test bao dong");
+    alertSys.setIndicator(0xFF0000, true);
+    alertSys.playBeep(400);
+    alertSys.setIndicator(0x00FF00, false);
+    bleProvision.updateStatus("TEST_ALARM_COMPLETED");
+  } else if (cmd == "PANIC_SOS") {
+    Serial.println("[CMD] Nhan lenh SOS tu xa!");
+    currentEventType = EVENT_MANUAL_SOS;
+    recordedImpactVelocity = 0.0f;
+    recordedImpactMotion = 100;
+    recordedTargetDist = 0;
+    currentState = STATE_ALERT;
+  } else if (cmd == "GET_HISTORY") {
+    String histJson = bleProvision.getEventHistoryJson();
+    Serial.printf("[CMD] Gui lich su hop den NVS (%d bytes)\n", histJson.length());
+    bleProvision.sendTelemetry(histJson);
+    bleProvision.updateStatus("HISTORY_SENT");
+  } else if (cmd == "ADD_TEST_EVENT") {
+    bleProvision.logFallEvent(EVENT_FALL_IMPACT, 680.0f, 88, 165);
+    String histJson = bleProvision.getEventHistoryJson();
+    Serial.printf("[CMD] Da tao su kien test hop den: %s\n", histJson.c_str());
+    bleProvision.sendTelemetry(histJson);
+    bleProvision.updateStatus("TEST_EVENT_ADDED");
+  } else if (cmd == "CLEAR_HISTORY") {
+    bleProvision.clearHistory();
+    bleProvision.updateStatus("HISTORY_CLEARED_OK");
+  } else if (cmd == "GET_VERSION") {
+    bleProvision.updateStatus(String("FIRMWARE_VERSION:") + FIRMWARE_VERSION);
+  } else if (cmd == "BUZZER_ACTIVE_LOW" || cmd == "SET_BUZZER_LOW") {
+    alertSys.setBuzzerActiveHigh(false);
+    bleProvision.updateStatus("BUZZER_MODE:ACTIVE_LOW");
+    Serial.println("[CMD] Da chuyen sang coi kich muc Thap (Active-LOW)!");
+  } else if (cmd == "BUZZER_ACTIVE_HIGH" || cmd == "SET_BUZZER_HIGH") {
+    alertSys.setBuzzerActiveHigh(true);
+    bleProvision.updateStatus("BUZZER_MODE:ACTIVE_HIGH");
+    Serial.println("[CMD] Da chuyen sang coi kich muc Cao (Active-HIGH)!");
+  } else if (cmd == "BUZZER_MUTE") {
+    alertSys.setMuted(true);
+    bleProvision.updateStatus("BUZZER_MUTED");
+    Serial.println("[CMD] Da tat coi hoan toan (Mute)!");
+  } else if (cmd == "BUZZER_UNMUTE") {
+    alertSys.setMuted(false);
+    bleProvision.updateStatus("BUZZER_UNMUTED");
+    Serial.println("[CMD] Da bat lai coi (Unmute)!");
+  } else if (cmd == "TEST_BEEP") {
+    alertSys.playBeep(200);
+    bleProvision.updateStatus("BEEP_TEST_OK");
+  } else if (cmd.startsWith("OTA_HTTP:")) {
+    String url = cmd.substring(9);
+    url.trim();
+    Serial.printf("[CMD] Nhan lenh OTA qua Wi-Fi: %s\n", url.c_str());
+    alertSys.setIndicator(0x800080, false);
+    otaManager.performHttpOta(url);
+  } else if (cmd == "OTA_LATEST" || cmd == "OTA_GITHUB_LATEST") {
+    String latestUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/firmware.bin";
+    Serial.printf("[CMD] Nhan lenh OTA ban moi nhat tu GitHub: %s\n", latestUrl.c_str());
+    alertSys.setIndicator(0x800080, false);
+    otaManager.performHttpOta(latestUrl);
+  } else if (cmd == "REBOOT") {
+    Serial.println("[CMD] Khoi dong lai chip ESP32-S3...");
+    delay(500);
+    ESP.restart();
+  }
+}
+
 void processBleCommands() {
   String cmd;
   if (bleProvision.checkAndClearCommand(cmd)) {
-    if (cmd == "CALIBRATE_FLOOR") {
-      sensorMgr.calibrateFloor();
-      configuredFloorMm = sensorMgr.getFloorThreshold();
-      bleProvision.saveFloorThreshold(configuredFloorMm);
-      bleProvision.updateStatus("FLOOR_CALIBRATED_OK:" + String(configuredFloorMm));
-    } else if (cmd == "CANCEL_ALARM") {
-      Serial.println("[BLE] Nhan lenh tu App: Huy canh bao khan cap");
-      currentState = STATE_RESOLVED;
-      alertSys.setIndicator(0x00FF00, false);
-      alertSys.setBuzzerPattern(BUZZER_CONFIRM_BEEP);
-      sensorMgr.resetFloorTracking();
-      delay(1000);
-      currentState = STATE_NORMAL;
-      alertSys.setBuzzerPattern(BUZZER_SILENT);
-      bleProvision.updateStatus("ALARM_CANCELLED_REMOTE");
-    } else if (cmd == "TEST_ALARM") {
-      Serial.println("[BLE] Nhan lenh tu App: Test bao dong");
-      alertSys.setIndicator(0xFF0000, true);
-      alertSys.playBeep(400);
-      alertSys.setIndicator(0x00FF00, false);
-      bleProvision.updateStatus("TEST_ALARM_COMPLETED");
-    } else if (cmd == "PANIC_SOS") {
-      Serial.println("[BLE] Nhan lenh SOS tu xa tu ung dung!");
-      currentEventType = EVENT_MANUAL_SOS;
-      currentState = STATE_ALERT;
-    } else if (cmd == "GET_HISTORY") {
-      String histJson = bleProvision.getEventHistoryJson();
-      Serial.printf("[BLE] Gui lich su hop den NVS (%d bytes): %s\n", histJson.length(), histJson.c_str());
-      bleProvision.sendTelemetry(histJson);
-      bleProvision.updateStatus("HISTORY_SENT");
-    } else if (cmd == "ADD_TEST_EVENT") {
-      bleProvision.logFallEvent(EVENT_FALL_IMPACT, 680.0f, 88, 165);
-      String histJson = bleProvision.getEventHistoryJson();
-      Serial.printf("[BLE] Da tao su kien test hop den: %s\n", histJson.c_str());
-      bleProvision.sendTelemetry(histJson);
-      bleProvision.updateStatus("TEST_EVENT_ADDED");
-    } else if (cmd == "CLEAR_HISTORY") {
-      bleProvision.clearHistory();
-      bleProvision.updateStatus("HISTORY_CLEARED_OK");
-    } else if (cmd == "GET_VERSION") {
-      bleProvision.updateStatus(String("FIRMWARE_VERSION:") + FIRMWARE_VERSION);
-    } else if (cmd == "BUZZER_ACTIVE_LOW" || cmd == "SET_BUZZER_LOW") {
-      alertSys.setBuzzerActiveHigh(false);
-      bleProvision.updateStatus("BUZZER_MODE:ACTIVE_LOW");
-      Serial.println("[BLE] Da chuyen sang coi kich muc Thap (Active-LOW)!");
-    } else if (cmd == "BUZZER_ACTIVE_HIGH" || cmd == "SET_BUZZER_HIGH") {
-      alertSys.setBuzzerActiveHigh(true);
-      bleProvision.updateStatus("BUZZER_MODE:ACTIVE_HIGH");
-      Serial.println("[BLE] Da chuyen sang coi kich muc Cao (Active-HIGH)!");
-    } else if (cmd == "BUZZER_MUTE") {
-      alertSys.setMuted(true);
-      bleProvision.updateStatus("BUZZER_MUTED");
-      Serial.println("[BLE] Da tat coi hoan toan (Mute)!");
-    } else if (cmd == "BUZZER_UNMUTE") {
-      alertSys.setMuted(false);
-      bleProvision.updateStatus("BUZZER_UNMUTED");
-      Serial.println("[BLE] Da bat lai coi (Unmute)!");
-    } else if (cmd == "TEST_BEEP") {
-      alertSys.playBeep(200);
-      bleProvision.updateStatus("BEEP_TEST_OK");
-    } else if (cmd.startsWith("OTA_HTTP:")) {
-      String url = cmd.substring(9);
-      url.trim();
-      Serial.printf("[BLE] Nhan lenh OTA qua Wi-Fi: %s\n", url.c_str());
-      alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
-      otaManager.performHttpOta(url);
-    } else if (cmd == "OTA_LATEST" || cmd == "OTA_GITHUB_LATEST") {
-      String latestUrl = "https://github.com/anlq295-work/FallDetection_S3R8/releases/latest/download/firmware.bin";
-      Serial.printf("[BLE] Nhan lenh OTA ban moi nhat tu GitHub: %s\n", latestUrl.c_str());
-      alertSys.setIndicator(0x800080, false); // Mau tim chi bao dang nap OTA
-      otaManager.performHttpOta(latestUrl);
-    }
+    executeSystemCommand(cmd);
   }
 
   if (bleProvision.isRebootRequested()) {
@@ -225,6 +276,12 @@ void setup() {
     if (alertSys.connectWiFi(wifiSSID, wifiPass)) {
       String ipNotice = "CONNECTED_IP:" + WiFi.localIP().toString();
       bleProvision.updateStatus(ipNotice);
+      deviceWebServer.begin(
+        getSystemTelemetryJson,
+        []() { return bleProvision.getEventHistoryJson(); },
+        getSystemStatusJson,
+        executeSystemCommand
+      );
     } else {
       bleProvision.updateStatus("WIFI_CONNECT_FAILED");
     }
@@ -291,8 +348,23 @@ void loop() {
   processBleCommands();
   handleSerialCommands();
 
-  // 3. Duy trì kết nối Wi-Fi ngầm (non-blocking)
+  // 3. Duy trì kết nối Wi-Fi ngầm (non-blocking) & Web Server API
   alertSys.maintainWiFi(wifiSSID, wifiPass);
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!deviceWebServer.isRunning()) {
+      deviceWebServer.begin(
+        getSystemTelemetryJson,
+        []() { return bleProvision.getEventHistoryJson(); },
+        getSystemStatusJson,
+        executeSystemCommand
+      );
+    }
+    deviceWebServer.handle();
+  } else {
+    if (deviceWebServer.isRunning()) {
+      deviceWebServer.stop();
+    }
+  }
 
   // 4. Chu kỳ lấy mẫu 20 Hz (50ms)
   if (now - lastSampleTime >= (1000 / SAMPLE_RATE_HZ)) {
@@ -308,18 +380,16 @@ void loop() {
       FallDiagnostic diag;
       AIClass predictedClass = aiEngine.predictWithDiagnostics(features, &confidence, &diag);
 
+      // Lưu trữ trạng thái telemetry mới nhất cho cả BLE và Wi-Fi Server
+      lastPredictedClass = predictedClass;
+      lastConfidence = confidence;
+      memcpy(lastFeatures, features, sizeof(features));
+      lastPirState = sensorMgr.getLatestSample().pir_active;
+
       // Gửi Telemetry thời gian thực qua BLE mỗi 250ms cho App điện thoại
       if (now - lastTelemetryTime >= 250) {
         lastTelemetryTime = now;
-        const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
-        const char* stateNames[] = {"NORMAL", "SUSPECTED", "PRE_ALARM", "ALERT", "ACK", "RESOLVED", "FAULT"};
-
-        char telemBuf[192];
-        snprintf(telemBuf, sizeof(telemBuf), 
-                 "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"ver\":\"%s\"}",
-                 stateNames[currentState], classNames[predictedClass], confidence,
-                 (int)features[2], (int)features[0], (int)features[1], features[5], FIRMWARE_VERSION);
-        bleProvision.sendTelemetry(String(telemBuf));
+        bleProvision.sendTelemetry(getSystemTelemetryJson());
       }
 
       // Đèn ngủ thông minh: Tự động soi đường khi phát hiện người thức dậy ban đêm

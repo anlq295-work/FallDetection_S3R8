@@ -481,6 +481,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final TextEditingController _botTokenController = TextEditingController();
   double _floorThreshold = 450;
 
+  // Giám sát trực tiếp qua mạng Wi-Fi LAN (Direct Wi-Fi Telemetry)
+  String _deviceIp = "";
+  final TextEditingController _deviceIpController = TextEditingController();
+  bool _isWifiMonitoringEnabled = false;
+  bool _isWifiConnected = false;
+  int _wifiDelayMs = 0;
+  Timer? _wifiPollTimer;
+  int _wifiFailureCount = 0;
+
   // Dữ liệu Telemetry thời gian thực
   String _sysState = "DISCONNECTED";
   String _aiPosture = "UNKNOWN";
@@ -489,7 +498,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   int _radarMotion = 0;
   int _radarStatic = 0;
   double _dropRate = 0.0;
-  String _deviceFirmwareVersion = "v1.0.0";
+  String _deviceFirmwareVersion = "v1.2.0";
   List<dynamic> _eventHistory = [];
   bool _isLoadingHistory = false;
 
@@ -565,7 +574,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   void _startInactivityTicker() {
     _inactivityTicker?.cancel();
     _inactivityTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isConnected) {
+      if (!_isConnected && !_isWifiConnected) {
         if (_roomPresenceStartTime != null) {
           setState(() {
             _roomPresenceStartTime = null;
@@ -783,6 +792,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   // Tải cài đặt chung từ bộ nhớ
   Future<void> _loadGeneralSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedIp = prefs.getString('saved_device_ip') ?? "";
+    final wifiMon = prefs.getBool('wifi_monitoring_enabled') ?? false;
+
     setState(() {
       _alarmSoundEnabled = prefs.getBool('alarm_sound') ?? true;
       _alarmVibrateEnabled = prefs.getBool('alarm_vibrate') ?? true;
@@ -791,7 +803,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _autoReconnect = prefs.getBool('auto_reconnect') ?? true;
       _heightUnit = prefs.getString('height_unit') ?? "mm";
       _tempUnit = prefs.getString('temp_unit') ?? "°C";
+      _deviceIp = savedIp;
+      _deviceIpController.text = savedIp;
+      _isWifiMonitoringEnabled = wifiMon;
     });
+
+    if (_isWifiMonitoringEnabled && _deviceIp.isNotEmpty) {
+      _startWifiPolling();
+    }
+  }
+
+  // Lưu cấu hình giám sát trực tiếp qua Wi-Fi
+  Future<void> _saveWifiMonitoringSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_device_ip', _deviceIp);
+    await prefs.setBool('wifi_monitoring_enabled', _isWifiMonitoringEnabled);
   }
 
   // Lưu cài đặt chung vào bộ nhớ
@@ -878,6 +904,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   @override
   void dispose() {
+    _wifiPollTimer?.cancel();
+    _deviceIpController.dispose();
     _inactivityTicker?.cancel();
     _scanSub?.cancel();
     _statusSub?.cancel();
@@ -1084,8 +1112,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   void _handleStatusNotification(String msg) {
     if (msg.startsWith("CONNECTED_IP:")) {
-      String ip = msg.replaceAll("CONNECTED_IP:", "");
-      _showSnackbar("ESP32 đã kết nối Wi-Fi! IP: $ip", Colors.green);
+      String ip = msg.replaceAll("CONNECTED_IP:", "").trim();
+      setState(() {
+        _deviceIp = ip;
+        _deviceIpController.text = ip;
+      });
+      _saveWifiMonitoringSettings();
+      _showSnackbar("ESP32 đã kết nối Wi-Fi! IP: $ip (Tự động lưu)", Colors.green);
+      if (!_isWifiMonitoringEnabled) {
+        _toggleWifiMonitoring(true);
+      }
     } else if (msg == "WIFI_CONNECT_FAILED") {
       _showSnackbar("ESP32 kết nối Wi-Fi thất bại! Kiểm tra mật khẩu.", Colors.red);
     } else if (msg == "CONFIG_UPDATED_OK") {
@@ -1193,6 +1229,219 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  // =========================================================================
+  // GIÁM SÁT TRỰC TIẾP QUA MẠNG WI-FI NỘI BỘ (DIRECT WI-FI LAN TELEMETRY)
+  // =========================================================================
+  void _toggleWifiMonitoring(bool enabled) {
+    setState(() {
+      _isWifiMonitoringEnabled = enabled;
+      if (!enabled) {
+        _isWifiConnected = false;
+        _wifiDelayMs = 0;
+      }
+    });
+    _saveWifiMonitoringSettings();
+    if (enabled) {
+      _startWifiPolling();
+    } else {
+      _stopWifiPolling();
+    }
+  }
+
+  void _startWifiPolling() {
+    _wifiPollTimer?.cancel();
+    _pollWifiTelemetry();
+    // Thăm dò dữ liệu liên tục mỗi 700ms qua HTTP LAN
+    _wifiPollTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
+      _pollWifiTelemetry();
+    });
+  }
+
+  void _stopWifiPolling() {
+    _wifiPollTimer?.cancel();
+    _wifiPollTimer = null;
+  }
+
+  Future<void> _pollWifiTelemetry() async {
+    final ip = _deviceIp.trim();
+    if (ip.isEmpty || !_isWifiMonitoringEnabled) return;
+
+    final stopwatch = Stopwatch()..start();
+    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1500);
+
+    try {
+      final uri = Uri.parse('http://$ip/api/telemetry');
+      final request = await client.getUrl(uri);
+      final response = await request.close().timeout(const Duration(milliseconds: 1500));
+      stopwatch.stop();
+
+      if (response.statusCode == 200) {
+        final body = await response.transform(utf8.decoder).join();
+        final Map<String, dynamic> data = jsonDecode(body);
+
+        if (!mounted) return;
+        setState(() {
+          _isWifiConnected = true;
+          _wifiDelayMs = stopwatch.elapsedMilliseconds;
+          _wifiFailureCount = 0;
+
+          if (data.containsKey("st")) {
+            final oldState = _sysState;
+            _sysState = data["st"] ?? "NORMAL";
+            _aiPosture = data["cls"] ?? "STAND";
+            _aiConfidence = (data["cf"] as num?)?.toDouble() ?? 0.0;
+            _tofHeight = (data["h"] as num?)?.toInt() ?? 0;
+            _radarMotion = (data["m"] as num?)?.toInt() ?? 0;
+            _radarStatic = (data["s"] as num?)?.toInt() ?? 0;
+            _dropRate = (data["dr"] as num?)?.toDouble() ?? 0.0;
+            if (data.containsKey("ver") && data["ver"] != null) {
+              _deviceFirmwareVersion = data["ver"].toString();
+            }
+
+            if (oldState != "ALERT" && _sysState == "ALERT") {
+              _showCriticalEmergencyDialog(isFall: true);
+            }
+          }
+        });
+      } else {
+        _handleWifiPollFailure();
+      }
+    } catch (_) {
+      _handleWifiPollFailure();
+    } finally {
+      client.close();
+    }
+  }
+
+  void _handleWifiPollFailure() {
+    if (!mounted) return;
+    _wifiFailureCount++;
+    if (_wifiFailureCount >= 3 && _isWifiConnected) {
+      setState(() {
+        _isWifiConnected = false;
+      });
+    }
+  }
+
+  Future<void> _sendWifiCommand(String cmd) async {
+    final ip = _deviceIp.trim();
+    if (ip.isEmpty) {
+      _showSnackbar("Vui lòng nhập địa chỉ IP của thiết bị trước!", Colors.orange);
+      return;
+    }
+
+    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 2000);
+    try {
+      final uri = Uri.parse('http://$ip/api/command?cmd=$cmd');
+      final request = await client.getUrl(uri);
+      final response = await request.close().timeout(const Duration(milliseconds: 2500));
+      if (response.statusCode == 200) {
+        _showSnackbar("Đã gửi lệnh qua Wi-Fi: $cmd", Colors.green);
+        _pollWifiTelemetry();
+      } else {
+        _showSnackbar("Gửi lệnh qua Wi-Fi thất bại (HTTP ${response.statusCode})", Colors.red);
+      }
+    } catch (e) {
+      _showSnackbar("Không thể kết nối Wi-Fi tới $ip: $e", Colors.red);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> _fetchHistoryOverWifi() async {
+    final ip = _deviceIp.trim();
+    if (ip.isEmpty) {
+      _showSnackbar("Vui lòng nhập địa chỉ IP của thiết bị trước!", Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoadingHistory = true);
+    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 3000);
+    try {
+      final uri = Uri.parse('http://$ip/api/events');
+      final request = await client.getUrl(uri);
+      final response = await request.close().timeout(const Duration(milliseconds: 3500));
+      if (response.statusCode == 200) {
+        final body = await response.transform(utf8.decoder).join();
+        final Map<String, dynamic> data = jsonDecode(body);
+        if (data.containsKey("events")) {
+          setState(() {
+            _eventHistory = data["events"];
+            _isLoadingHistory = false;
+          });
+          _showSnackbar("Đã tải hộp đen qua Wi-Fi (${_eventHistory.length} sự cố)", Colors.blueAccent);
+          return;
+        }
+      }
+    } catch (_) {}
+    finally {
+      client.close();
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  void _showWifiIpDialog() {
+    _deviceIpController.text = _deviceIp;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.wifi, color: Colors.tealAccent),
+            SizedBox(width: 8),
+            Text("Cấu hình IP Wi-Fi"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Nhập địa chỉ IP mạng nội bộ của thiết bị ESP32 (hiển thị khi ESP32 kết nối Wi-Fi):",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _deviceIpController,
+              decoration: const InputDecoration(
+                labelText: "Địa chỉ IP",
+                hintText: "192.168.1.xxx",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.router),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Mẹo: Địa chỉ IP cũng sẽ tự động lưu khi thiết bị kết nối Wi-Fi qua Bluetooth.",
+              style: TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Hủy"),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newIp = _deviceIpController.text.trim();
+              if (newIp.isNotEmpty) {
+                setState(() {
+                  _deviceIp = newIp;
+                });
+                _saveWifiMonitoringSettings();
+                _toggleWifiMonitoring(true);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text("Lưu & Kết nối"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Mở màn hình quản trị chi tiết thiết bị (Gồm Giám sát, Hộp đen và Cài đặt)
   void _openDeviceDetail(BluetoothDevice device, {int initialTab = 0}) {
     Navigator.push(
@@ -1237,6 +1486,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           otaChar: _otaChar,
           otaStatusNotifier: _otaStatusNotifier,
           firmwareVersion: _deviceFirmwareVersion,
+          // Wi-Fi Telemetry & Commands
+          deviceIp: _deviceIp,
+          isWifiConnected: _isWifiConnected,
+          wifiDelayMs: _wifiDelayMs,
+          onSendWifiCommand: _sendWifiCommand,
+          onFetchWifiHistory: _fetchHistoryOverWifi,
         ),
       ),
     );
@@ -1470,7 +1725,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   // Widget hiển thị trạng thái màn hình khóa & trực tiếp (Feature 6 & 1)
   Widget _buildGlanceableLiveStatusCard() {
-    final Color badgeColor = _sysState == "ALERT" ? Colors.redAccent : (_sysState == "PRE_ALARM" ? Colors.orangeAccent : Colors.greenAccent);
+    final bool isActivelyMonitored = _isConnected || _isWifiConnected;
+    final Color badgeColor = _sysState == "ALERT"
+        ? Colors.redAccent
+        : (_sysState == "PRE_ALARM" ? Colors.orangeAccent : (isActivelyMonitored ? Colors.greenAccent : Colors.grey));
     final int minutes = _roomPresenceSeconds ~/ 60;
     final int seconds = _roomPresenceSeconds % 60;
     final double progress = (_inactivityThresholdMinutes > 0)
@@ -1510,7 +1768,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    _sysState == "ALERT" ? Icons.emergency : (_isConnected ? Icons.shield : Icons.shield_outlined),
+                    _sysState == "ALERT" ? Icons.emergency : (isActivelyMonitored ? Icons.shield : Icons.shield_outlined),
                     color: badgeColor,
                     size: 20,
                   ),
@@ -1521,9 +1779,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _isConnected
-                            ? (_sysState == "ALERT" ? "🚨 CẢNH BÁO TÉ NGÃ KHẨN CẤP" : "🟢 AN TOÀN - ĐANG GIÁM SÁT 24/7")
-                            : "⚪ CHỜ KẾT NỐI BLUETOOTH",
+                        isActivelyMonitored
+                            ? (_sysState == "ALERT"
+                                ? "🚨 CẢNH BÁO TÉ NGÃ KHẨN CẤP"
+                                : (_isWifiConnected && !_isConnected
+                                    ? "🌐 GIÁM SÁT TRỰC TIẾP QUA WI-FI"
+                                    : (_isWifiConnected && _isConnected
+                                        ? "🟢 GIÁM SÁT KÉP (BLE + WI-FI)"
+                                        : "🟢 AN TOÀN - ĐANG GIÁM SÁT BLE 24/7")))
+                            : "⚪ CHỜ KẾT NỐI (BLUETOOTH HOẶC WI-FI)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: badgeColor),
                       ),
                       Text(
@@ -1544,7 +1808,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             const SizedBox(height: 10),
 
             // Thanh tiến trình lưu trú nhà tắm & bất động
-            if (_isConnected) ...[
+            if (isActivelyMonitored) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1592,6 +1856,195 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // Widget Giám sát trực tiếp qua Wi-Fi LAN
+  Widget _buildWifiMonitoringCard() {
+    final bool isOnline = _isWifiConnected;
+    final Color statusColor = !_isWifiMonitoringEnabled
+        ? Colors.grey
+        : (isOnline ? Colors.tealAccent : Colors.orangeAccent);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: statusColor.withValues(alpha: 0.5), width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Tiêu đề và nút bật/tắt Wi-Fi
+            Row(
+              children: [
+                Icon(
+                  _isWifiMonitoringEnabled ? Icons.wifi : Icons.wifi_off,
+                  color: statusColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Giám sát trực tiếp qua Wi-Fi (LAN)",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        _isWifiMonitoringEnabled
+                            ? (_deviceIp.isEmpty
+                                ? "Chưa cấu hình địa chỉ IP thiết bị"
+                                : "IP: $_deviceIp • ${isOnline ? 'Độ trễ: ${_wifiDelayMs}ms' : 'Đang kết nối...'}")
+                            : "Theo dõi từ xa xuyên phòng không cần Bluetooth",
+                        style: TextStyle(fontSize: 11, color: isOnline ? Colors.tealAccent : Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _isWifiMonitoringEnabled,
+                  activeThumbColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    if (val && _deviceIp.isEmpty) {
+                      _showWifiIpDialog();
+                    } else {
+                      _toggleWifiMonitoring(val);
+                    }
+                  },
+                ),
+              ],
+            ),
+
+            if (_isWifiMonitoringEnabled) ...[
+              const Divider(height: 16),
+              // Thanh địa chỉ IP và công cụ
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isOnline ? Colors.green.withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: isOnline ? Colors.green : Colors.amber),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isOnline ? Icons.sensors : Icons.sync,
+                          size: 13,
+                          color: isOnline ? Colors.greenAccent : Colors.amberAccent,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isOnline ? "Đang truyền (${_wifiDelayMs}ms)" : "Chờ phản hồi...",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isOnline ? Colors.greenAccent : Colors.amberAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(Icons.edit, size: 14),
+                        label: const Text("Đổi IP", style: TextStyle(fontSize: 11)),
+                        onPressed: _showWifiIpDialog,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 18, color: Colors.cyanAccent),
+                        tooltip: "Làm mới dữ liệu Wi-Fi ngay",
+                        onPressed: _pollWifiTelemetry,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Bảng dữ liệu thông số trực tiếp nhận qua Wi-Fi
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildMiniWifiMetric("Tư thế AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent),
+                    _buildMiniWifiMetric("Độ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent),
+                    _buildMiniWifiMetric("Động năng", "$_radarMotion/100", Icons.directions_run, Colors.orangeAccent),
+                    _buildMiniWifiMetric("Nhịp thở", "$_radarStatic/100", Icons.air, Colors.tealAccent),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Nút hành động nhanh Wi-Fi
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade800,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.emergency, size: 16),
+                      label: const Text("SOS Wi-Fi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      onPressed: () => _sendWifiCommand("PANIC_SOS"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.volume_off, size: 16),
+                      label: const Text("Tắt còi Wi-Fi", style: TextStyle(fontSize: 12)),
+                      onPressed: () => _sendWifiCommand("CANCEL_ALARM"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.history, color: Colors.blueAccent),
+                    tooltip: "Tải hộp đen NVS qua Wi-Fi",
+                    onPressed: _fetchHistoryOverWifi,
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniWifiMetric(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+      ],
     );
   }
 
@@ -1724,6 +2177,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           children: [
             // Thẻ trạng thái Glanceable Live Status Card (Feature 6 & 1)
             _buildGlanceableLiveStatusCard(),
+
+            // Thẻ giám sát trực tiếp qua Wi-Fi LAN
+            _buildWifiMonitoringCard(),
 
             // Thanh công cụ y tế nhanh 1 chạm (Feature 2, 7, 3, 1)
             _buildQuickHealthActionBar(),
@@ -1997,6 +2453,13 @@ class DeviceDetailScreen extends StatefulWidget {
   final ValueNotifier<String> otaStatusNotifier;
   final String firmwareVersion;
 
+  // Giám sát trực tiếp qua Wi-Fi LAN
+  final String deviceIp;
+  final bool isWifiConnected;
+  final int wifiDelayMs;
+  final Future<void> Function(String)? onSendWifiCommand;
+  final Future<void> Function()? onFetchWifiHistory;
+
   const DeviceDetailScreen({
     super.key,
     required this.device,
@@ -2027,6 +2490,11 @@ class DeviceDetailScreen extends StatefulWidget {
     this.otaChar,
     required this.otaStatusNotifier,
     required this.firmwareVersion,
+    this.deviceIp = "",
+    this.isWifiConnected = false,
+    this.wifiDelayMs = 0,
+    this.onSendWifiCommand,
+    this.onFetchWifiHistory,
   });
 
   @override
@@ -2038,6 +2506,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   bool _obscurePass = true;
   late double _currentFloorThreshold;
   int _selectedEventIndex = 0;
+
+  // Xử lý gửi lệnh qua kênh khả dụng (BLE hoặc Wi-Fi)
+  Future<void> _handleDeviceCommand(String cmd) async {
+    if (widget.isConnected) {
+      await widget.onSendCommand(cmd);
+    } else if (widget.onSendWifiCommand != null && widget.deviceIp.isNotEmpty) {
+      await widget.onSendWifiCommand!(cmd);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Chưa kết nối thiết bị qua Bluetooth hoặc Wi-Fi!"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   // Cấu hình thông minh cho thiết bị
   int _alarmGracePeriod = 15; // 15 giây trễ trước khi hú còi lớn
@@ -2098,7 +2581,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           controller: _deviceTabController,
           tabs: const [
             Tab(icon: Icon(Icons.monitor_heart), text: "Giám sát"),
-            Tab(icon: Icon(Icons.timeline), text: "Hộp đen & Graph"),
+            Tab(icon: Icon(Icons.timeline), text: "Hộp đen NVS"),
             Tab(icon: Icon(Icons.settings), text: "Cài đặt"),
           ],
         ),
@@ -2116,11 +2599,67 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   // TAB 1: GIÁM SÁT THỜI GIAN THỰC & ĐIỀU KHIỂN TỪ XA
   Widget _buildMonitorTab() {
+    final bool canControl = widget.isConnected || widget.isWifiConnected;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Huy hiệu nguồn kết nối (BLE & Wi-Fi)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: widget.isConnected ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: widget.isConnected ? Colors.green : Colors.grey),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                         size: 14, color: widget.isConnected ? Colors.green : Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(widget.isConnected ? "Bluetooth: Đã kết nối" : "Bluetooth: Ngắt",
+                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                                          color: widget.isConnected ? Colors.green : Colors.grey)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: widget.isWifiConnected ? Colors.teal.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: widget.isWifiConnected ? Colors.tealAccent : Colors.grey),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.isWifiConnected ? Icons.wifi : Icons.wifi_off,
+                         size: 14, color: widget.isWifiConnected ? Colors.tealAccent : Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.isWifiConnected
+                          ? "Wi-Fi: Trực tiếp (${widget.wifiDelayMs}ms)"
+                          : (widget.deviceIp.isNotEmpty ? "Wi-Fi: ${widget.deviceIp}" : "Wi-Fi: Chưa bật"),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: widget.isWifiConnected ? Colors.tealAccent : Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           // Thẻ trạng thái khẩn cấp
           Card(
             color: _getStateColor(widget.sysState).withValues(alpha: 0.15),
@@ -2180,7 +2719,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
           // Nút bấm khẩn cấp SOS từ xa
           ElevatedButton.icon(
-            onPressed: widget.isConnected ? () => widget.onSendCommand("PANIC_SOS") : null,
+            onPressed: canControl ? () => _handleDeviceCommand("PANIC_SOS") : null,
             icon: const Icon(Icons.emergency, size: 28),
             label: const Text("KÍCH HOẠT SOS CẤP CỨU TỪ XA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             style: ElevatedButton.styleFrom(
@@ -2197,7 +2736,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: widget.isConnected ? () => widget.onSendCommand("CANCEL_ALARM") : null,
+                  onPressed: canControl ? () => _handleDeviceCommand("CANCEL_ALARM") : null,
                   icon: const Icon(Icons.volume_off),
                   label: const Text("Tắt còi / Hủy"),
                 ),
@@ -2205,7 +2744,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: widget.isConnected ? () => widget.onSendCommand("CALIBRATE_FLOOR") : null,
+                  onPressed: canControl ? () => _handleDeviceCommand("CALIBRATE_FLOOR") : null,
                   icon: const Icon(Icons.straighten),
                   label: const Text("Hiệu chuẩn sàn"),
                 ),
@@ -2217,7 +2756,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: widget.isConnected ? () => widget.onSendCommand("TEST_ALARM") : null,
+                  onPressed: canControl ? () => _handleDeviceCommand("TEST_ALARM") : null,
                   icon: const Icon(Icons.speaker),
                   label: const Text("Test chuông/đèn"),
                 ),
@@ -2231,7 +2770,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
-                    widget.onFetchHistory();
+                    if (widget.isConnected) {
+                      widget.onFetchHistory();
+                    } else if (widget.onFetchWifiHistory != null) {
+                      widget.onFetchWifiHistory!();
+                    }
                     _deviceTabController.animateTo(1);
                   },
                   icon: const Icon(Icons.timeline),
@@ -2245,7 +2788,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
-  // TAB 2: HỘP ĐEN & BẢN ĐỒ GRAPH MÔ PHỎNG ĐỘNG HỌC TÉ NGÃ
+  // TAB 2: HỘP ĐEN NVS (LỊCH SỬ SỰ CỐ & PHÁT LẠI)
   Widget _buildBlackBoxTab() {
     // Dữ liệu mẫu nếu Hộp đen NVS chưa có sự cố thực tế
     final Map<String, dynamic> demoEvent = {
@@ -2273,7 +2816,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: widget.isLoadingHistory ? null : widget.onFetchHistory,
+                  onPressed: widget.isLoadingHistory
+                      ? null
+                      : () {
+                          if (widget.isConnected) {
+                            widget.onFetchHistory();
+                          } else if (widget.onFetchWifiHistory != null && widget.deviceIp.isNotEmpty) {
+                            widget.onFetchWifiHistory!();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Chưa kết nối Bluetooth hoặc Wi-Fi để tải lịch sử!"), backgroundColor: Colors.orange),
+                            );
+                          }
+                        },
                   icon: widget.isLoadingHistory
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.refresh),
@@ -2282,13 +2837,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: () => widget.onSendCommand("CLEAR_HISTORY"),
+                onPressed: () => _handleDeviceCommand("CLEAR_HISTORY"),
                 icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
                 label: const Text("Xóa", style: TextStyle(color: Colors.redAccent)),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: () => widget.onSendCommand("ADD_TEST_EVENT"),
+                onPressed: () => _handleDeviceCommand("ADD_TEST_EVENT"),
                 icon: const Icon(Icons.add_alert, color: Colors.orangeAccent),
                 label: const Text("Tạo Test"),
               ),
@@ -2310,7 +2865,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "Hộp đen NVS hiện chưa có vụ ngã thật. Đang hiển thị bản đồ graph mô phỏng mẫu!",
+                      "Hộp đen NVS hiện chưa có vụ ngã thật. Đang hiển thị sự cố mẫu minh họa!",
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -2319,15 +2874,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             ),
           const SizedBox(height: 12),
 
-          // 1. BẢN ĐỒ GRAPH MÔ PHỎNG ĐỘNG HỌC TÉ NGÃ
-          FallKinematicGraph(event: currentEvent),
-          const SizedBox(height: 14),
-
-          // 2. PHỔ NĂNG LƯỢNG RADAR KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM TÁI TẠO TỪ TOF + RADAR)
-          VirtualThermalSpectrum(event: currentEvent),
-          const SizedBox(height: 14),
-
-          // 3. MÔ PHỎNG 4 GIAI ĐOẠN TƯ THẾ NGƯỜI
+          // MÔ PHỎNG 4 GIAI ĐOẠN TƯ THẾ NGƯỜI
           HumanPostureSimulation(event: currentEvent),
           const SizedBox(height: 16),
 
@@ -3425,230 +3972,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 }
 
 // =========================================================================
-// WIDGET: BẢN ĐỒ GRAPH MÔ PHỎNG ĐỘNG HỌC TÉ NGÃ (FALL KINEMATIC GRAPH)
-// =========================================================================
-class FallKinematicGraph extends StatelessWidget {
-  final Map<String, dynamic> event;
-
-  const FallKinematicGraph({super.key, required this.event});
-
-  @override
-  Widget build(BuildContext context) {
-    final int type = (event["type"] as num?)?.toInt() ?? 1;
-    final double vel = (event["vel"] as num?)?.toDouble() ?? 680.0;
-    final int motion = (event["mot"] as num?)?.toInt() ?? 88;
-    final int dist = (event["dst"] as num?)?.toInt() ?? 165;
-    final int sec = (event["sec"] as num?)?.toInt() ?? 0;
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.show_chart, color: Colors.cyanAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Biểu đồ động học cú ngã (Kinematic Graph)",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      Text(
-                        "Cự ly: ${dist}cm | Vận tốc: ${vel.toStringAsFixed(0)} mm/s | Động năng: $motion/100",
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.redAccent),
-                  ),
-                  child: Text(
-                    "${sec}s",
-                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Canvas vẽ đồ thị 2 đường cong
-            SizedBox(
-              height: 190,
-              child: CustomPaint(
-                painter: KinematicCurvePainter(
-                  dropVelocity: vel,
-                  peakMotion: motion,
-                  fallType: type,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Chú thích đồ thị
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildLegendItem(Colors.cyanAccent, "Độ cao ToF (mm)"),
-                _buildLegendItem(Colors.orangeAccent, "Động năng Radar (/100)"),
-                _buildLegendItem(Colors.redAccent, "Điểm va chạm (Impact)"),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
-}
-
-// Lớp CustomPainter vẽ biểu đồ tiếp sàn và chấn động động năng
-class KinematicCurvePainter extends CustomPainter {
-  final double dropVelocity;
-  final int peakMotion;
-  final int fallType;
-
-  KinematicCurvePainter({
-    required this.dropVelocity,
-    required this.peakMotion,
-    required this.fallType,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    // 1. Vẽ khung lưới trục toạ độ
-    final Paint gridPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
-      ..strokeWidth = 1.0;
-
-    for (int i = 0; i <= 4; i++) {
-      double y = h * (i / 4.0);
-      canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
-    }
-    for (int i = 0; i <= 5; i++) {
-      double x = w * (i / 5.0);
-      canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
-    }
-
-    // 2. Vị trí tiếp sàn va chạm (Impact point) tại x = 50%
-    final double impactX = w * 0.50;
-    final Paint impactLinePaint = Paint()
-      ..color = Colors.redAccent.withValues(alpha: 0.5)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(Offset(impactX, 0), Offset(impactX, h), impactLinePaint);
-
-    // 3. Đường cong 1: Độ cao ToF (Màu xanh Cyan)
-    // t = -2s (Đứng cao 1700mm) -> t = -0.5s (Rơi) -> t = 0s (Chạm sàn 300mm) -> t = +2s (Nằm sàn)
-    final Path heightPath = Path();
-    final double hTop = h * 0.15;    // ~1700mm
-    final double hFloor = h * 0.82;  // ~300mm
-
-    heightPath.moveTo(0, hTop);
-    heightPath.lineTo(w * 0.25, hTop + 5);
-    // Đoạn tụt dốc rơi tự do
-    heightPath.cubicTo(
-      w * 0.38, hTop + 10,
-      w * 0.44, hFloor * 0.65,
-      impactX, hFloor,
-    );
-    // Đoạn nằm yên dưới sàn
-    heightPath.lineTo(w, hFloor + 3);
-
-    final Paint heightPaint = Paint()
-      ..color = Colors.cyanAccent
-      ..strokeWidth = 3.0
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(heightPath, heightPaint);
-
-    // 4. Đường cong 2: Động năng Radar (Màu cam)
-    // t = -2s (Thấp 15) -> t = 0s (Đỉnh va đập Peak Motion) -> t = +2s (Về 0-5)
-    final Path motionPath = Path();
-    final double mBase = h * 0.85; // Mức động năng thấp
-    final double mPeak = h * (1.0 - (math.min(100, math.max(20, peakMotion)) / 100.0) * 0.85);
-
-    motionPath.moveTo(0, mBase - 10);
-    motionPath.lineTo(w * 0.25, mBase - 15);
-    motionPath.cubicTo(
-      w * 0.40, mBase - 25,
-      w * 0.46, mPeak,
-      impactX, mPeak,
-    );
-    // Động năng sau ngã tắt dần về gần 0
-    motionPath.cubicTo(
-      w * 0.60, mBase - 20,
-      w * 0.75, mBase - 5,
-      w, mBase,
-    );
-
-    final Paint motionPaint = Paint()
-      ..color = Colors.orangeAccent
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(motionPath, motionPaint);
-
-    // 5. Điểm chấn động tiếp đất (Impact point pulse dot)
-    final Paint pulseOuter = Paint()
-      ..color = Colors.redAccent.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(impactX, hFloor), 14, pulseOuter);
-
-    final Paint pulseInner = Paint()
-      ..color = Colors.redAccent
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(impactX, hFloor), 6, pulseInner);
-
-    // 6. Nhãn mốc thời gian dưới trục X
-    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
-    void drawText(String text, double x, double y, Color c) {
-      tp.text = TextSpan(text: text, style: TextStyle(fontSize: 9, color: c));
-      tp.layout();
-      tp.paint(canvas, Offset(x - tp.width / 2, y));
-    }
-
-    drawText("-2s (Đứng)", w * 0.10, h - 14, Colors.grey);
-    drawText("-1s (Mất đà)", w * 0.32, h - 14, Colors.grey);
-    drawText("0s (Chạm sàn)", impactX, h - 14, Colors.redAccent);
-    drawText("+1s (Nằm yên)", w * 0.72, h - 14, Colors.grey);
-    drawText("+2s", w * 0.92, h - 14, Colors.grey);
-  }
-
-  @override
-  bool shouldRepaint(covariant KinematicCurvePainter oldDelegate) {
-    return oldDelegate.dropVelocity != dropVelocity ||
-           oldDelegate.peakMotion != peakMotion ||
-           oldDelegate.fallType != fallType;
-  }
-}
-
-// =========================================================================
 // WIDGET: BẢN GHI PHÁT LẠI QUÁ TRÌNH TÉ NGÃ (FALL PLAYBACK & AUDIT RECORD)
 // Mô phỏng chuỗi thời gian 4 giai đoạn (-2.0s -> 0s -> +2.0s) & Xuất biên bản
 // =========================================================================
@@ -4145,501 +4468,6 @@ class HumanMotionPlaybackPainter extends CustomPainter {
 }
 
 // =========================================================================
-// WIDGET: PHỔ NĂNG LƯỢNG RADAR KHÔNG GIAN ẢO HD 128x128 (16.384 ĐIỂM FMCW)
-// Tái tạo mô hình tán xạ năng lượng Radar FMCW 2D từ ToF + 9 Cổng Radar LD2410
-// =========================================================================
-class VirtualThermalSpectrum extends StatefulWidget {
-  final Map<String, dynamic> event;
-
-  const VirtualThermalSpectrum({super.key, required this.event});
-
-  @override
-  State<VirtualThermalSpectrum> createState() => _VirtualThermalSpectrumState();
-}
-
-class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
-  bool _showPostFall = true;   // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
-  bool _showGrid128 = true;     // Hiển thị lưới toạ độ 128x128
-  Offset? _touchedPoint;        // Điểm chạm khảo sát mật độ năng lượng tương tác
-
-  @override
-  Widget build(BuildContext context) {
-    final double vel = (widget.event["vel"] as num?)?.toDouble() ?? 680.0;
-    final int motion = (widget.event["mot"] as num?)?.toInt() ?? 88;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Tiêu đề và nhãn công nghệ HD 128x128
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.radar, color: Colors.cyanAccent, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      "Phổ năng lượng Radar không gian 128x128:",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.cyan.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.6)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 12),
-                      SizedBox(width: 4),
-                      Text("16.384 Điểm FMCW", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Mô hình phân bố mật độ năng lượng Radar FMCW 24GHz (128x128) tái tạo từ ToF (độ cao trục Y) + 9 Cổng khoảng cách Radar LD2410 (cự ly trục X) + Động năng vận động.",
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
-            ),
-            const SizedBox(height: 12),
-
-            // 2. Bộ nút điều khiển trạng thái (Trước / Sau ngã) và bật tắt lưới 128x128
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: !_showPostFall ? Colors.blue.withValues(alpha: 0.25) : Colors.transparent,
-                      side: BorderSide(color: !_showPostFall ? Colors.blueAccent : Colors.grey.shade800),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                    icon: const Icon(Icons.accessibility_new, size: 16),
-                    label: const Text("Trước ngã (-2s: Đứng)", style: TextStyle(fontSize: 11)),
-                    onPressed: () => setState(() {
-                      _showPostFall = false;
-                      _touchedPoint = null;
-                    }),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _showPostFall ? Colors.redAccent.withValues(alpha: 0.25) : Colors.transparent,
-                      side: BorderSide(color: _showPostFall ? Colors.redAccent : Colors.grey.shade800),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                    icon: const Icon(Icons.airline_seat_flat, size: 16),
-                    label: const Text("Sau ngã (+2s: Sàn)", style: TextStyle(fontSize: 11)),
-                    onPressed: () => setState(() {
-                      _showPostFall = true;
-                      _touchedPoint = null;
-                    }),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Tùy chọn chuyển đổi kiểu hiển thị
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Chạm / Kéo trên ảnh để đo năng lượng radar tại điểm:",
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-                GestureDetector(
-                  onTap: () => setState(() => _showGrid128 = !_showGrid128),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _showGrid128 ? Colors.teal.withValues(alpha: 0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: _showGrid128 ? Colors.teal : Colors.grey.shade700),
-                    ),
-                    child: Text(
-                      _showGrid128 ? "Lưới 128: BẬT" : "Lưới 128: TẮT",
-                      style: TextStyle(fontSize: 9, color: _showGrid128 ? Colors.tealAccent : Colors.grey),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // 3. Khung hiển thị Phổ năng lượng Radar 128x128 tương tác
-            Center(
-              child: GestureDetector(
-                onPanDown: (details) => setState(() => _touchedPoint = details.localPosition),
-                onPanUpdate: (details) => setState(() => _touchedPoint = details.localPosition),
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF060B14),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _showPostFall ? Colors.redAccent.withValues(alpha: 0.6) : Colors.cyanAccent.withValues(alpha: 0.6),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_showPostFall ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.25),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: CustomPaint(
-                      painter: ThermalSpectrumPainter128(
-                        isPostFall: _showPostFall,
-                        showGrid: _showGrid128,
-                        touchedLocalPos: _touchedPoint,
-                        dropVelocity: vel,
-                        peakMotion: motion,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // 4. Chú giải 2 trục toạ độ không gian
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Trục dọc Y: Trần (0m) ➔ Sàn nhà (2.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text("Trục ngang X: Cổng radar (0.75m ➔ 6.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // 5. Thanh dải màu mức năng lượng phản xạ Radar FMCW (0% - 100%)
-            Row(
-              children: [
-                const Text("0% (Tĩnh)", style: TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    height: 9,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF060B14), // Nền tĩnh (0% RF)
-                          Color(0xFF0F3854), // Tạp âm nền RF (15%)
-                          Color(0xFF0077B6), // Tín hiệu phản xạ nhẹ (35%)
-                          Color(0xFF00B4D8), // Hiện diện vi chuyển động (55%)
-                          Color(0xFFFFB703), // Chuyển động cơ thể (75%)
-                          Color(0xFFFB8500), // Động năng cao (90%)
-                          Color(0xFFFF0054), // Đỉnh va chạm (97%)
-                          Color(0xFFFFFFFF), // Điểm xung kích bão hòa (100%)
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text("100% (Đỉnh)", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 6. Hộp kết luận chẩn đoán AI từ 16.384 điểm năng lượng radar
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _showPostFall ? Icons.warning_amber_rounded : Icons.verified_user_outlined,
-                    color: _showPostFall ? Colors.redAccent : Colors.tealAccent,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _showPostFall
-                          ? "Phổ radar 128x128 chẩn đoán: 96% mật độ năng lượng phản xạ dồn xuống 15% đáy sàn (Y > 1.8m) và trải rộng ngang 2.4m (Cổng 2-5). Kết hợp xung lực va đập $motion/100 ➔ Xác thực tư thế nằm sàn bất động."
-                          : "Phổ radar 128x128 chẩn đoán: Cột năng lượng radar tập trung theo hình trụ đứng thẳng (Y: 0.3m ➔ 1.7m), bề ngang hẹp 0.6m tại Cổng 3. Trạng thái cơ thể bình thường và thăng bằng tốt.",
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _showPostFall ? Colors.redAccent.shade100 : Colors.tealAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// CUSTOM PAINTER: HIỂN THỊ PHỔ NĂNG LƯỢNG RADAR 128x128 (16.384 ĐIỂM GAUSS)
-// =========================================================================
-class ThermalSpectrumPainter128 extends CustomPainter {
-  final bool isPostFall;
-  final bool showGrid;
-  final Offset? touchedLocalPos;
-  final double dropVelocity;
-  final int peakMotion;
-
-  ThermalSpectrumPainter128({
-    required this.isPostFall,
-    required this.showGrid,
-    required this.touchedLocalPos,
-    required this.dropVelocity,
-    required this.peakMotion,
-  });
-
-  // Tính mật độ năng lượng phản xạ Radar FMCW tại toạ độ chuẩn hoá (nx, ny) [0.0 .. 1.0]
-  double _calcRadarEnergyAt(double nx, double ny) {
-    // Tạp âm nền RF môi trường ~ 3.5%
-    double ambient = 3.5 + 1.2 * math.sin(nx * 8) * math.cos(ny * 8);
-
-    if (!isPostFall) {
-      // TRƯỚC NGÃ: Cơ thể đứng thẳng tại Cổng 3.5 (nx = 0.44), chiều cao (ny từ 0.25 đến 0.85)
-      // Vùng ngực/đầu (nx: 0.44, ny: 0.38)
-      double dHead = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.32) / 0.10, 2));
-      double dChest = math.sqrt(math.pow((nx - 0.44) / 0.10, 2) + math.pow((ny - 0.48) / 0.14, 2));
-      double dLegs = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.72) / 0.18, 2));
-
-      double energyHead = 82.0 * math.exp(-0.5 * dHead * dHead);
-      double energyChest = 88.0 * math.exp(-0.5 * dChest * dChest);
-      double energyLegs = 65.0 * math.exp(-0.5 * dLegs * dLegs);
-
-      return (ambient + math.max(energyHead, math.max(energyChest, energyLegs))).clamp(0.0, 100.0);
-    } else {
-      // SAU NGÃ: Nằm ngang sát sàn (ny = 0.88, trải dài nx từ 0.22 đến 0.75)
-      // Điểm va đập thân trên (nx: 0.36, ny: 0.88)
-      double dUpper = math.sqrt(math.pow((nx - 0.36) / 0.12, 2) + math.pow((ny - 0.88) / 0.06, 2));
-      // Điểm hông/thân dưới (nx: 0.54, ny: 0.88)
-      double dLower = math.sqrt(math.pow((nx - 0.54) / 0.14, 2) + math.pow((ny - 0.88) / 0.06, 2));
-      // Chân (nx: 0.70, ny: 0.89)
-      double dFeet = math.sqrt(math.pow((nx - 0.70) / 0.10, 2) + math.pow((ny - 0.89) / 0.06, 2));
-
-      double energyUpper = 95.0 * math.exp(-0.5 * dUpper * dUpper);
-      double energyLower = 88.0 * math.exp(-0.5 * dLower * dLower);
-      double energyFeet = 60.0 * math.exp(-0.5 * dFeet * dFeet);
-
-      return (ambient + math.max(energyUpper, math.max(energyLower, energyFeet))).clamp(0.0, 100.0);
-    }
-  }
-
-  // Chuyển mức năng lượng phản xạ Radar sang dải màu phổ sóng vô tuyến (Turbo/Jet Colormap)
-  Color _energyToColor(double energy) {
-    if (energy <= 15.0) {
-      return Color.lerp(const Color(0xFF060B14), const Color(0xFF0F3854), energy / 15.0)!;
-    } else if (energy <= 35.0) {
-      return Color.lerp(const Color(0xFF0F3854), const Color(0xFF0077B6), (energy - 15.0) / 20.0)!;
-    } else if (energy <= 55.0) {
-      return Color.lerp(const Color(0xFF0077B6), const Color(0xFF00B4D8), (energy - 35.0) / 20.0)!;
-    } else if (energy <= 75.0) {
-      return Color.lerp(const Color(0xFF00B4D8), const Color(0xFFFFB703), (energy - 55.0) / 20.0)!;
-    } else if (energy <= 90.0) {
-      return Color.lerp(const Color(0xFFFFB703), const Color(0xFFFB8500), (energy - 75.0) / 15.0)!;
-    } else if (energy <= 97.0) {
-      return Color.lerp(const Color(0xFFFB8500), const Color(0xFFFF0054), (energy - 90.0) / 7.0)!;
-    } else {
-      return Color.lerp(const Color(0xFFFF0054), Colors.white, (energy - 97.0) / 3.0)!;
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    // 1. Vẽ nền RF 2D
-    final Rect backgroundRect = Rect.fromLTWH(0, 0, w, h);
-    final Paint bgPaint = Paint()..color = const Color(0xFF060B14);
-    canvas.drawRect(backgroundRect, bgPaint);
-
-    // 2. Kết xuất các quầng mật độ năng lượng Radar (Radar Kinematic Clusters)
-    if (!isPostFall) {
-      // ĐỨNG: 3 quầng năng lượng phản xạ (Đầu, Ngực, Chân)
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.32), w * 0.22, h * 0.16, 85.0);
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.48), w * 0.26, h * 0.22, 90.0);
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.72), w * 0.20, h * 0.24, 65.0);
-    } else {
-      // NGÃ NẰM SÀN: Dải năng lượng nằm ngang dài sát đáy sàn
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.36, h * 0.88), w * 0.28, h * 0.12, 98.0);
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.54, h * 0.88), w * 0.32, h * 0.12, 90.0);
-      _drawRadarEnergyCluster(canvas, Offset(w * 0.70, h * 0.89), w * 0.22, h * 0.10, 60.0);
-
-      // Vùng sàn chấn động lan tỏa năng lượng va đập
-      final Paint floorSpread = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            Colors.orange.withValues(alpha: 0.15),
-            Colors.redAccent.withValues(alpha: 0.30),
-          ],
-        ).createShader(Rect.fromLTWH(0, h * 0.80, w, h * 0.20));
-      canvas.drawRect(Rect.fromLTWH(0, h * 0.80, w, h * 0.20), floorSpread);
-    }
-
-    // 3. Vẽ đường đẳng mức năng lượng phản xạ (Iso-Energy Contours)
-    _drawIsoEnergyContours(canvas, size);
-
-    // 4. Vẽ lưới toạ độ 128x128 (Hiển thị các vạch chia 16, 32, 64, 96, 128)
-    if (showGrid) {
-      final Paint gridPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.08)
-        ..strokeWidth = 0.5;
-
-      for (int i = 0; i <= 128; i += 16) {
-        double pos = (i / 128.0) * w;
-        canvas.drawLine(Offset(pos, 0), Offset(pos, h), gridPaint);
-        canvas.drawLine(Offset(0, pos), Offset(w, pos), gridPaint);
-      }
-    }
-
-    // 5. Vẽ hồng tâm quét mật độ năng lượng cực đại
-    final Offset peakPos = isPostFall ? Offset(w * 0.36, h * 0.88) : Offset(w * 0.44, h * 0.32);
-    _drawCrosshair(canvas, peakPos, isPostFall ? "E_max: 98% (Sàn Y: 0.15m)" : "E_max: 90% (Đứng Y: 1.5m)", Colors.redAccent);
-
-    // 6. Vẽ điểm chạm của người dùng (Nếu có tương tác đo điểm)
-    if (touchedLocalPos != null) {
-      final double tx = touchedLocalPos!.dx.clamp(0.0, w);
-      final double ty = touchedLocalPos!.dy.clamp(0.0, h);
-      final int gridX = (tx / w * 128).clamp(0, 127).toInt();
-      final int gridY = (ty / h * 128).clamp(0, 127).toInt();
-      final double energy = _calcRadarEnergyAt(tx / w, ty / h);
-
-      _drawCrosshair(
-        canvas,
-        Offset(tx, ty),
-        "[$gridX, $gridY]: E = ${energy.toStringAsFixed(0)}%",
-        Colors.cyanAccent,
-      );
-    }
-
-    // 7. Nhãn HUD góc trên bên trái
-    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
-    tp.text = TextSpan(
-      text: "RADAR FMCW 24GHz SPATIAL SPECTRUM\nMATRIX: 128x128 (16.384 PTS)\nFOV: 9 GATES x 2.0m ELEVATION",
-      style: TextStyle(
-        fontSize: 8,
-        fontWeight: FontWeight.w600,
-        color: Colors.white.withValues(alpha: 0.6),
-        fontFamily: 'monospace',
-      ),
-    );
-    tp.layout();
-    tp.paint(canvas, const Offset(8, 8));
-  }
-
-  // Vẽ quầng tán xạ năng lượng Radar 2D
-  void _drawRadarEnergyCluster(Canvas canvas, Offset center, double rx, double ry, double peakEnergy) {
-    final Rect rect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
-    final Paint p = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          _energyToColor(peakEnergy),
-          _energyToColor(peakEnergy * 0.75),
-          _energyToColor(peakEnergy * 0.45),
-          _energyToColor(10.0).withValues(alpha: 0.3),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.35, 0.65, 0.85, 1.0],
-      ).createShader(rect);
-
-    canvas.drawOval(rect, p);
-  }
-
-  // Vẽ các đường đẳng mức năng lượng khép kín (Iso-Energy Contours)
-  void _drawIsoEnergyContours(Canvas canvas, Size size) {
-    final Paint contourPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
-      ..color = Colors.white.withValues(alpha: 0.15);
-
-    if (!isPostFall) {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(size.width * 0.44, size.height * 0.44), width: size.width * 0.32, height: size.height * 0.54),
-        contourPaint,
-      );
-    } else {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(size.width * 0.50, size.height * 0.88), width: size.width * 0.65, height: size.height * 0.18),
-        contourPaint,
-      );
-    }
-  }
-
-  // Vẽ hồng tâm đo năng lượng kèm chú thích toạ độ
-  void _drawCrosshair(Canvas canvas, Offset pos, String label, Color color) {
-    final Paint p = Paint()
-      ..color = color
-      ..strokeWidth = 1.2;
-
-    // Vạch dấu thập
-    canvas.drawLine(Offset(pos.dx - 10, pos.dy), Offset(pos.dx + 10, pos.dy), p);
-    canvas.drawLine(Offset(pos.dx, pos.dy - 10), Offset(pos.dx, pos.dy + 10), p);
-
-    // Vòng tròn định vị
-    final Paint circlePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    canvas.drawCircle(pos, 6, circlePaint);
-
-    // Hộp chữ toạ độ và mức năng lượng
-    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
-    tp.text = TextSpan(
-      text: label,
-      style: TextStyle(
-        fontSize: 9,
-        fontWeight: FontWeight.bold,
-        color: color,
-        backgroundColor: Colors.black.withValues(alpha: 0.75),
-      ),
-    );
-    tp.layout();
-
-    double textX = pos.dx + 8;
-    double textY = pos.dy - 16;
-    if (textX + tp.width > 270) textX = pos.dx - tp.width - 8;
-    if (textY < 10) textY = pos.dy + 8;
-
-    tp.paint(canvas, Offset(textX, textY));
-  }
-
-  @override
-  bool shouldRepaint(covariant ThermalSpectrumPainter128 oldDelegate) {
-    return oldDelegate.isPostFall != isPostFall ||
-           oldDelegate.showGrid != showGrid ||
-           oldDelegate.touchedLocalPos != touchedLocalPos;
-  }
-}
-
-// =========================================================================
 // MÀN HÌNH CÀI ĐẶT CHUNG CỦA ỨNG DỤNG (GENERAL SETTINGS SCREEN)
 // =========================================================================
 class GeneralSettingsScreen extends StatefulWidget {
@@ -5080,7 +4908,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ),
                   SizedBox(height: 10),
                   Text("Ứng dụng: Fall Guard S3R8", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text("Phiên bản: v1.1.0 (HD 128x128 Radar Kinematic Matrix)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Phiên bản: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   Text("Vi điều khiển: ESP32-S3-WROOM-1-N16R8 (16MB Flash / 8MB PSRAM)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   Text("Cảm biến kết hợp: PIR AM312 (Hồng ngoại) + ToF Laser (Độ cao) + Radar 24GHz FMCW (Động năng & Cự ly)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   SizedBox(height: 8),
