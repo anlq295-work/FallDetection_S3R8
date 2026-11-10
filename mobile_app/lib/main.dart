@@ -12,13 +12,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 // =========================================================================
 // CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3 N16R8
 // =========================================================================
-const String serviceUuid       = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-const String charWifiUuid      = "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28";
-const String charContactUuid   = "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011";
-const String charStatusUuid    = "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344";
+const String serviceUuid = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const String charWifiUuid = "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28";
+const String charContactUuid = "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011";
+const String charStatusUuid = "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344";
 const String charTelemetryUuid = "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455";
-const String charCmdUuid       = "4fa0b044-9b3e-4d75-af4c-b70e901c5566";
-const String charOtaUuid       = "5e1c0155-ac5d-4e86-be5d-c81f012d6677";
+const String charCmdUuid = "4fa0b044-9b3e-4d75-af4c-b70e901c5566";
+const String charOtaUuid = "5fa0b044-9b3e-4d75-af4c-b70e901c5566";
 
 void main() {
   runApp(const FallGuardApp());
@@ -6243,7 +6243,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -6259,231 +6259,367 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
     }
   }
 
-  Widget _buildCitationCard(String org, String docTitle, String text) {
+  Widget _buildTipCard(String title, String content, {Color color = Colors.amberAccent, IconData icon = Icons.lightbulb}) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: color),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  content,
+                  style: const TextStyle(fontSize: 13, height: 1.45, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepCard({
+    required String number,
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<Widget> bodyItems,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131D31),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.menu_book, color: Colors.cyanAccent, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                "Trích dẫn y khoa: $org",
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Colors.cyanAccent),
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color, width: 1.5),
+                ),
+                child: Text(
+                  number,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5, color: color),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 12),
+          ...bodyItems,
+        ],
+      ),
+    );
+  }
+
+  Widget _bulletText(String boldPrefix, String text, {Color? prefixColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("• ", style: TextStyle(color: Colors.white60, fontSize: 15)),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.white),
+                children: [
+                  if (boldPrefix.isNotEmpty)
+                    TextSpan(
+                      text: "$boldPrefix: ",
+                      style: TextStyle(fontWeight: FontWeight.bold, color: prefixColor ?? Colors.cyanAccent),
+                    ),
+                  TextSpan(text: text),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _subItemCard(String subTitle, List<Widget> items, {Color color = Colors.cyanAccent}) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            docTitle,
-            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 9.5, color: Colors.grey),
+            subTitle,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: color),
           ),
-          const SizedBox(height: 4),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 10.5, height: 1.4, color: Colors.white70),
+          const SizedBox(height: 8),
+          ...items,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrecautionsTab() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: Colors.blueGrey.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.35)),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, color: Colors.cyanAccent, size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Trước khi thực hiện sơ cấp cứu, bạn cần đảm bảo một số điều quan trọng để xử lý đúng cách và an toàn:",
+                    style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildStepCard(
+            number: "1",
+            title: "Đánh giá mức độ chấn thương",
+            icon: Icons.visibility,
+            color: Colors.cyanAccent,
+            bodyItems: [
+              _bulletText("Quan sát kỹ người bị nạn", "Họ có còn tỉnh táo không?"),
+              _bulletText("Kiểm tra nhanh tình trạng cơ thể", "Có vết thương hở, máu chảy hay không."),
+            ],
+          ),
+          _buildStepCard(
+            number: "2",
+            title: "Đảm bảo an toàn",
+            icon: Icons.health_and_safety,
+            color: Colors.amberAccent,
+            bodyItems: [
+              _bulletText("Khu vực an toàn", "Đưa người bị nạn ra khỏi khu vực nguy hiểm (nếu có thể)."),
+              _bulletText("Tránh di chuyển", "Tránh di chuyển người bị nạn nếu nghi ngờ chấn thương cột sống.", prefixColor: Colors.orangeAccent),
+            ],
+          ),
+          _buildStepCard(
+            number: "3",
+            title: "Gọi hỗ trợ y tế nếu cần thiết",
+            icon: Icons.emergency,
+            color: Colors.redAccent,
+            bodyItems: [
+              _bulletText("Chấn thương nghiêm trọng", "Nếu nhận thấy chấn thương nghiêm trọng (ví dụ: mất ý thức, gãy xương hở, chảy máu nhiều), hãy gọi ngay 115 hoặc đưa họ đến bệnh viện."),
+              _buildTipCard(
+                "Mẹo nhỏ khi gọi cấp cứu",
+                "Khi gọi cấp cứu 115, hãy cung cấp thông tin chi tiết về tình trạng nạn nhân và vị trí chính xác của bạn để giúp đội ngũ y tế phản ứng nhanh hơn.",
+                color: Colors.amberAccent,
+                icon: Icons.lightbulb,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStep1Tab() {
+  Widget _buildBasicStepsTab() {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hình minh họa cấm kéo giật
           Container(
-            height: 135,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF060B14),
+              color: Colors.blueGrey.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.35)),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: CustomPaint(
-                painter: DoNotPullIllustrationPainter(),
-                child: Container(),
-              ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.cyanAccent, size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Khi đã đảm bảo an toàn, hãy thực hiện các bước sơ cấp cứu cơ bản dưới đây:",
+                    style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-
-          const Text(
-            "BƯỚC 1: TUYỆT ĐỐI KHÔNG VỘI ĐỠ DẬY NGAY",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent),
+          _buildStepCard(
+            number: "1",
+            title: "Kiểm tra tình trạng ý thức",
+            icon: Icons.psychology,
+            color: Colors.purpleAccent,
+            bodyItems: [
+              _bulletText("Phản xạ", "Gọi to hoặc lay nhẹ người bị nạn để xem họ có phản ứng hay không."),
+              _bulletText("Nhịp thở & CPR", "Nếu họ không phản ứng, hãy kiểm tra nhịp thở và chuẩn bị thực hiện hồi sức tim phổi (CPR) nếu cần.", prefixColor: Colors.redAccent),
+            ],
           ),
-          const SizedBox(height: 6),
-          const Text(
-            "• Phản xạ thông thường là chạy tới nắm tay kéo người già đứng lên ngay, nhưng đây là SAI LẦM NGUY HIỂM NHẤT.\n"
-            "• Người cao tuổi đa số bị loãng xương (Osteoporosis). Việc kéo giật đột ngột có thể biến vết nứt xương kín thành gãy di lệch hoàn toàn, làm rách mạch máu lớn hoặc đứt tủy sống cổ/lưng.\n"
-            "• Hành động chuẩn: Yêu cầu người bệnh nằm yên hít thở sâu, người sơ cứu quỳ một bên để trấn an tinh thần trong 1-2 phút đầu.",
-            style: TextStyle(fontSize: 11.5, height: 1.45),
+          _buildStepCard(
+            number: "2",
+            title: "Xử lý vết thương hở (nếu có)",
+            icon: Icons.healing,
+            color: Colors.tealAccent,
+            bodyItems: [
+              _bulletText("Rửa vết thương", "Rửa sạch vết thương bằng nước sạch hoặc dung dịch sát khuẩn."),
+              _bulletText("Băng bó vô trùng", "Dùng băng gạc vô trùng băng lại để ngăn ngừa nhiễm trùng."),
+            ],
           ),
-          const SizedBox(height: 10),
-
-          _buildCitationCard(
-            "Tổ chức Y tế Thế giới (WHO)",
-            "WHO Global Report on Falls Prevention in Older Age & ICOPE Guidelines",
-            "\"Tuyệt đối không di chuyển người bệnh nếu chưa loại trừ gãy cổ xương đùi hoặc tổn thương cột sống. Hành vi nâng bốc người già sai kỹ thuật làm tăng 45% biến chứng tàn phế vĩnh viễn và sốc chấn thương.\"",
+          _buildStepCard(
+            number: "3",
+            title: "Xử lý chấn thương phần mềm",
+            icon: Icons.ac_unit,
+            color: Colors.lightBlueAccent,
+            bodyItems: [
+              _bulletText("Chườm lạnh", "Dùng túi đá hoặc khăn lạnh chườm vào vùng bị sưng trong 15-20 phút."),
+              _bulletText("Cảnh báo quan trọng", "Không massage hay ấn mạnh vào vùng tổn thương, điều này có thể làm tình trạng nặng thêm.", prefixColor: Colors.redAccent),
+            ],
+          ),
+          _buildStepCard(
+            number: "4",
+            title: "Hỗ trợ người bị nạn di chuyển",
+            icon: Icons.accessible_forward,
+            color: Colors.orangeAccent,
+            bodyItems: [
+              _bulletText("Hỗ trợ nhẹ nhàng", "Nếu cần di chuyển, hãy giúp đỡ nhẹ nhàng, tránh gây thêm tổn thương."),
+              _bulletText("Nghi ngờ gãy xương", "Trường hợp nghi ngờ gãy xương, hãy cố định phần bị chấn thương trước khi di chuyển.", prefixColor: Colors.amberAccent),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStep2Tab() {
+  Widget _buildSpecificCasesTab() {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hình minh họa kiểm tra sinh tồn
           Container(
-            height: 135,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF060B14),
+              color: Colors.blueGrey.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
+              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.35)),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: CustomPaint(
-                painter: VitalsCheckIllustrationPainter(),
-                child: Container(),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.category, color: Colors.cyanAccent, size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Mỗi trường hợp té ngã sẽ cần cách xử lý khác nhau dựa trên mức độ nghiêm trọng của chấn thương:",
+                    style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildStepCard(
+            number: "1",
+            title: "Cách xử lý té ngã gây chấn thương nhẹ",
+            icon: Icons.healing_outlined,
+            color: Colors.tealAccent,
+            bodyItems: [
+              _subItemCard(
+                "Trầy xước ngoài da",
+                [
+                  _bulletText("Làm sạch vết thương", "Rửa bằng nước sạch hoặc dung dịch sát khuẩn."),
+                  _bulletText("Băng bó", "Sử dụng băng gạc vô trùng để che phủ vết thương, giúp ngăn ngừa nhiễm trùng."),
+                  _bulletText("Vệ sinh định kỳ", "Thay băng hàng ngày hoặc khi băng bị ướt/bẩn."),
+                ],
+                color: Colors.tealAccent,
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          const Text(
-            "BƯỚC 2: KHÁM TRI GIÁC & DẤU HIỆU NGUY CẤP",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amberAccent),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "• Kiểm tra tri giác (AVPU): Gọi tên xem nạn nhân có trả lời rõ ràng không, có nhớ vừa xảy ra chuyện gì không.\n"
-            "• Quan sát 3 dấu hiệu chấn thương nặng cần GỌI 115 NGAY:\n"
-            "   1. Chấn thương sọ não: Đập đầu xuống nền gạch, sưng u, lú lẫn, chảy máu tai/mũi, nôn ói.\n"
-            "   2. Gãy cổ xương đùi: Bàn chân một bên bị xoay đổ hẳn ra ngoài, chân đau ngắn hơn chân lành, đau dữ dội khớp háng.\n"
-            "   3. Chấn thương cột sống: Đau buốt đốt sống cổ/thắt lưng, tê bì hoặc mất cảm giác hai bàn chân.\n"
-            "• Nếu có dấu hiệu trên: Giữ bất động nguyên trạng, đắp chăn mỏng chống hạ thân nhiệt và gọi ngay 115.",
-            style: TextStyle(fontSize: 11.5, height: 1.45),
-          ),
-          const SizedBox(height: 10),
-
-          _buildCitationCard(
-            "CDC Hoa Kỳ (STEADI Initiative)",
-            "Centers for Disease Control - Older Adult Fall Prevention Protocol",
-            "\"Hơn 95% ca gãy xương hông ở người già là do ngã đập bên hông. Người cao tuổi có dùng thuốc chống đông máu có nguy cơ xuất huyết não muộn (TBI) rất cao ngay cả khi cú ngã ban đầu tưởng như nhẹ.\"",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep3Tab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hình minh họa tư thế nằm nghiêng hồi sức
-          Container(
-            height: 135,
-            decoration: BoxDecoration(
-              color: const Color(0xFF060B14),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: CustomPaint(
-                painter: RecoveryPositionIllustrationPainter(),
-                child: Container(),
+              _subItemCard(
+                "Sưng bầm tím",
+                [
+                  _bulletText("Chườm lạnh", "Dùng túi đá hoặc khăn lạnh chườm lên vùng bầm trong 15-20 phút để giảm sưng."),
+                  _bulletText("Nâng cao vùng thương", "Nếu có thể, giữ vùng tổn thương cao hơn tim để giảm sưng."),
+                  _bulletText("Lưu ý y tế", "Nếu tình trạng đau hoặc bầm tím kéo dài hơn 48 giờ mà không giảm, hãy tham khảo ý kiến bác sĩ.", prefixColor: Colors.amberAccent),
+                ],
+                color: Colors.cyanAccent,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-
-          const Text(
-            "BƯỚC 3: TƯ THẾ HỒI SỨC NẰM NGHIÊNG (RECOVERY POSITION)",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.tealAccent),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "• Khi nào áp dụng: Người già BẤT TỈNH, hôn mê nhưng VẪN CÒN THỞ bình thường (lồng ngực vẫn phập phồng).\n"
-            "• Kỹ thuật xoay nghiêng an toàn:\n"
-            "   1. Đặt cánh tay gần bạn vuông góc với thân mình.\n"
-            "   2. Kéo cánh tay đối diện vắt qua ngực, áp mu bàn tay vào má nạn nhân.\n"
-            "   3. Co gập đầu gối chân đối diện lên một góc 90 độ.\n"
-            "   4. Nhẹ nhàng kéo gối để lật toàn bộ cơ thể người bệnh nằm nghiêng về phía bạn.\n"
-            "• Tác dụng: Giữ đường thở mở rộng tối đa, chống tụt lưỡi bịt kín thanh quản và giúp dịch nôn tự trào ra ngoài, tránh sặc vào phổi.",
-            style: TextStyle(fontSize: 11.5, height: 1.45),
-          ),
-          const SizedBox(height: 10),
-
-          _buildCitationCard(
-            "Hội Chữ Thập Đỏ Quốc Tế (IFRC) & AHA",
-            "International First Aid Guidelines - Lateral Recovery Position",
-            "\"Tư thế nằm nghiêng an toàn là kỹ thuật cứu mạng hàng đầu giúp duy trì thông khí thụ động, giảm trên 70% nguy cơ tử vong do tắc nghẽn đường thở cơ học khi chờ xe cấp cứu.\"",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep4Tab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hình minh họa quy tắc dùng ghế đứng dậy
-          Container(
-            height: 135,
-            decoration: BoxDecoration(
-              color: const Color(0xFF060B14),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: CustomPaint(
-                painter: ChairMethodIllustrationPainter(),
-                child: Container(),
+          _buildStepCard(
+            number: "2",
+            title: "Cách xử lý té ngã gây chấn thương nặng",
+            icon: Icons.warning_amber_rounded,
+            color: Colors.redAccent,
+            bodyItems: [
+              _subItemCard(
+                "Gãy xương",
+                [
+                  _bulletText("Cố định xương gãy", "Sử dụng nẹp hoặc vật cứng (ví dụ: thanh gỗ hoặc bìa cứng) để cố định vùng bị gãy, tránh di lệch xương."),
+                  _bulletText("Không tự ý nắn chỉnh", "Tuyệt đối không cố gắng nắn xương về vị trí ban đầu vì có thể làm tổn thương thêm mạch máu, dây thần kinh hoặc mô xung quanh.", prefixColor: Colors.redAccent),
+                  _bulletText("Đến bệnh viện ngay", "Nhanh chóng đưa nạn nhân đến cơ sở y tế gần nhất hoặc gọi cấp cứu 115.", prefixColor: Colors.amberAccent),
+                ],
+                color: Colors.orangeAccent,
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          const Text(
-            "BƯỚC 4: KỸ THUẬT DÙNG GHẾ ĐỨNG DẬY (THE CHAIR METHOD)",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "• Khi nào áp dụng: Người già hoàn toàn tỉnh táo, KHÔNG gãy xương, KHÔNG đau cột sống, chỉ bị trượt ngã nhẹ.\n"
-            "• Quy trình 4 bước tự đứng dậy an toàn:\n"
-            "   1. Lăn người sang tư thế nằm nghiêng.\n"
-            "   2. Dùng 2 tay chống sàn, từ từ chuyển thành tư thế quỳ 4 điểm (hai tay và hai đầu gối).\n"
-            "   3. Bò từ từ đến một chiếc ghế tựa hoặc mép giường thật chắc chắn, đặt 2 tay lên mặt ghế.\n"
-            "   4. Bước một chân khỏe hơn gập lên phía trước, dồn lực tay và chân đẩy người xoay lại ngồi lên mặt ghế.\n"
-            "• Lưu ý: Bắt buộc ngồi yên nghỉ ngơi tối thiểu 15-30 phút sau khi ngồi lên ghế trước khi đi lại.",
-            style: TextStyle(fontSize: 11.5, height: 1.45),
-          ),
-          const SizedBox(height: 10),
-
-          _buildCitationCard(
-            "Cơ quan Y tế Quốc gia Anh (NHS UK)",
-            "NHS Clinical Guideline: What to do after a fall - The Safe Chair Recovery",
-            "\"Kỹ thuật dùng ghế giúp phân phối tải trọng cơ thể lên các nhóm cơ khỏe, ngăn ngừa tụt huyết áp tư thế đứng (Orthostatic Hypotension) và rách cơ do gượng dậy quá nhanh.\"",
+              _subItemCard(
+                "Chấn thương đầu",
+                [
+                  _bulletText("Theo dõi dấu hiệu", "Chú ý các biểu hiện nguy hiểm như buồn nôn, chóng mặt dữ dội, mất trí nhớ tạm thời, co giật hoặc chảy máu từ tai, mũi.", prefixColor: Colors.redAccent),
+                  _bulletText("Giữ đầu cố định", "Hạn chế tối đa việc di chuyển đầu hoặc cổ của người bị nạn. Nếu cần nằm, hãy giữ đầu ngang bằng với thân mình."),
+                  _bulletText("Xử lý nôn ói (Tư thế nghiêng)", "Nếu người bị nạn nôn, hãy nhẹ nhàng nghiêng cả người họ sang một bên (tư thế nằm nghiêng an toàn) để tránh chất nôn tràn vào đường thở gây ngạt thở.", prefixColor: Colors.amberAccent),
+                  _bulletText("Đến bệnh viện cấp cứu", "Chấn thương đầu có thể tiềm ẩn xuất huyết não nguy hiểm, cần đưa người bị nạn đến bệnh viện ngay cả khi họ cảm thấy bình thường sau cú ngã.", prefixColor: Colors.redAccent),
+                ],
+                color: Colors.redAccent,
+              ),
+            ],
           ),
         ],
       ),
@@ -6492,13 +6628,15 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: const Color(0xFF0F172A),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 540, maxHeight: 680),
+        constraints: BoxConstraints(maxWidth: 580, maxHeight: screenHeight * 0.9),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(18.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -6506,43 +6644,44 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                     ),
-                    child: const Icon(Icons.medical_services, color: Colors.redAccent, size: 26),
+                    child: const Icon(Icons.medical_services, color: Colors.redAccent, size: 28),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Cẩm nang Sơ cứu Người già Té ngã",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                          "Cẩm nang Sơ cứu Người bị Té ngã",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17.5, color: Colors.white),
                         ),
+                        SizedBox(height: 3),
                         Text(
-                          "Phác đồ phản ứng nhanh chuẩn quốc tế: WHO, IFRC, NHS UK, CDC",
-                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                          "Hướng dẫn xử lý chấn thương và sơ cấp cứu an toàn",
+                          style: TextStyle(fontSize: 12.5, color: Colors.grey),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
+                    icon: const Icon(Icons.close, color: Colors.grey, size: 24),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // TabBar
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -6550,32 +6689,31 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                   tabAlignment: TabAlignment.start,
                   indicatorColor: Colors.redAccent,
                   labelColor: Colors.redAccent,
-                  unselectedLabelColor: Colors.grey,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                  unselectedLabelStyle: const TextStyle(fontSize: 11),
+                  unselectedLabelColor: Colors.white60,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  unselectedLabelStyle: const TextStyle(fontSize: 13),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   tabs: const [
-                    Tab(text: "1. Không kéo dậy"),
-                    Tab(text: "2. Khám sinh tồn"),
-                    Tab(text: "3. Nằm nghiêng"),
-                    Tab(text: "4. Kỹ thuật ghế"),
+                    Tab(text: "1. Lưu ý trước sơ cứu"),
+                    Tab(text: "2. Các bước cơ bản"),
+                    Tab(text: "3. Theo trường hợp cụ thể"),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // TabBarView
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildStep1Tab(),
-                    _buildStep2Tab(),
-                    _buildStep3Tab(),
-                    _buildStep4Tab(),
+                    _buildPrecautionsTab(),
+                    _buildBasicStepsTab(),
+                    _buildSpecificCasesTab(),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // Bottom Actions
               Row(
@@ -6584,21 +6722,23 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.phone_in_talk, size: 18),
-                      label: const Text("Gọi Cấp Cứu 115", style: TextStyle(fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.phone_in_talk, size: 20),
+                      label: const Text("Gọi Cấp Cứu 115", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       onPressed: _call115,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                       side: BorderSide(color: Colors.grey.shade700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Đóng"),
+                    child: const Text("Đóng", style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
@@ -6609,6 +6749,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
     );
   }
 }
+
 
 // 1. Hình vẽ minh họa Bước 1: Cấm kéo đứng dậy ngay
 class DoNotPullIllustrationPainter extends CustomPainter {

@@ -129,6 +129,10 @@ bool SensorManager::init() {
   if (!windowBuffer) {
     windowBuffer = (SensorSample*)malloc(sizeof(SensorSample) * WINDOW_SIZE);
   }
+  if (!windowBuffer) {
+    Serial.println("[SENSORS] Loi: khong du bo nho de cap phat sensor window buffer.");
+    return false;
+  }
 
   // 2. Cam bien hong ngoai PIR AM312
 #if ENABLE_PIR_SENSOR
@@ -276,7 +280,7 @@ void SensorManager::update() {
       uint8_t rangeStatus = tof.ranging_data.range_status;
 
       // rangeStatus 0 = Valid, 1 = Sigma Fail (nhung khoang cach van tot), 2 = Signal Fail
-      if ((rangeStatus == 0 || rangeStatus == 1 || rangeStatus == 2) && rawDist > 40 && rawDist < 4000) {
+      if ((rangeStatus == 0 || rangeStatus == 1) && rawDist > 40 && rawDist < 4000) {
         primaryTofDistance = rawDist;
         tofDistances[0] = rawDist;
         tofDistances[1] = rawDist;
