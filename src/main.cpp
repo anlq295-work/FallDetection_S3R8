@@ -144,6 +144,8 @@ void executeSystemCommand(const String& cmd) {
     Serial.println("[CMD] Nhan lenh: Test bao dong");
     alertSys.setIndicator(0xFF0000, true);
     alertSys.playBeep(400);
+    bleProvision.updateStatus("TEST_ALARM_ACTIVE");
+    delay(450);
     alertSys.setIndicator(0x00FF00, false);
     bleProvision.updateStatus("TEST_ALARM_COMPLETED");
   } else if (cmd == "PANIC_SOS") {

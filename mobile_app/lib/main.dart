@@ -1024,20 +1024,24 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       // Khám phá dịch vụ BLE
       List<BluetoothService> services = await device.discoverServices();
       for (var s in services) {
-        if (s.uuid.str128.toLowerCase() == serviceUuid.toLowerCase()) {
-          for (var c in s.characteristics) {
-            String u = c.uuid.str128.toLowerCase();
-            if (u == charWifiUuid.toLowerCase()) _wifiChar = c;
-            if (u == charContactUuid.toLowerCase()) _contactChar = c;
-            if (u == charStatusUuid.toLowerCase()) _statusChar = c;
-            if (u == charTelemetryUuid.toLowerCase()) _telemetryChar = c;
-            if (u == charCmdUuid.toLowerCase()) _cmdChar = c;
-            if (u == charOtaUuid.toLowerCase()) _otaChar = c;
-          }
+        for (var c in s.characteristics) {
+          String u = c.uuid.str128.toLowerCase();
+          if (u == charWifiUuid.toLowerCase()) _wifiChar = c;
+          if (u == charContactUuid.toLowerCase()) _contactChar = c;
+          if (u == charStatusUuid.toLowerCase()) _statusChar = c;
+          if (u == charTelemetryUuid.toLowerCase()) _telemetryChar = c;
+          if (u == charCmdUuid.toLowerCase()) _cmdChar = c;
+          if (u == charOtaUuid.toLowerCase()) _otaChar = c;
         }
       }
 
       // Đọc cấu hình danh bạ & ngưỡng sàn hiện tại từ chip
+      final discovered = [_wifiChar, _contactChar, _statusChar, _telemetryChar, _cmdChar, _otaChar].whereType<BluetoothCharacteristic>().length;
+      debugPrint('[BLE] Discovered $discovered/6 characteristics');
+      if (_cmdChar == null) {
+        _showSnackbar('BLE command channel not found. Please reflash firmware and reconnect.', Colors.red);
+        debugPrint('[BLE] Missing command characteristic: $charCmdUuid');
+      }
       await _readCurrentContacts();
 
       // Đăng ký nhận thông báo Status Notify
