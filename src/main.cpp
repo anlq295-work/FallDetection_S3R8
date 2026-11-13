@@ -10,6 +10,7 @@
 #include <esp_idf_version.h>
 #include <nvs_flash.h>
 #include <ArduinoJson.h>
+#include <time.h>
 
 SensorManager sensorMgr;
 EdgeAIEngine  aiEngine;
@@ -187,6 +188,17 @@ void executeSystemCommand(const String& cmd) {
   } else if (cmd == "TEST_BEEP") {
     alertSys.playBeep(200);
     bleProvision.updateStatus("BEEP_TEST_OK");
+  } else if (cmd.startsWith("NIGHTLIGHT_SCHEDULE:")) {
+    int enabled, startHour, startMinute, endHour, endMinute;
+    String payload = cmd.substring(String("NIGHTLIGHT_SCHEDULE:").length());
+    if (sscanf(payload.c_str(), "%d,%d,%d,%d,%d", &enabled, &startHour, &startMinute, &endHour, &endMinute) == 5 &&
+        startHour >= 0 && startHour < 24 && startMinute >= 0 && startMinute < 60 &&
+        endHour >= 0 && endHour < 24 && endMinute >= 0 && endMinute < 60) {
+      alertSys.setNightlightSchedule(enabled != 0, startHour, startMinute, endHour, endMinute);
+      bleProvision.updateStatus("NIGHTLIGHT_SCHEDULE_SAVED");
+    } else {
+      bleProvision.updateStatus("NIGHTLIGHT_SCHEDULE_ERROR");
+    }
   } else if (cmd.startsWith("OTA_HTTP:")) {
     String url = cmd.substring(9);
     url.trim();
@@ -237,19 +249,8 @@ void setup() {
                 alertSys.isMuted() ? "YES" : "NO",
                 digitalRead(PIN_BUZZER));
 
-  // 3. Khởi tạo Hardware Task Watchdog Timer (10 giây) chống treo chip
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  esp_task_wdt_config_t twdt_config = {
-      .timeout_ms = WDT_TIMEOUT_SECONDS * 1000,
-      .idle_core_mask = 0,
-      .trigger_panic = true,
-  };
-  esp_task_wdt_reconfigure(&twdt_config);
-  esp_task_wdt_add(NULL);
-#else
-  esp_task_wdt_init(WDT_TIMEOUT_SECONDS, true);
-  esp_task_wdt_add(NULL);
-#endif
+  // Watchdog được đăng ký ở cuối setup(), sau khi BLE, Wi-Fi và cảm biến
+  // đã khởi tạo xong. Đăng ký quá sớm làm reset trong lúc boot.
 
   // 2. Kiểm tra phần cứng ESP32-S3 N16R8 và bộ nhớ Octal PSRAM OPI
   Serial.println("\n=======================================================");
@@ -267,9 +268,13 @@ void setup() {
 
   pinMode(PIN_CANCEL_BTN, INPUT_PULLUP);
   alertSys.init();
+  delay(1000); // Giữ màu khởi động đủ lâu để kiểm tra trực tiếp
+  delay(150); // Khoảng đệm ổn định nguồn điện LED trước khi khởi động sóng vô tuyến BLE
+  Serial.println("[BOOT] LED init xong, bat dau BLE...");
 
   // 3. Khởi động BLE GATT Server để ứng dụng di động cấu hình và giám sát
   bleProvision.init("FallDetector_S3R8");
+  Serial.println("[BOOT] BLE init xong, bat dau doc cau hinh...");
 
   // 4. Đọc cấu hình NVS Flash
   if (bleProvision.loadCredentials(wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken, configuredFloorMm)) {
@@ -278,6 +283,7 @@ void setup() {
                   wifiSSID.c_str(), emergencyPhone.c_str(), configuredFloorMm);
     
     if (alertSys.connectWiFi(wifiSSID, wifiPass)) {
+      configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
       String ipNotice = "CONNECTED_IP:" + WiFi.localIP().toString();
       bleProvision.updateStatus(ipNotice);
       deviceWebServer.begin(
@@ -299,17 +305,37 @@ void setup() {
     Serial.println("[LOI] Khoi tao cum cam bien that bai!");
     currentState = STATE_DEVICE_FAULT;
   }
+  Serial.printf("[BOOT] Sensor init xong, state=%d\n", currentState);
 
   // 6. Khởi động bộ suy luận mạng Nơ-ron Edge AI
   if (!aiEngine.init()) {
     Serial.println("[LOI] Khoi tao Edge AI Engine that bai!");
     currentState = STATE_DEVICE_FAULT;
   }
+  Serial.printf("[BOOT] AI init xong, state=%d\n", currentState);
 
   if (currentState != STATE_DEVICE_FAULT) {
     alertSys.setIndicator(0x00FF00, false);
+    Serial.println("[SYSTEM] SETUP COMPLETE - LED xanh la, bat dau vong lap.");
     delay(800);
+  } else {
+    Serial.println("[SYSTEM] SETUP COMPLETE - STATE_DEVICE_FAULT.");
   }
+
+  // Chỉ bắt đầu giám sát watchdog sau khi setup đã hoàn tất.
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  esp_task_wdt_config_t twdt_config = {
+      .timeout_ms = WDT_TIMEOUT_SECONDS * 1000,
+      .idle_core_mask = 0,
+      .trigger_panic = true,
+  };
+  esp_task_wdt_reconfigure(&twdt_config);
+  esp_task_wdt_add(NULL);
+#else
+  esp_task_wdt_init(WDT_TIMEOUT_SECONDS, true);
+  esp_task_wdt_add(NULL);
+#endif
+  Serial.println("[BOOT] Watchdog da bat sau setup.");
 }
 
 void handleSerialCommands() {
@@ -343,6 +369,11 @@ void loop() {
   esp_task_wdt_reset();
 
   unsigned long now = millis();
+  static SystemState lastLoggedState = STATE_NORMAL;
+  if (currentState != lastLoggedState) {
+    Serial.printf("[FSM] State changed: %d -> %d at %lu ms\n", lastLoggedState, currentState, now);
+    lastLoggedState = currentState;
+  }
 
   // 1. Cập nhật âm thanh còi phi chặn (Non-blocking buzzer patterns)
   alertSys.updateBuzzer();
@@ -452,6 +483,9 @@ void loop() {
   // 6. Máy trạng thái hữu hạn FSM (Finite State Machine)
   switch (currentState) {
     case STATE_NORMAL:
+      // Sau khi khởi động, đưa LED về trạng thái sẵn sàng màu xanh lá.
+      // Nếu không có dòng này, LED giữ nguyên màu xanh dương khởi động.
+      alertSys.setIndicator(0x00FF00, false);
       alertSys.setBuzzerPattern(BUZZER_SILENT);
       break;
 

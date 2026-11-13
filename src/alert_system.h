@@ -22,6 +22,9 @@ public:
   BuzzerPattern getCurrentPattern() const;
   void updateBuzzer();
   void updateNightlight(bool motionDetected);
+  void setNightlightSchedule(bool enabled, uint8_t startHour, uint8_t startMinute,
+                             uint8_t endHour, uint8_t endMinute);
+  bool isNightScheduleActive() const;
   void playBeep(uint16_t durationMs);
   void setBuzzerHardware(bool on);
   void setBuzzerActiveHigh(bool high);
@@ -38,6 +41,7 @@ public:
 
 private:
   Adafruit_NeoPixel strip;
+  uint32_t currentLedColor;
   unsigned long lastWiFiReconnectAttempt;
   bool buzzerPinState;
   bool buzzerActiveHigh;
@@ -48,6 +52,11 @@ private:
 
   bool nightlightActive;
   unsigned long nightlightEndTime;
+  bool nightScheduleEnabled;
+  uint8_t nightStartHour;
+  uint8_t nightStartMinute;
+  uint8_t nightEndHour;
+  uint8_t nightEndMinute;
 };
 
 #endif

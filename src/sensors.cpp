@@ -1,6 +1,7 @@
 #include "sensors.h"
 #include <Wire.h>
 #include <esp_heap_caps.h>
+#include <esp_task_wdt.h>
 
 static volatile bool pirTriggered = false;
 static void IRAM_ATTR pirISR() {
@@ -71,14 +72,12 @@ bool SensorManager::initTofSensor() {
   Wire.setClock(100000); // 100 kHz chuan on dinh tren breadboard va day noi
   tof.setTimeout(500);
 
-  // Scan I2C xem co thiet bi nao tren bus khong
-  bool addressFound = false;
-  for (uint8_t addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-      if (addr == 0x29) addressFound = true;
-    }
-  }
+  // VL53L1X luôn dùng địa chỉ mặc định 0x29. Kiểm tra trực tiếp để tránh
+  // quét 126 địa chỉ I2C và làm watchdog reset trong lúc khởi động.
+  esp_task_wdt_reset();
+  Wire.beginTransmission(0x29);
+  bool addressFound = (Wire.endTransmission() == 0);
+  esp_task_wdt_reset();
 
   if (!addressFound) {
     tofHealthy = false;

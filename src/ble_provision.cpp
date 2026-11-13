@@ -156,8 +156,8 @@ void BleProvisioning::init(const char* deviceName) {
 
   prefs.begin("sys_cfg", true);
   StaticJsonDocument<512> doc;
-  doc["phone"] = prefs.getString("emg_phone", "");
-  doc["chat_id"] = prefs.getString("emg_chat_id", "");
+  doc["phone"] = prefs.isKey("emg_phone") ? prefs.getString("emg_phone") : "";
+  doc["chat_id"] = prefs.isKey("emg_chat_id") ? prefs.getString("emg_chat_id") : "";
   doc["floor_mm"] = prefs.getUShort("floor_thresh", FLOOR_HEIGHT_DEFAULT_MM);
   prefs.end();
 
@@ -218,9 +218,9 @@ bool BleProvisioning::loadCredentials(String& ssid, String& pass, String& phone,
   prefs.begin("sys_cfg", true);
   ssid        = prefs.getString("wifi_ssid", "");
   pass        = prefs.getString("wifi_pass", "");
-  phone       = prefs.getString("emg_phone", "");
-  chatId      = prefs.getString("emg_chat_id", "");
-  botToken    = prefs.getString("bot_token", "");
+  phone       = prefs.isKey("emg_phone") ? prefs.getString("emg_phone") : "";
+  chatId      = prefs.isKey("emg_chat_id") ? prefs.getString("emg_chat_id") : "";
+  botToken    = prefs.isKey("bot_token") ? prefs.getString("bot_token") : "";
   floorThresh = prefs.getUShort("floor_thresh", FLOOR_HEIGHT_DEFAULT_MM);
   prefs.end();
 

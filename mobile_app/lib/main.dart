@@ -35,23 +35,39 @@ class FallGuardApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1),
+          seedColor: const Color(0xFF236B63),
           brightness: Brightness.light,
         ),
         cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF5F7F6),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF5F7F6),
+          foregroundColor: Color(0xFF17302D),
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1976D2),
+          seedColor: const Color(0xFF69A89E),
           brightness: Brightness.dark,
         ),
         cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF101817),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF101817),
+          foregroundColor: Color(0xFFE6F0ED),
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
       ),
       themeMode: ThemeMode.system,
@@ -1126,6 +1142,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _showSnackbar("ESP32 kết nối Wi-Fi thất bại! Kiểm tra mật khẩu.", Colors.red);
     } else if (msg == "CONFIG_UPDATED_OK") {
       _showSnackbar("Cấu hình danh bạ đã lưu thành công!", Colors.green);
+    } else if (msg == "NIGHTLIGHT_SCHEDULE_SAVED") {
+      _showSnackbar("Lịch night light đã lưu vào ESP32!", Colors.green);
+    } else if (msg == "NIGHTLIGHT_SCHEDULE_ERROR") {
+      _showSnackbar("Lịch night light không hợp lệ.", Colors.red);
     } else if (msg == "EMERGENCY_DISPATCHED") {
       _showCriticalEmergencyDialog(isFall: true);
     } else if (msg == "HISTORY_SENT") {
@@ -1737,22 +1757,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: badgeColor.withValues(alpha: 0.6), width: 1.6),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: badgeColor.withValues(alpha: 0.45)),
       ),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              badgeColor.withValues(alpha: 0.08),
-              Colors.black.withValues(alpha: 0.2),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(12),
+          color: badgeColor.withValues(alpha: 0.06),
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -1799,7 +1812,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.widgets, size: 20, color: Colors.cyanAccent),
+                  icon: const Icon(Icons.widgets_outlined, size: 20),
                   tooltip: "Mô phỏng Widget Màn hình khóa",
                   onPressed: _openLockscreenWidgetPreview,
                 ),
@@ -1870,7 +1883,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: statusColor.withValues(alpha: 0.5), width: 1.5),
       ),
       child: Padding(
@@ -2523,11 +2536,44 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     }
   }
 
+  String _formatTime(TimeOfDay value) {
+    return "${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _pickNightTime(bool isStart) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _nightStart : _nightEnd,
+      helpText: isStart ? "Giờ bắt đầu bật đèn" : "Giờ kết thúc đèn",
+    );
+    if (!mounted || picked == null) return;
+    setState(() {
+      if (isStart) {
+        _nightStart = picked;
+      } else {
+        _nightEnd = picked;
+      }
+    });
+  }
+
+  void _saveNightlightSchedule() {
+    final command = "NIGHTLIGHT_SCHEDULE:${_nightScheduleEnabled ? 1 : 0},"
+        "${_nightStart.hour},${_nightStart.minute},"
+        "${_nightEnd.hour},${_nightEnd.minute}";
+    _handleDeviceCommand(command);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Đã gửi lịch night light ${_formatTime(_nightStart)}–${_formatTime(_nightEnd)}")),
+    );
+  }
+
   // Cấu hình thông minh cho thiết bị
   int _alarmGracePeriod = 15; // 15 giây trễ trước khi hú còi lớn
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
+  bool _nightScheduleEnabled = true;
+  TimeOfDay _nightStart = const TimeOfDay(hour: 18, minute: 0);
+  TimeOfDay _nightEnd = const TimeOfDay(hour: 6, minute: 0);
   bool _buzzerActiveHigh = false; // Mặc định khớp với module còi 3 chân: Active-LOW (High-Z im lặng, 0V báo động)
   bool _buzzerMuted = false;
 
@@ -2571,6 +2617,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 16,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2580,6 +2627,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         ),
         bottom: TabBar(
           controller: _deviceTabController,
+          indicatorSize: TabBarIndicatorSize.label,
+          dividerColor: Colors.transparent,
           tabs: const [
             Tab(icon: Icon(Icons.monitor_heart), text: "Giám sát"),
             Tab(icon: Icon(Icons.timeline), text: "Hộp đen NVS"),
@@ -2663,9 +2712,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
           // Thẻ trạng thái khẩn cấp
           Card(
-            color: _getStateColor(widget.sysState).withValues(alpha: 0.15),
+            color: _getStateColor(widget.sysState).withValues(alpha: 0.10),
             shape: RoundedRectangleBorder(
-              side: BorderSide(color: _getStateColor(widget.sysState), width: 2),
+              side: BorderSide(color: _getStateColor(widget.sysState).withValues(alpha: 0.55)),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Padding(
@@ -2675,14 +2724,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.shield, color: _getStateColor(widget.sysState), size: 34),
+                      Icon(Icons.shield_outlined, color: _getStateColor(widget.sysState), size: 30),
                       const SizedBox(width: 10),
                       Text(
                         widget.sysState,
                         style: TextStyle(
                           color: _getStateColor(widget.sysState),
                           fontWeight: FontWeight.bold,
-                          fontSize: 26,
+                          fontSize: 22,
                         ),
                       ),
                     ],
@@ -2708,12 +2757,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 1.45,
+            childAspectRatio: 1.55,
             children: [
-              _buildMetricCard("Tư thế AI", widget.aiPosture, "Tin cậy: ${(widget.aiConfidence * 100).toStringAsFixed(0)}%", Icons.accessibility_new, Colors.indigo),
-              _buildMetricCard("Độ cao ToF", "${widget.tofHeight} mm", "V_drop: ${widget.dropRate.toStringAsFixed(0)} mm/s", Icons.height, Colors.blue),
-              _buildMetricCard("Động năng Radar", "${widget.radarMotion} / 100", "LD2410 Peak Move", Icons.directions_run, Colors.orange),
-              _buildMetricCard("Tĩnh học Hô hấp", "${widget.radarStatic} / 100", "LD2410 Static Gate", Icons.air, Colors.teal),
+              _buildMetricCard("Tư thế AI", widget.aiPosture, "Tin cậy: ${(widget.aiConfidence * 100).toStringAsFixed(0)}%", Icons.accessibility_new, const Color(0xFF477B72)),
+              _buildMetricCard("Độ cao ToF", "${widget.tofHeight} mm", "V_drop: ${widget.dropRate.toStringAsFixed(0)} mm/s", Icons.height, const Color(0xFF3D6F8E)),
+              _buildMetricCard("Động năng Radar", "${widget.radarMotion} / 100", "LD2410 Peak Move", Icons.directions_run, const Color(0xFF9A6B35)),
+              _buildMetricCard("Tĩnh học Hô hấp", "${widget.radarStatic} / 100", "LD2410 Static Gate", Icons.air, const Color(0xFF3F7C73)),
             ],
           ),
           const SizedBox(height: 14),
@@ -3505,6 +3554,43 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     ],
                     selected: {_nightlightMode},
                     onSelectionChanged: (val) => setState(() => _nightlightMode = val.first),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Chỉ bật trong khung giờ ban đêm", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    subtitle: Text(
+                      _nightScheduleEnabled ? "Mặc định: 18:00 – 06:00" : "Night light hoạt động cả ngày",
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    value: _nightScheduleEnabled,
+                    onChanged: (value) => setState(() => _nightScheduleEnabled = value),
+                  ),
+                  if (_nightScheduleEnabled)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickNightTime(true),
+                            icon: const Icon(Icons.login, size: 18),
+                            label: Text("Bật ${_formatTime(_nightStart)}"),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickNightTime(false),
+                            icon: const Icon(Icons.logout, size: 18),
+                            label: Text("Tắt ${_formatTime(_nightEnd)}"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: _saveNightlightSchedule,
+                    icon: const Icon(Icons.schedule),
+                    label: const Text("Lưu lịch night light vào thiết bị"),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -4373,22 +4459,29 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   Widget _buildMetricCard(String title, String value, String subtitle, IconData icon, Color color) {
     return Card(
+      margin: EdgeInsets.zero,
+      color: color.withValues(alpha: 0.07),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withValues(alpha: 0.22)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Row(
               children: [
-                Icon(icon, size: 18, color: color),
+                Icon(icon, size: 19, color: color),
                 const SizedBox(width: 6),
                 Expanded(child: Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey))),
               ],
             ),
             const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-            Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(height: 2),
+            Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
       ),

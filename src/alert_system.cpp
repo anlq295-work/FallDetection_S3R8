@@ -3,9 +3,12 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <esp_task_wdt.h>
+#include <time.h>
 
 AlertSystem::AlertSystem() 
   : strip(NUM_LEDS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800),
+    currentLedColor(0xFFFFFFFF),
     lastWiFiReconnectAttempt(0),
     buzzerPinState(false),
     buzzerActiveHigh(BUZZER_ACTIVE_HIGH),
@@ -14,7 +17,12 @@ AlertSystem::AlertSystem()
     patternTimer(0),
     patternStep(0),
     nightlightActive(false),
-    nightlightEndTime(0) {}
+    nightlightEndTime(0),
+    nightScheduleEnabled(true),
+    nightStartHour(18),
+    nightStartMinute(0),
+    nightEndHour(6),
+    nightEndMinute(0) {}
 
 void AlertSystem::earlyHardwareMute() {
   // 1. Đọc phân cực còi và trạng thái Mute đã lưu trong NVS Flash (nếu chưa lưu thì lấy theo config.h)
@@ -91,13 +99,24 @@ bool AlertSystem::isMuted() const {
 void AlertSystem::init() {
   earlyHardwareMute(); // Đảm bảo còi tắt tuyệt đối và đọc phân cực từ NVS
 
+  Preferences p;
+  if (p.begin("sys_cfg", true)) {
+    nightScheduleEnabled = p.getBool("nl_sched", true);
+    nightStartHour = p.getUChar("nl_start_h", 18);
+    nightStartMinute = p.getUChar("nl_start_m", 0);
+    nightEndHour = p.getUChar("nl_end_h", 6);
+    nightEndMinute = p.getUChar("nl_end_m", 0);
+    p.end();
+  }
+
   strip.begin();
 #ifdef LED_BRIGHTNESS
   strip.setBrightness(LED_BRIGHTNESS);
 #else
-  strip.setBrightness(200);
+  strip.setBrightness(120);
 #endif
-  setIndicator(strip.Color(0, 100, 255), false); // Đèn xanh dương báo đang khởi động tươi sáng rõ nét
+  currentLedColor = 0xFFFFFFFF;
+  setIndicator(strip.Color(255, 0, 255), false); // Màu tím magenta để kiểm tra trạng thái khởi động
 
 #if ENABLE_STARTUP_BEEP
   // Âm báo Welcome khởi động hệ thống
@@ -108,10 +127,23 @@ void AlertSystem::init() {
 }
 
 void AlertSystem::setIndicator(uint32_t color, bool buzzer) {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, color);
+  // Nhận màu theo dạng RGB (0xRRGGBB), sau đó để thư viện xử lý đúng
+  // thứ tự dây của dải LED (NEO_GRB).
+  const uint8_t red = (color >> 16) & 0xFF;
+  const uint8_t green = (color >> 8) & 0xFF;
+  const uint8_t blue = color & 0xFF;
+  const uint32_t ledColor = strip.Color(red, green, blue);
+
+  // Chỉ bắn dữ liệu ra WS2812B khi màu sắc thực sự thay đổi
+  // Ngăn chặn hoàn toàn việc gọi strip.show() hàng nghìn lần/giây trong loop() gây flicker cực mạnh
+  if (ledColor != currentLedColor) {
+    currentLedColor = ledColor;
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, ledColor);
+    }
+    strip.show();
+    delayMicroseconds(300); // Latch pulse an toàn tối thiểu > 50µs cho WS2812B
   }
-  strip.show();
 
   if (buzzer) {
     setBuzzerHardware(true);
@@ -208,24 +240,71 @@ void AlertSystem::updateBuzzer() {
 void AlertSystem::updateNightlight(bool motionDetected) {
   unsigned long now = millis();
 
-  if (motionDetected) {
-    nightlightActive = true;
+  if (motionDetected && isNightScheduleActive()) {
     nightlightEndTime = now + NIGHTLIGHT_TIMEOUT_MS;
-    // Bật đèn vàng ấm dịu nhẹ soi đường đi (Warm Golden Light)
-    for (int i = 0; i < NUM_LEDS; i++) {
-      strip.setPixelColor(i, strip.Color(150, 100, 30));
-    }
-    strip.show();
-  } else if (nightlightActive) {
-    if (now >= nightlightEndTime) {
-      nightlightActive = false;
-      // Trở về đèn ngủ ambient tối nhẹ (Warm dim)
-      for (int i = 0; i < NUM_LEDS; i++) {
-        strip.setPixelColor(i, strip.Color(35, 22, 10));
+    if (!nightlightActive) {
+      nightlightActive = true;
+      uint32_t warmColor = strip.Color(150, 100, 30);
+      if (currentLedColor != warmColor) {
+        currentLedColor = warmColor;
+        for (int i = 0; i < NUM_LEDS; i++) {
+          strip.setPixelColor(i, warmColor);
+        }
+        strip.show();
+        delayMicroseconds(300);
       }
-      strip.show();
+    }
+  } else if (nightlightActive) {
+    if (!isNightScheduleActive() || now >= nightlightEndTime) {
+      nightlightActive = false;
+      uint32_t dimColor = strip.Color(35, 22, 10);
+      if (currentLedColor != dimColor) {
+        currentLedColor = dimColor;
+        for (int i = 0; i < NUM_LEDS; i++) {
+          strip.setPixelColor(i, dimColor);
+        }
+        strip.show();
+        delayMicroseconds(300);
+      }
     }
   }
+}
+
+void AlertSystem::setNightlightSchedule(bool enabled, uint8_t startHour, uint8_t startMinute,
+                                         uint8_t endHour, uint8_t endMinute) {
+  nightScheduleEnabled = enabled;
+  nightStartHour = startHour % 24;
+  nightStartMinute = startMinute % 60;
+  nightEndHour = endHour % 24;
+  nightEndMinute = endMinute % 60;
+
+  Preferences p;
+  if (p.begin("sys_cfg", false)) {
+    p.putBool("nl_sched", nightScheduleEnabled);
+    p.putUChar("nl_start_h", nightStartHour);
+    p.putUChar("nl_start_m", nightStartMinute);
+    p.putUChar("nl_end_h", nightEndHour);
+    p.putUChar("nl_end_m", nightEndMinute);
+    p.end();
+  }
+}
+
+bool AlertSystem::isNightScheduleActive() const {
+  if (!nightScheduleEnabled) return true;
+
+  time_t now = time(nullptr);
+  // Chưa đồng bộ NTP: giữ hành vi cũ để đèn vẫn hoạt động khi mất Wi-Fi.
+  if (now < 1577836800) return true; // 2020-01-01: thời gian chưa được NTP đồng bộ
+
+  struct tm localTime;
+  localtime_r(&now, &localTime);
+  const int current = localTime.tm_hour * 60 + localTime.tm_min;
+  const int start = nightStartHour * 60 + nightStartMinute;
+  const int end = nightEndHour * 60 + nightEndMinute;
+
+  if (start == end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
 }
 
 void AlertSystem::playBeep(uint16_t durationMs) {
@@ -239,7 +318,9 @@ bool AlertSystem::connectWiFi(const String& ssid, const String& pass) {
 
   Serial.printf("[WIFI] Dang ket noi toi SSID: %s ...\n", ssid.c_str());
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false); // Tat che do tiet kiem nang luong WiFi de duy tri ket noi sieu on dinh va do tre thap
+  // BLE và Wi-Fi cùng chạy trên ESP32-S3. Modem sleep bắt buộc phải bật
+  // khi Bluetooth đang hoạt động; tắt sleep sẽ làm Wi-Fi abort() và reset chip.
+  WiFi.setSleep(true);
   WiFi.setAutoReconnect(true);
 
   if (pass.length() > 0) {
@@ -251,6 +332,10 @@ bool AlertSystem::connectWiFi(const String& ssid, const String& pass) {
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 35) {
     delay(300);
+    // connectWiFi() chạy trong setup(), sau khi watchdog đã bật.
+    // Nếu chờ đủ 10,5 giây mà không reset WDT, ESP32 sẽ khởi động lại
+    // và LED chỉ lặp lại màu xanh dương khởi động.
+    esp_task_wdt_reset();
     Serial.print(".");
     attempts++;
   }
@@ -276,7 +361,8 @@ void AlertSystem::maintainWiFi(const String& ssid, const String& pass) {
       lastWiFiReconnectAttempt = now;
       Serial.println("[WIFI] Dang ket noi lai WiFi ngam (non-blocking)...");
       WiFi.mode(WIFI_STA);
-      WiFi.setSleep(false);
+      // Giữ modem sleep bật vì BLE vẫn đang chạy song song.
+      WiFi.setSleep(true);
       WiFi.setAutoReconnect(true);
       if (pass.length() > 0) {
         WiFi.begin(ssid.c_str(), pass.c_str());
