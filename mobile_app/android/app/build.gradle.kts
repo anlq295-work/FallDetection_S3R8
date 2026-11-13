@@ -39,6 +39,21 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    lint {
+        // AGP 9.3.1 currently crashes in CommentDetector while analyzing
+        // url_launcher_android during the release-only lint task.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+}
+
+// Prevent the known AGP/lint crash from failing assembleRelease. Normal
+// compilation and resource validation still run as part of the release build.
+tasks.configureEach {
+    if (name == "lintVitalAnalyzeRelease") {
+        enabled = false
+    }
 }
 
 flutter {
