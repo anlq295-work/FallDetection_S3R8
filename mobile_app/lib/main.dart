@@ -1879,6 +1879,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   // Widget Giám sát trực tiếp qua Wi-Fi LAN
   Widget _buildWifiMonitoringCard() {
     final bool isOnline = _isWifiConnected;
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool compact = screenWidth < 380;
     final Color statusColor = !_isWifiMonitoringEnabled
         ? Colors.grey
         : (isOnline ? Colors.tealAccent : Colors.orangeAccent);
@@ -2001,22 +2003,28 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceAround,
+                  runAlignment: WrapAlignment.center,
+                  spacing: 4,
+                  runSpacing: 8,
                   children: [
-                    _buildMiniWifiMetric("Tư thế AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent),
-                    _buildMiniWifiMetric("Độ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent),
-                    _buildMiniWifiMetric("Động năng", "$_radarMotion/100", Icons.directions_run, Colors.orangeAccent),
-                    _buildMiniWifiMetric("Nhịp thở", "$_radarStatic/100", Icons.air, Colors.tealAccent),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Tư thế AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Độ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Động năng", "$_radarMotion/100", Icons.directions_run, Colors.orangeAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Nhịp thở", "$_radarStatic/100", Icons.air, Colors.tealAccent)),
                   ],
                 ),
               ),
               const SizedBox(height: 10),
 
               // Nút hành động nhanh Wi-Fi
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: compact ? screenWidth - 60 : (screenWidth - 68) / 2,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade800,
@@ -2028,8 +2036,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       onPressed: () => _sendWifiCommand("PANIC_SOS"),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
+                  SizedBox(
+                    width: compact ? screenWidth - 60 : (screenWidth - 68) / 2,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -2039,7 +2047,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       onPressed: () => _sendWifiCommand("CANCEL_ALARM"),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.history, color: Colors.blueAccent),
                     tooltip: "Tải hộp đen NVS qua Wi-Fi",
@@ -2138,6 +2145,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     // Tập hợp danh sách thiết bị (đưa thiết bị đã kết nối lên đầu)
+    final bool compact = MediaQuery.sizeOf(context).width < 380;
     List<BluetoothDevice> displayedDevices = [];
     if (_connectedDevice != null && _isConnected) {
       displayedDevices.add(_connectedDevice!);
@@ -2158,37 +2166,60 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.badge, color: Colors.redAccent),
-            tooltip: "Thẻ Y Tế Khẩn Cấp",
-            onPressed: _openMedicalIdCard,
-          ),
-          IconButton(
-            icon: const Icon(Icons.description, color: Colors.tealAccent),
-            tooltip: "Báo Cáo Y Khoa Định Kỳ",
-            onPressed: _openMedicalAuditReport,
-          ),
-          IconButton(
-            icon: Icon(
-              _isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
-              color: _isConnected ? Colors.greenAccent : Colors.grey,
+          if (compact)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'medical') {
+                  _openMedicalIdCard();
+                } else if (value == 'report') {
+                  _openMedicalAuditReport();
+                } else if (value == 'device') {
+                  if (_isConnected && _connectedDevice != null) _openDeviceDetail(_connectedDevice!);
+                } else if (value == 'settings') {
+                  _openGeneralSettings();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'medical', child: Text('Thẻ Y tế khẩn cấp')),
+                PopupMenuItem(value: 'report', child: Text('Báo cáo y khoa')),
+                PopupMenuItem(value: 'device', child: Text('Thiết bị đang kết nối')),
+                PopupMenuItem(value: 'settings', child: Text('Cài đặt chung')),
+              ],
             ),
-            tooltip: _isConnected ? "Đã kết nối" : "Chưa kết nối",
-            onPressed: () {
-              if (_isConnected && _connectedDevice != null) {
-                _openDeviceDetail(_connectedDevice!);
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: "Cài đặt chung",
-            onPressed: _openGeneralSettings,
-          ),
+          if (!compact) ...[
+            IconButton(
+              icon: const Icon(Icons.badge, color: Colors.redAccent),
+              tooltip: "Thẻ Y Tế Khẩn Cấp",
+              onPressed: _openMedicalIdCard,
+            ),
+            IconButton(
+              icon: const Icon(Icons.description, color: Colors.tealAccent),
+              tooltip: "Báo Cáo Y Khoa Định Kỳ",
+              onPressed: _openMedicalAuditReport,
+            ),
+            IconButton(
+              icon: Icon(
+                _isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
+                color: _isConnected ? Colors.greenAccent : Colors.grey,
+              ),
+              tooltip: _isConnected ? "Đã kết nối" : "Chưa kết nối",
+              onPressed: () {
+                if (_isConnected && _connectedDevice != null) {
+                  _openDeviceDetail(_connectedDevice!);
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: "Cài đặt chung",
+              onPressed: _openGeneralSettings,
+            ),
+          ],
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(compact ? 12.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -2625,12 +2656,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(devName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            Text("ID: ${widget.device.remoteId}", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(devName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+            Text("ID: ${widget.device.remoteId}", style: const TextStyle(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis),
           ],
         ),
         bottom: TabBar(
           controller: _deviceTabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 14),
           indicatorSize: TabBarIndicatorSize.label,
           dividerColor: Colors.transparent,
           tabs: const [
@@ -2654,15 +2688,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   // TAB 1: GIÁM SÁT THỜI GIAN THỰC & ĐIỀU KHIỂN TỪ XA
   Widget _buildMonitorTab() {
     final bool canControl = widget.isConnected || widget.isWifiConnected;
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool compact = screenWidth < 380;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(compact ? 12.0 : 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Huy hiệu nguồn kết nối (BLE & Wi-Fi)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -2683,7 +2721,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -2761,7 +2798,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 1.55,
+            childAspectRatio: compact ? 1.28 : 1.55,
             children: [
               _buildMetricCard("Tư thế AI", widget.aiPosture, "Tin cậy: ${(widget.aiConfidence * 100).toStringAsFixed(0)}%", Icons.accessibility_new, const Color(0xFF477B72)),
               _buildMetricCard("Độ cao ToF", "${widget.tofHeight} mm", "V_drop: ${widget.dropRate.toStringAsFixed(0)} mm/s", Icons.height, const Color(0xFF3D6F8E)),
@@ -2786,17 +2823,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           const SizedBox(height: 10),
 
           // Các nút lệnh nhanh
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
+              SizedBox(
+                width: compact ? double.infinity : (screenWidth - 48) / 2,
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("CANCEL_ALARM") : null,
                   icon: const Icon(Icons.volume_off),
                   label: const Text("Tắt còi / Hủy"),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
+              SizedBox(
+                width: compact ? double.infinity : (screenWidth - 48) / 2,
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("CALIBRATE_FLOOR") : null,
                   icon: const Icon(Icons.straighten),
@@ -2806,18 +2846,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
+              SizedBox(
+                width: compact ? double.infinity : (screenWidth - 48) / 2,
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("TEST_ALARM") : null,
                   icon: const Icon(Icons.speaker),
                   label: const Text("Test chuông/đèn"),
                 ),
               ),
-              const SizedBox(width: 8),
               // Nút xem hộp đen: Chuyển thẳng sang Tab 2 và fetch dữ liệu
-              Expanded(
+              SizedBox(
+                width: compact ? double.infinity : (screenWidth - 48) / 2,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo.shade600,
@@ -2844,6 +2887,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   // TAB 2: HỘP ĐEN & PHÂN TÍCH ĐỘNG HỌC KHÔNG GIAN (TRỰC TIẾP & LỊCH SỬ)
   Widget _buildBlackBoxTab() {
+    final bool compact = MediaQuery.sizeOf(context).width < 380;
     // Dữ liệu mô phỏng trực tiếp từ cảm biến thời gian thực
     final Map<String, dynamic> liveEvent = {
       "type": (widget.aiPosture == "FALL") ? 1 : 0,
@@ -2870,7 +2914,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         : events[0];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(compact ? 12.0 : 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2899,13 +2943,18 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         children: [
                           Icon(Icons.sensors, size: 18, color: _blackBoxSubTab == 0 ? Colors.white : Colors.grey),
                           const SizedBox(width: 6),
-                          Text(
-                            "Trực tiếp thời gian thực",
+                           Flexible(
+                             child: Text(
+                               "Trực tiếp thời gian thực",
+                               maxLines: 2,
+                               overflow: TextOverflow.ellipsis,
+                               textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                               color: _blackBoxSubTab == 0 ? Colors.white : Colors.grey,
                             ),
+                             ),
                           ),
                         ],
                       ),
@@ -2928,13 +2977,18 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         children: [
                           Icon(Icons.history, size: 18, color: _blackBoxSubTab == 1 ? Colors.white : Colors.grey),
                           const SizedBox(width: 6),
-                          Text(
-                            "Hộp đen NVS (${widget.eventHistory.length})",
+                           Flexible(
+                             child: Text(
+                               "Hộp đen NVS (${widget.eventHistory.length})",
+                               maxLines: 2,
+                               overflow: TextOverflow.ellipsis,
+                               textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                               color: _blackBoxSubTab == 1 ? Colors.white : Colors.grey,
                             ),
+                             ),
                           ),
                         ],
                       ),
@@ -3066,9 +3120,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             // PHÂN ĐOẠN 2: LỊCH SỬ HỘP ĐEN NVS (FLASH BLACK BOX AUDIT)
             // ===================================================================
             // Thanh công cụ Hộp đen
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
               children: [
-                Expanded(
+                SizedBox(
+                  width: compact ? double.infinity : 180,
                   child: ElevatedButton.icon(
                     onPressed: widget.isLoadingHistory
                         ? null
@@ -3089,17 +3147,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     label: const Text("Tải lại từ ESP32"),
                   ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _handleDeviceCommand("CLEAR_HISTORY"),
-                  icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-                  label: const Text("Xóa", style: TextStyle(color: Colors.redAccent)),
+                SizedBox(
+                  width: compact ? double.infinity : 100,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleDeviceCommand("CLEAR_HISTORY"),
+                    icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+                    label: const Text("Xóa", style: TextStyle(color: Colors.redAccent)),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _handleDeviceCommand("ADD_TEST_EVENT"),
-                  icon: const Icon(Icons.add_alert, color: Colors.orangeAccent),
-                  label: const Text("Tạo Test"),
+                SizedBox(
+                  width: compact ? double.infinity : 130,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleDeviceCommand("ADD_TEST_EVENT"),
+                    icon: const Icon(Icons.add_alert, color: Colors.orangeAccent),
+                    label: const Text("Tạo Test"),
+                  ),
                 ),
               ],
             ),
@@ -3303,8 +3365,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
   // TAB 3: CÀI ĐẶT THIẾT BỊ
   Widget _buildSettingsTab() {
+    final bool compact = MediaQuery.sizeOf(context).width < 380;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(compact ? 12.0 : 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -3550,14 +3613,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                   const SizedBox(height: 12),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: "AUTO_MOTION", label: Text("Tự động (Radar)", style: TextStyle(fontSize: 11))),
-                      ButtonSegment(value: "ALWAYS_ON", label: Text("Luôn sáng", style: TextStyle(fontSize: 11))),
-                      ButtonSegment(value: "OFF", label: Text("Tắt", style: TextStyle(fontSize: 11))),
-                    ],
-                    selected: {_nightlightMode},
-                    onSelectionChanged: (val) => setState(() => _nightlightMode = val.first),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: "AUTO_MOTION", label: Text("Tự động (Radar)", style: TextStyle(fontSize: 11))),
+                        ButtonSegment(value: "ALWAYS_ON", label: Text("Luôn sáng", style: TextStyle(fontSize: 11))),
+                        ButtonSegment(value: "OFF", label: Text("Tắt", style: TextStyle(fontSize: 11))),
+                      ],
+                      selected: {_nightlightMode},
+                      onSelectionChanged: (val) => setState(() => _nightlightMode = val.first),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile.adaptive(
@@ -3612,11 +3678,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     onChanged: (val) => setState(() => _nightlightBrightness = val),
                   ),
                   const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Màu ánh sáng:", style: TextStyle(fontSize: 12)),
-                      SegmentedButton<String>(
+                      const SizedBox(height: 6),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: "WARM_YELLOW", label: Text("Vàng ấm", style: TextStyle(fontSize: 10))),
                           ButtonSegment(value: "SOFT_WHITE", label: Text("Trắng dịu", style: TextStyle(fontSize: 10))),
@@ -3624,6 +3693,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         ],
                         selected: {_nightlightColor},
                         onSelectionChanged: (val) => setState(() => _nightlightColor = val.first),
+                        ),
                       ),
                     ],
                   ),
