@@ -7,13 +7,13 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 
-#define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHAR_WIFI_UUID         "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28"
-#define CHAR_CONTACT_UUID      "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011"
-#define CHAR_STATUS_UUID       "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344"
-#define CHAR_TELEMETRY_UUID    "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455"
-#define CHAR_CMD_UUID          "4fa0b044-9b3e-4d75-af4c-b70e901c5566"
-#define CHAR_OTA_UUID          "5fa0b044-9b3e-4d75-af4c-b70e901c5566"
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHAR_WIFI_UUID "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28"
+#define CHAR_CONTACT_UUID "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011"
+#define CHAR_STATUS_UUID "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344"
+#define CHAR_TELEMETRY_UUID "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455"
+#define CHAR_CMD_UUID "4fa0b044-9b3e-4d75-af4c-b70e901c5566"
+#define CHAR_OTA_UUID          "5fa0b055-9b3e-4d75-af4c-b70e901c5566"
 
 static Preferences prefs;
 static Preferences evtPrefs;
@@ -187,7 +187,7 @@ void BleProvisioning::updateStatus(const String& statusMsg) {
 
 void BleProvisioning::sendTelemetry(const String& telemetryJson) {
   telemetryConsoleCount++;
-  // In trọn JSON telemetry mỗi ~1 giây để kiểm tra trực tiếp trên Serial Monitor.
+  // In trÃÂ¡ÃÂ»ÃÂn JSON telemetry mÃÂ¡ÃÂ»ÃÂi ~1 giÃÂÃÂ¢y ÃÂÃÂÃÂ¡ÃÂ»ÃÂ kiÃÂ¡ÃÂ»ÃÂm tra trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p trÃÂÃÂªn Serial Monitor.
   if ((telemetryConsoleCount % 4) == 0) {
     Serial.printf("[TELEMETRY] BLE=%s | %s\n",
                   bleConnected ? "CONNECTED" : "DISCONNECTED",
@@ -280,7 +280,7 @@ String BleProvisioning::getEventHistoryJson() {
   StaticJsonDocument<512> doc;
   JsonArray arr = doc.createNestedArray("events");
 
-  // Đọc từ sự kiện mới nhất về cũ nhất
+  // ÃÂÃÂÃÂ¡ÃÂ»ÃÂc tÃÂ¡ÃÂ»ÃÂ« sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t vÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ© nhÃÂ¡ÃÂºÃÂ¥t
   for (int i = 0; i < count; i++) {
     int idx = (head - 1 - i + 5) % 5;
     char key[16];

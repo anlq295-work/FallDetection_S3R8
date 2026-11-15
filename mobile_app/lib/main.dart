@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // =========================================================================
-// CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3 N16R8
+// CÃÂÃÂC UUID TRÃÂÃÂNG KHÃÂ¡ÃÂ»ÃÂP 100% VÃÂ¡ÃÂ»ÃÂI FIRMWARE ESP32-S3 N16R8
 // =========================================================================
 const String serviceUuid = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const String charWifiUuid = "0beb5483-e18e-4f36-9e1b-b4d6b63c7b28";
@@ -18,7 +18,7 @@ const String charContactUuid = "1c6f8742-9a6d-4785-b9e1-e63f9b8c0011";
 const String charStatusUuid = "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344";
 const String charTelemetryUuid = "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455";
 const String charCmdUuid = "4fa0b044-9b3e-4d75-af4c-b70e901c5566";
-const String charOtaUuid = "5fa0b044-9b3e-4d75-af4c-b70e901c5566";
+const String charOtaUuid = "5fa0b055-9b3e-4d75-af4c-b70e901c5566";
 
 void main() {
   runApp(const FallGuardApp());
@@ -99,8 +99,8 @@ class FallGuardApp extends StatelessWidget {
 }
 
 // =========================================================================
-// CỔNG KIỂM TRA KHỞI ĐỘNG (STARTUP PERMISSION GATE CHO IOS & ANDROID)
-// Bắt buộc xác nhận cho phép quét thiết bị xung quanh trước khi vào app lần đầu
+// CÃÂ¡ÃÂ»ÃÂNG KIÃÂ¡ÃÂ»ÃÂM TRA KHÃÂ¡ÃÂ»ÃÂI ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG (STARTUP PERMISSION GATE CHO IOS & ANDROID)
+// BÃÂ¡ÃÂºÃÂ¯t buÃÂ¡ÃÂ»ÃÂc xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n cho phÃÂÃÂ©p quÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ xung quanh trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi vÃÂÃÂ o app lÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂ¡ÃÂºÃÂ§u
 // =========================================================================
 class AppStartupGate extends StatefulWidget {
   const AppStartupGate({super.key});
@@ -162,7 +162,7 @@ class _AppStartupGateState extends State<AppStartupGate> {
 }
 
 // =========================================================================
-// MÀN HÌNH XÁC NHẬN CHO PHÉP QUÉT THIẾT BỊ XUNG QUANH (CHUẨN APPLE HIG)
+// MÃÂÃÂN HÃÂÃÂNH XÃÂÃÂC NHÃÂ¡ÃÂºÃÂ¬N CHO PHÃÂÃÂP QUÃÂÃÂT THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ XUNG QUANH (CHUÃÂ¡ÃÂºÃÂ¨N APPLE HIG)
 // =========================================================================
 class IosNearbyDeviceConsentScreen extends StatefulWidget {
   final VoidCallback onConsentGranted;
@@ -180,7 +180,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
     setState(() => _isRequesting = true);
 
     try {
-      // 1. Kích hoạt CBCentralManager trên iOS bằng cách truy vấn trạng thái adapter
+      // 1. KÃÂÃÂ­ch hoÃÂ¡ÃÂºÃÂ¡t CBCentralManager trÃÂÃÂªn iOS bÃÂ¡ÃÂºÃÂ±ng cÃÂÃÂ¡ch truy vÃÂ¡ÃÂºÃÂ¥n trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i adapter
       BluetoothAdapterState state;
       try {
         state = await FlutterBluePlus.adapterState.first.timeout(
@@ -191,14 +191,14 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
         state = BluetoothAdapterState.unknown;
       }
 
-      // 2. Nếu trên Android mà Bluetooth chưa bật thì hỗ trợ bật
+      // 2. NÃÂ¡ÃÂºÃÂ¿u trÃÂÃÂªn Android mÃÂÃÂ  Bluetooth chÃÂÃÂ°a bÃÂ¡ÃÂºÃÂ­t thÃÂÃÂ¬ hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ bÃÂ¡ÃÂºÃÂ­t
       if (Platform.isAndroid && state == BluetoothAdapterState.off) {
         try {
           await FlutterBluePlus.turnOn();
         } catch (_) {}
       }
 
-      // 3. Nếu quyền bị từ chối rõ ràng trên iOS
+      // 3. NÃÂ¡ÃÂºÃÂ¿u quyÃÂ¡ÃÂ»ÃÂn bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ« chÃÂ¡ÃÂ»ÃÂi rÃÂÃÂµ rÃÂÃÂ ng trÃÂÃÂªn iOS
       if (state == BluetoothAdapterState.unauthorized) {
         if (!mounted) return;
         _showPermissionDeniedDialog();
@@ -206,7 +206,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
         return;
       }
 
-      // 4. Nếu Bluetooth đang tắt trên iOS
+      // 4. NÃÂ¡ÃÂºÃÂ¿u Bluetooth ÃÂÃÂang tÃÂ¡ÃÂºÃÂ¯t trÃÂÃÂªn iOS
       if (state == BluetoothAdapterState.off && Platform.isIOS) {
         if (!mounted) return;
         _showBluetoothOffDialog();
@@ -214,14 +214,14 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
         return;
       }
 
-      // 5. Lưu xác nhận vào bộ nhớ vĩnh viễn và chuyển vào Dashboard
+      // 5. LÃÂÃÂ°u xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n vÃÂÃÂ o bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ©nh viÃÂ¡ÃÂ»ÃÂn vÃÂÃÂ  chuyÃÂ¡ÃÂ»ÃÂn vÃÂÃÂ o Dashboard
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_consented_nearby_devices', true);
 
       if (!mounted) return;
       widget.onConsentGranted();
     } catch (e) {
-      // Dù có ngoại lệ nào cũng lưu cờ để không làm kẹt ứng dụng
+      // DÃÂÃÂ¹ cÃÂÃÂ³ ngoÃÂ¡ÃÂºÃÂ¡i lÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ o cÃÂÃÂ©ng lÃÂÃÂ°u cÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ khÃÂÃÂ´ng lÃÂÃÂ m kÃÂ¡ÃÂºÃÂ¹t ÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂ»ÃÂ¥ng
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_consented_nearby_devices', true);
       if (!mounted) return;
@@ -239,11 +239,11 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
           children: [
             Icon(Icons.warning, color: Colors.orangeAccent),
             SizedBox(width: 8),
-            Text("Cần cấp quyền Bluetooth", style: TextStyle(fontSize: 16)),
+            Text("CÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂºÃÂ¥p quyÃÂ¡ÃÂ»ÃÂn Bluetooth", style: TextStyle(fontSize: 16)),
           ],
         ),
         content: const Text(
-          "Bạn đã từ chối quyền Bluetooth trước đó. Để phát hiện và kết nối với hộp cảm biến té ngã ESP32-S3, vui lòng vào Cài đặt iPhone > FallGuard > Bật quyền Bluetooth.",
+          "BÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂÃÂÃÂ£ tÃÂ¡ÃÂ»ÃÂ« chÃÂ¡ÃÂ»ÃÂi quyÃÂ¡ÃÂ»ÃÂn Bluetooth trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc ÃÂÃÂÃÂÃÂ³. ÃÂÃÂÃÂ¡ÃÂ»ÃÂ phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn vÃÂÃÂ  kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi vÃÂ¡ÃÂ»ÃÂi hÃÂ¡ÃÂ»ÃÂp cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n tÃÂÃÂ© ngÃÂÃÂ£ ESP32-S3, vui lÃÂÃÂ²ng vÃÂÃÂ o CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t iPhone > FallGuard > BÃÂ¡ÃÂºÃÂ­t quyÃÂ¡ÃÂ»ÃÂn Bluetooth.",
           style: TextStyle(fontSize: 13, height: 1.4),
         ),
         actions: [
@@ -252,7 +252,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               Navigator.pop(ctx);
               launchUrl(Uri.parse("app-settings:"));
             },
-            child: const Text("Mở Cài đặt iPhone"),
+            child: const Text("MÃÂ¡ÃÂ»ÃÂ CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t iPhone"),
           ),
           FilledButton(
             onPressed: () {
@@ -261,7 +261,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               prefs.then((p) => p.setBool('has_consented_nearby_devices', true));
               widget.onConsentGranted();
             },
-            child: const Text("Tiếp tục vào App"),
+            child: const Text("TiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ¥c vÃÂÃÂ o App"),
           ),
         ],
       ),
@@ -276,11 +276,11 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
           children: [
             Icon(Icons.bluetooth_disabled, color: Colors.amberAccent),
             SizedBox(width: 8),
-            Text("Bluetooth đang tắt", style: TextStyle(fontSize: 16)),
+            Text("Bluetooth ÃÂÃÂang tÃÂ¡ÃÂºÃÂ¯t", style: TextStyle(fontSize: 16)),
           ],
         ),
         content: const Text(
-          "Bluetooth trên iPhone của bạn đang tắt. Vui lòng vuốt Trung tâm điều khiển (Control Center) và bật Bluetooth để có thể quét thiết bị FallGuard.",
+          "Bluetooth trÃÂÃÂªn iPhone cÃÂ¡ÃÂ»ÃÂ§a bÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂang tÃÂ¡ÃÂºÃÂ¯t. Vui lÃÂÃÂ²ng vuÃÂ¡ÃÂ»ÃÂt Trung tÃÂÃÂ¢m ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn (Control Center) vÃÂÃÂ  bÃÂ¡ÃÂºÃÂ­t Bluetooth ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ quÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ FallGuard.",
           style: TextStyle(fontSize: 13, height: 1.4),
         ),
         actions: [
@@ -291,7 +291,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               prefs.then((p) => p.setBool('has_consented_nearby_devices', true));
               widget.onConsentGranted();
             },
-            child: const Text("Tôi đã hiểu"),
+            child: const Text("TÃÂÃÂ´i ÃÂÃÂÃÂÃÂ£ hiÃÂ¡ÃÂ»ÃÂu"),
           ),
         ],
       ),
@@ -310,7 +310,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
             children: [
               const Spacer(),
 
-              // Logo & Biểu tượng Radar Quét thiết bị
+              // Logo & BiÃÂ¡ÃÂ»ÃÂu tÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar QuÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ
               Center(
                 child: Stack(
                   alignment: Alignment.center,
@@ -338,9 +338,9 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               ),
               const SizedBox(height: 24),
 
-              // Tiêu đề chính
+              // TiÃÂÃÂªu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ chÃÂÃÂ­nh
               const Text(
-                "Cho phép quét thiết bị xung quanh",
+                "Cho phÃÂÃÂ©p quÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ xung quanh",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,
@@ -351,7 +351,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               ),
               const SizedBox(height: 8),
               Text(
-                "Yêu cầu bảo mật trên iOS để tìm kiếm và kết nối với hộp cảm biến phát hiện té ngã FallGuard S3R8.",
+                "YÃÂÃÂªu cÃÂ¡ÃÂºÃÂ§u bÃÂ¡ÃÂºÃÂ£o mÃÂ¡ÃÂºÃÂ­t trÃÂÃÂªn iOS ÃÂÃÂÃÂ¡ÃÂ»ÃÂ tÃÂÃÂ¬m kiÃÂ¡ÃÂºÃÂ¿m vÃÂÃÂ  kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi vÃÂ¡ÃÂ»ÃÂi hÃÂ¡ÃÂ»ÃÂp cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn tÃÂÃÂ© ngÃÂÃÂ£ FallGuard S3R8.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -361,31 +361,31 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               ),
               const SizedBox(height: 28),
 
-              // 3 Thẻ giải thích mục đích sử dụng quyền
+              // 3 ThÃÂ¡ÃÂºÃÂ» giÃÂ¡ÃÂºÃÂ£i thÃÂÃÂ­ch mÃÂ¡ÃÂ»ÃÂ¥c ÃÂÃÂÃÂÃÂ­ch sÃÂ¡ÃÂ»ÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥ng quyÃÂ¡ÃÂ»ÃÂn
               _buildFeatureItem(
                 Icons.radar,
                 Colors.cyanAccent,
-                "Quét & Kết nối Thiết bị lân cận",
-                "Tự động phát hiện hộp cảm biến ESP32-S3 trong phòng qua Bluetooth Low Energy (BLE) với mức tiêu thụ pin tối thiểu.",
+                "QuÃÂÃÂ©t & KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ¢n cÃÂ¡ÃÂºÃÂ­n",
+                "TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn hÃÂ¡ÃÂ»ÃÂp cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n ESP32-S3 trong phÃÂÃÂ²ng qua Bluetooth Low Energy (BLE) vÃÂ¡ÃÂ»ÃÂi mÃÂ¡ÃÂ»ÃÂ©c tiÃÂÃÂªu thÃÂ¡ÃÂ»ÃÂ¥ pin tÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂ»ÃÂu.",
               ),
               const SizedBox(height: 12),
               _buildFeatureItem(
                 Icons.health_and_safety,
                 Colors.redAccent,
-                "Cảnh báo cứu nạn tức thì",
-                "Nhận tín hiệu báo động khi người cao tuổi bị ngã, sụt giảm độ cao hoặc nằm sàn bất động để kịp thời cứu hộ.",
+                "CÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o cÃÂ¡ÃÂ»ÃÂ©u nÃÂ¡ÃÂºÃÂ¡n tÃÂ¡ÃÂ»ÃÂ©c thÃÂÃÂ¬",
+                "NhÃÂ¡ÃÂºÃÂ­n tÃÂÃÂ­n hiÃÂ¡ÃÂ»ÃÂu bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng khi ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cao tuÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ£, sÃÂ¡ÃÂ»ÃÂ¥t giÃÂ¡ÃÂºÃÂ£m ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao hoÃÂ¡ÃÂºÃÂ·c nÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ kÃÂ¡ÃÂ»ÃÂp thÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂ»ÃÂ©u hÃÂ¡ÃÂ»ÃÂ.",
               ),
               const SizedBox(height: 12),
               _buildFeatureItem(
                 Icons.verified_user,
                 Colors.greenAccent,
-                "Bảo mật quyền riêng tư (Chuẩn Apple)",
-                "Không thu thập tọa độ GPS, không ghi âm hay theo dõi cá nhân. Chỉ giao tiếp với các thiết bị y tế có UUID FallGuard.",
+                "BÃÂ¡ÃÂºÃÂ£o mÃÂ¡ÃÂºÃÂ­t quyÃÂ¡ÃÂ»ÃÂn riÃÂÃÂªng tÃÂÃÂ° (ChuÃÂ¡ÃÂºÃÂ©n Apple)",
+                "KhÃÂÃÂ´ng thu thÃÂ¡ÃÂºÃÂ­p tÃÂ¡ÃÂ»ÃÂa ÃÂÃÂÃÂ¡ÃÂ»ÃÂ GPS, khÃÂÃÂ´ng ghi ÃÂÃÂ¢m hay theo dÃÂÃÂµi cÃÂÃÂ¡ nhÃÂÃÂ¢n. ChÃÂ¡ÃÂ»ÃÂ giao tiÃÂ¡ÃÂºÃÂ¿p vÃÂ¡ÃÂ»ÃÂi cÃÂÃÂ¡c thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ y tÃÂ¡ÃÂºÃÂ¿ cÃÂÃÂ³ UUID FallGuard.",
               ),
 
               const Spacer(),
 
-              // Thông báo hướng dẫn hộp thoại iOS
+              // ThÃÂÃÂ´ng bÃÂÃÂ¡o hÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n hÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i iOS
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
@@ -399,7 +399,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "Khi hộp thoại iOS hiện ra, vui lòng chọn [Cho phép] (Allow) để bắt đầu tìm kiếm thiết bị.",
+                        "Khi hÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i iOS hiÃÂ¡ÃÂ»ÃÂn ra, vui lÃÂÃÂ²ng chÃÂ¡ÃÂ»ÃÂn [Cho phÃÂÃÂ©p] (Allow) ÃÂÃÂÃÂ¡ÃÂ»ÃÂ bÃÂ¡ÃÂºÃÂ¯t ÃÂÃÂÃÂ¡ÃÂºÃÂ§u tÃÂÃÂ¬m kiÃÂ¡ÃÂºÃÂ¿m thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ.",
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade300, height: 1.3),
                       ),
                     ),
@@ -408,7 +408,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
               ),
               const SizedBox(height: 16),
 
-              // Nút xác nhận cấp quyền
+              // NÃÂÃÂºt xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n cÃÂ¡ÃÂºÃÂ¥p quyÃÂ¡ÃÂ»ÃÂn
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.cyanAccent.shade700,
@@ -429,7 +429,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
                           Icon(Icons.check_circle_outline, size: 18),
                           SizedBox(width: 8),
                           Text(
-                            "Xác nhận & Cho phép quét thiết bị",
+                            "XÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n & Cho phÃÂÃÂ©p quÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ",
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                         ],
@@ -480,7 +480,7 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
 }
 
 // =========================================================================
-// MÀN HÌNH CHÍNH (HOME SCREEN): KHÔNG CÒN TAB BÊN NGOÀI, QUẢN LÝ THIẾT BỊ
+// MÃÂÃÂN HÃÂÃÂNH CHÃÂÃÂNH (HOME SCREEN): KHÃÂÃÂNG CÃÂÃÂN TAB BÃÂÃÂN NGOÃÂÃÂI, QUÃÂ¡ÃÂºÃÂ¢N LÃÂÃÂ THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ
 // =========================================================================
 class MainDashboardScreen extends StatefulWidget {
   const MainDashboardScreen({super.key});
@@ -491,15 +491,15 @@ class MainDashboardScreen extends StatefulWidget {
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final ValueNotifier<int> _telemetryRevision = ValueNotifier<int>(0);
-  // Trạng thái kết nối BLE
+  // TrÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi BLE
   BluetoothDevice? _connectedDevice;
   bool _isScanning = false;
   bool _isConnected = false;
-  String _statusMessage = "Chưa kết nối thiết bị";
+  String _statusMessage = "ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ";
   List<ScanResult> _scanResults = [];
   final Map<String, int> _rssiMap = {};
 
-  // Các Characteristic được tìm thấy
+  // CÃÂÃÂ¡c Characteristic ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c tÃÂÃÂ¬m thÃÂ¡ÃÂºÃÂ¥y
   BluetoothCharacteristic? _wifiChar;
   BluetoothCharacteristic? _contactChar;
   BluetoothCharacteristic? _statusChar;
@@ -514,7 +514,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Timer? _telemetryPollTimer;
   String _telemetryBuffer = '';
 
-  // Controllers cho form cấu hình
+  // Controllers cho form cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -522,7 +522,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final TextEditingController _botTokenController = TextEditingController();
   double _floorThreshold = 450;
 
-  // Giám sát trực tiếp qua mạng Wi-Fi LAN (Direct Wi-Fi Telemetry)
+  // GiÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua mÃÂ¡ÃÂºÃÂ¡ng Wi-Fi LAN (Direct Wi-Fi Telemetry)
   String _deviceIp = "";
   final TextEditingController _deviceIpController = TextEditingController();
   bool _isWifiMonitoringEnabled = false;
@@ -531,7 +531,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Timer? _wifiPollTimer;
   int _wifiFailureCount = 0;
 
-  // Dữ liệu Telemetry thời gian thực
+  // DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu Telemetry thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c
   String _sysState = "DISCONNECTED";
   String _aiPosture = "UNKNOWN";
   double _aiConfidence = 0.0;
@@ -547,8 +547,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   void _consumeTelemetryBytes(List<int> value, {String source = 'BLE'}) {
     final chunk = utf8.decode(value, allowMalformed: true);
     if (chunk.isEmpty) return;
-    // Android có thể chia notify thành nhiều mảnh khi MTU chưa được nâng đủ.
-    // Chỉ parse khi đã ghép đủ một JSON hoàn chỉnh.
+    // Android cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ chia notify thÃÂÃÂ nh nhiÃÂ¡ÃÂ»ÃÂu mÃÂ¡ÃÂºÃÂ£nh khi MTU chÃÂÃÂ°a ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c nÃÂÃÂ¢ng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ§.
+    // ChÃÂ¡ÃÂ»ÃÂ parse khi ÃÂÃÂÃÂÃÂ£ ghÃÂÃÂ©p ÃÂÃÂÃÂ¡ÃÂ»ÃÂ§ mÃÂ¡ÃÂ»ÃÂt JSON hoÃÂÃÂ n chÃÂ¡ÃÂ»ÃÂnh.
     _telemetryBuffer += chunk;
     if (_telemetryBuffer.length > 4096) {
       final start = _telemetryBuffer.lastIndexOf('{');
@@ -561,7 +561,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _telemetryBuffer = '';
       _applyTelemetryData(parsed, complete.length, source);
     } catch (_) {
-      // Chưa đủ mảnh JSON, chờ notify tiếp theo.
+      // ChÃÂÃÂ°a ÃÂÃÂÃÂ¡ÃÂ»ÃÂ§ mÃÂ¡ÃÂºÃÂ£nh JSON, chÃÂ¡ÃÂ»ÃÂ notify tiÃÂ¡ÃÂºÃÂ¿p theo.
     }
   }
 
@@ -597,7 +597,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  // Lịch sử thiết bị từng kết nối & Cài đặt chung của App
+  // LÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi & CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung cÃÂ¡ÃÂ»ÃÂ§a App
   List<Map<String, dynamic>> _deviceHistory = [];
   bool _alarmSoundEnabled = true;
   bool _alarmVibrateEnabled = true;
@@ -605,15 +605,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   bool _autoEmergency115 = false;
   bool _autoReconnect = true;
   String _heightUnit = "mm";
-  String _tempUnit = "°C";
+  String _tempUnit = "ÃÂÃÂ°C";
 
-  // Tính năng 1, 2, 3, 4, 6, 7 (Y tế, Cảnh báo khẩn cấp, CDC STEADI, Báo cáo & Widget)
+  // TÃÂÃÂ­nh nÃÂÃÂng 1, 2, 3, 4, 6, 7 (Y tÃÂ¡ÃÂºÃÂ¿, CÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p, CDC STEADI, BÃÂÃÂ¡o cÃÂÃÂ¡o & Widget)
   ElderlyMedicalProfile _medicalProfile = ElderlyMedicalProfile();
   int _cdcSteadiScore = 0;
   DateTime? _cdcSteadiDate;
   bool _inactivityAlertEnabled = true;
   int _inactivityThresholdMinutes = 30;
-  String _monitoredRoomName = "Nhà tắm / Toilet";
+  String _monitoredRoomName = "NhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m / Toilet";
   DateTime? _roomPresenceStartTime;
   int _roomPresenceSeconds = 0;
   Timer? _inactivityTicker;
@@ -654,7 +654,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {
       _inactivityAlertEnabled = prefs.getBool('inactivity_enabled') ?? true;
       _inactivityThresholdMinutes = prefs.getInt('inactivity_threshold_min') ?? 30;
-      _monitoredRoomName = prefs.getString('inactivity_room_name') ?? "Nhà tắm / Toilet";
+      _monitoredRoomName = prefs.getString('inactivity_room_name') ?? "NhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m / Toilet";
       _inactivityIncidentsCount = prefs.getInt('inactivity_incidents_count') ?? 0;
     });
   }
@@ -679,7 +679,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         return;
       }
 
-      // Nếu radar phát hiện có người (motion hoặc static) hoặc ToF có cự ly
+      // NÃÂ¡ÃÂºÃÂ¿u radar phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn cÃÂÃÂ³ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi (motion hoÃÂ¡ÃÂºÃÂ·c static) hoÃÂ¡ÃÂºÃÂ·c ToF cÃÂÃÂ³ cÃÂ¡ÃÂ»ÃÂ± ly
       final bool hasPresence = (_radarMotion > 5 || _radarStatic > 10 || (_tofHeight > 100 && _tofHeight < 3000));
       if (hasPresence) {
         _roomPresenceStartTime ??= DateTime.now();
@@ -688,12 +688,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           _roomPresenceSeconds = elapsed;
         });
 
-        // Kiểm tra vượt ngưỡng lưu trú bất động
+        // KiÃÂ¡ÃÂ»ÃÂm tra vÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£t ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng lÃÂÃÂ°u trÃÂÃÂº bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng
         if (_inactivityAlertEnabled && !_isInactivityAlertShowing && elapsed >= (_inactivityThresholdMinutes * 60)) {
           _triggerInactivityAlarm();
         }
       } else {
-        // Nếu không có người quá 45 giây thì reset bộ đếm
+        // NÃÂ¡ÃÂºÃÂ¿u khÃÂÃÂ´ng cÃÂÃÂ³ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi quÃÂÃÂ¡ 45 giÃÂÃÂ¢y thÃÂÃÂ¬ reset bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂºÃÂ¿m
         if (_roomPresenceStartTime != null && DateTime.now().difference(_roomPresenceStartTime!).inSeconds > 45) {
           setState(() {
             _roomPresenceStartTime = null;
@@ -715,7 +715,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     if (!mounted) return;
     _showCriticalEmergencyDialog(
       isFall: false,
-      reason: "CẢNH BÁO BẤT ĐỘNG: Người thân đã ở trong [$_monitoredRoomName] liên tục $_inactivityThresholdMinutes phút mà không có chuyển động lớn! Nghi ngờ đột quỵ hoặc ngất xỉu.",
+      reason: "CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO BÃÂ¡ÃÂºÃÂ¤T ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG: NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n ÃÂÃÂÃÂÃÂ£ ÃÂ¡ÃÂ»ÃÂ trong [$_monitoredRoomName] liÃÂÃÂªn tÃÂ¡ÃÂ»ÃÂ¥c $_inactivityThresholdMinutes phÃÂÃÂºt mÃÂÃÂ  khÃÂÃÂ´ng cÃÂÃÂ³ chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂ»ÃÂn! Nghi ngÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂt quÃÂ¡ÃÂ»ÃÂµ hoÃÂ¡ÃÂºÃÂ·c ngÃÂ¡ÃÂºÃÂ¥t xÃÂ¡ÃÂ»ÃÂu.",
     );
   }
 
@@ -823,15 +823,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   const Icon(Icons.timer, color: Colors.amberAccent),
                   const SizedBox(width: 8),
                   const Expanded(
-                    child: Text("Giám sát lưu trú & Ngất xỉu nhà tắm", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    child: Text("GiÃÂÃÂ¡m sÃÂÃÂ¡t lÃÂÃÂ°u trÃÂÃÂº & NgÃÂ¡ÃÂºÃÂ¥t xÃÂ¡ÃÂ»ÃÂu nhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
               const Divider(),
               SwitchListTile(
-                title: const Text("Bật cảnh báo bất động / ngất xỉu", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: const Text("Hú còi khi lưu lại quá lâu không vận động", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                title: const Text("BÃÂ¡ÃÂºÃÂ­t cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng / ngÃÂ¡ÃÂºÃÂ¥t xÃÂ¡ÃÂ»ÃÂu", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text("HÃÂÃÂº cÃÂÃÂ²i khi lÃÂÃÂ°u lÃÂ¡ÃÂºÃÂ¡i quÃÂÃÂ¡ lÃÂÃÂ¢u khÃÂÃÂ´ng vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng", style: TextStyle(fontSize: 12, color: Colors.grey)),
                 value: _inactivityAlertEnabled,
                 onChanged: (val) {
                   setSheetState(() => _inactivityAlertEnabled = val);
@@ -840,14 +840,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 },
               ),
               const SizedBox(height: 10),
-              const Text("Ngưỡng thời gian cảnh báo bất động:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text("NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng thÃÂ¡ÃÂ»ÃÂi gian cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 8),
               SegmentedButton<int>(
                 segments: const [
-                  ButtonSegment(value: 15, label: Text("15 phút")),
-                  ButtonSegment(value: 30, label: Text("30 phút")),
-                  ButtonSegment(value: 45, label: Text("45 phút")),
-                  ButtonSegment(value: 60, label: Text("60 phút")),
+                  ButtonSegment(value: 15, label: Text("15 phÃÂÃÂºt")),
+                  ButtonSegment(value: 30, label: Text("30 phÃÂÃÂºt")),
+                  ButtonSegment(value: 45, label: Text("45 phÃÂÃÂºt")),
+                  ButtonSegment(value: 60, label: Text("60 phÃÂÃÂºt")),
                 ],
                 selected: {_inactivityThresholdMinutes},
                 onSelectionChanged: (val) {
@@ -857,13 +857,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 },
               ),
               const SizedBox(height: 14),
-              const Text("Vị trí khu vực lắp đặt thiết bị:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text("VÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ khu vÃÂ¡ÃÂ»ÃÂ±c lÃÂ¡ÃÂºÃÂ¯p ÃÂÃÂÃÂ¡ÃÂºÃÂ·t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 8),
               SegmentedButton<String>(
                 segments: const [
-                  ButtonSegment(value: "Nhà tắm / Toilet", label: Text("Nhà tắm")),
-                  ButtonSegment(value: "Phòng ngủ", label: Text("Phòng ngủ")),
-                  ButtonSegment(value: "Phòng khách", label: Text("Phòng khách")),
+                  ButtonSegment(value: "NhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m / Toilet", label: Text("NhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m")),
+                  ButtonSegment(value: "PhÃÂÃÂ²ng ngÃÂ¡ÃÂ»ÃÂ§", label: Text("PhÃÂÃÂ²ng ngÃÂ¡ÃÂ»ÃÂ§")),
+                  ButtonSegment(value: "PhÃÂÃÂ²ng khÃÂÃÂ¡ch", label: Text("PhÃÂÃÂ²ng khÃÂÃÂ¡ch")),
                 ],
                 selected: {_monitoredRoomName},
                 onSelectionChanged: (val) {
@@ -875,7 +875,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text("Đóng"),
+                child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
               ),
             ],
           ),
@@ -884,7 +884,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Tải cài đặt chung từ bộ nhớ
+  // TÃÂ¡ÃÂºÃÂ£i cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung tÃÂ¡ÃÂ»ÃÂ« bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ
   Future<void> _loadGeneralSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final savedIp = prefs.getString('saved_device_ip') ?? "";
@@ -897,7 +897,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _autoEmergency115 = prefs.getBool('auto_emergency_115') ?? false;
       _autoReconnect = prefs.getBool('auto_reconnect') ?? true;
       _heightUnit = prefs.getString('height_unit') ?? "mm";
-      _tempUnit = prefs.getString('temp_unit') ?? "°C";
+      _tempUnit = prefs.getString('temp_unit') ?? "ÃÂÃÂ°C";
       _deviceIp = savedIp;
       _deviceIpController.text = savedIp;
       _isWifiMonitoringEnabled = wifiMon;
@@ -908,14 +908,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  // Lưu cấu hình giám sát trực tiếp qua Wi-Fi
+  // LÃÂÃÂ°u cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh giÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Wi-Fi
   Future<void> _saveWifiMonitoringSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('saved_device_ip', _deviceIp);
     await prefs.setBool('wifi_monitoring_enabled', _isWifiMonitoringEnabled);
   }
 
-  // Lưu cài đặt chung vào bộ nhớ
+  // LÃÂÃÂ°u cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung vÃÂÃÂ o bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ
   Future<void> _saveGeneralSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('alarm_sound', _alarmSoundEnabled);
@@ -927,7 +927,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     await prefs.setString('temp_unit', _tempUnit);
   }
 
-  // Tải lịch sử thiết bị từng kết nối
+  // TÃÂ¡ÃÂºÃÂ£i lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
   Future<void> _loadDeviceHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final String? raw = prefs.getString('saved_devices_history');
@@ -940,7 +940,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       } catch (_) {}
     }
 
-    // Tự động kết nối lại thiết bị gần nhất nếu bật Auto-Reconnect
+    // TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi lÃÂ¡ÃÂºÃÂ¡i thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t nÃÂ¡ÃÂºÃÂ¿u bÃÂ¡ÃÂºÃÂ­t Auto-Reconnect
     if (_autoReconnect && !_isConnected && _deviceHistory.isNotEmpty) {
       final mostRecentId = _deviceHistory.first['id'];
       if (mostRecentId != null && mostRecentId.toString().isNotEmpty) {
@@ -949,7 +949,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  // Lưu thiết bị vào lịch sử kết nối
+  // LÃÂÃÂ°u thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ o lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
   Future<void> _saveDeviceToHistory(BluetoothDevice device) async {
     final prefs = await SharedPreferences.getInstance();
     final String id = device.remoteId.str;
@@ -978,7 +978,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {});
   }
 
-  // Xóa thiết bị khỏi lịch sử
+  // XÃÂÃÂ³a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ khÃÂ¡ÃÂ»ÃÂi lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­
   Future<void> _removeDeviceFromHistory(String id) async {
     final prefs = await SharedPreferences.getInstance();
     _deviceHistory.removeWhere((d) => d['id'] == id);
@@ -986,7 +986,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {});
   }
 
-  // Đổi tên vị trí đặt thiết bị trong lịch sử (VD: Phòng ngủ, Nhà vệ sinh)
+  // ÃÂÃÂÃÂ¡ÃÂ»ÃÂi tÃÂÃÂªn vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ ÃÂÃÂÃÂ¡ÃÂºÃÂ·t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ trong lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ (VD: PhÃÂÃÂ²ng ngÃÂ¡ÃÂ»ÃÂ§, NhÃÂÃÂ  vÃÂ¡ÃÂ»ÃÂ sinh)
   Future<void> _renameDeviceInHistory(String id, String newName) async {
     final prefs = await SharedPreferences.getInstance();
     int idx = _deviceHistory.indexWhere((d) => d['id'] == id);
@@ -1023,13 +1023,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  // Quét thiết bị BLE
+  // QuÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ BLE
   void _startScan() async {
     if (_isScanning) return;
     setState(() {
       _isScanning = true;
       _scanResults.clear();
-      _statusMessage = "Đang quét thiết bị FallDetector_S3R8...";
+      _statusMessage = "ÃÂÃÂang quÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ FallDetector_S3R8...";
     });
 
     try {
@@ -1053,28 +1053,28 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       setState(() {
         _isScanning = false;
         if (_scanResults.isEmpty && !_isConnected) {
-          _statusMessage = "Không tìm thấy thiết bị. Hãy chắc chắn ESP32-S3 đang bật!";
+          _statusMessage = "KhÃÂÃÂ´ng tÃÂÃÂ¬m thÃÂ¡ÃÂºÃÂ¥y thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ. HÃÂÃÂ£y chÃÂ¡ÃÂºÃÂ¯c chÃÂ¡ÃÂºÃÂ¯n ESP32-S3 ÃÂÃÂang bÃÂ¡ÃÂºÃÂ­t!";
         }
       });
     } catch (e) {
       setState(() {
         _isScanning = false;
-        _statusMessage = "Lỗi khi quét BLE: $e";
+        _statusMessage = "LÃÂ¡ÃÂ»ÃÂi khi quÃÂÃÂ©t BLE: $e";
       });
     }
   }
 
-  // Kết nối tới ESP32-S3 N16R8
+  // KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi tÃÂ¡ÃÂ»ÃÂi ESP32-S3 N16R8
   Future<void> _connectToDevice(BluetoothDevice device) async {
     await FlutterBluePlus.stopScan();
     setState(() {
-      _statusMessage = "Đang kết nối tới ${device.platformName.isEmpty ? 'FallDetector_S3R8' : device.platformName}...";
+      _statusMessage = "ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi tÃÂ¡ÃÂ»ÃÂi ${device.platformName.isEmpty ? 'FallDetector_S3R8' : device.platformName}...";
     });
 
     try {
       await device.connect(license: License.nonprofit, autoConnect: false, timeout: const Duration(seconds: 10));
 
-      // Yêu cầu MTU 512 bytes để nhận chuỗi JSON Hộp đen dài mà không bị đứt đoạn
+      // YÃÂÃÂªu cÃÂ¡ÃÂºÃÂ§u MTU 512 bytes ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂºÃÂ­n chuÃÂ¡ÃÂ»ÃÂi JSON HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen dÃÂÃÂ i mÃÂÃÂ  khÃÂÃÂ´ng bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©t ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n
       if (Platform.isAndroid) {
         try {
           final mtu = await device.requestMtu(512);
@@ -1085,25 +1085,25 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       setState(() {
         _connectedDevice = device;
         _isConnected = true;
-        _statusMessage = "Đã kết nối thành công!";
+        _statusMessage = "ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ nh cÃÂÃÂ´ng!";
       });
 
-      // Lưu thiết bị vào lịch sử ghép nối thành công
+      // LÃÂÃÂ°u thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ o lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ ghÃÂÃÂ©p nÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ nh cÃÂÃÂ´ng
       _saveDeviceToHistory(device);
 
-      // Lắng nghe trạng thái ngắt kết nối
+      // LÃÂ¡ÃÂºÃÂ¯ng nghe trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i ngÃÂ¡ÃÂºÃÂ¯t kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
       device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected) {
           setState(() {
             _isConnected = false;
             _connectedDevice = null;
             _sysState = "DISCONNECTED";
-            _statusMessage = "Thiết bị đã ngắt kết nối";
+            _statusMessage = "ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ£ ngÃÂ¡ÃÂºÃÂ¯t kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi";
           });
         }
       });
 
-      // Khám phá dịch vụ BLE
+      // KhÃÂÃÂ¡m phÃÂÃÂ¡ dÃÂ¡ÃÂ»ÃÂch vÃÂ¡ÃÂ»ÃÂ¥ BLE
       List<BluetoothService> services = await device.discoverServices();
       _wifiChar = null;
       _contactChar = null;
@@ -1124,8 +1124,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         }
       }
 
-      // Dự phòng cho Android/GATT cache: nhận diện telemetry bằng payload JSON,
-      // không phụ thuộc hoàn toàn vào UUID.
+      // DÃÂ¡ÃÂ»ÃÂ± phÃÂÃÂ²ng cho Android/GATT cache: nhÃÂ¡ÃÂºÃÂ­n diÃÂ¡ÃÂ»ÃÂn telemetry bÃÂ¡ÃÂºÃÂ±ng payload JSON,
+      // khÃÂÃÂ´ng phÃÂ¡ÃÂ»ÃÂ¥ thuÃÂ¡ÃÂ»ÃÂc hoÃÂÃÂ n toÃÂÃÂ n vÃÂÃÂ o UUID.
       if (_telemetryChar == null) {
         for (final service in services) {
           for (final candidate in service.characteristics) {
@@ -1141,14 +1141,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 break;
               }
             } catch (_) {
-              // Đây có thể là status/contact characteristic; tiếp tục thử kênh khác.
+              // ÃÂÃÂÃÂÃÂ¢y cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ  status/contact characteristic; tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ¥c thÃÂ¡ÃÂ»ÃÂ­ kÃÂÃÂªnh khÃÂÃÂ¡c.
             }
           }
           if (_telemetryChar != null) break;
         }
       }
 
-      // Đọc cấu hình danh bạ & ngưỡng sàn hiện tại từ chip
+      // ÃÂÃÂÃÂ¡ÃÂ»ÃÂc cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh danh bÃÂ¡ÃÂºÃÂ¡ & ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng sÃÂÃÂ n hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i tÃÂ¡ÃÂ»ÃÂ« chip
       final discovered = [_wifiChar, _contactChar, _statusChar, _telemetryChar, _cmdChar, _otaChar].whereType<BluetoothCharacteristic>().length;
       debugPrint('[BLE] Discovered $discovered/6 characteristics');
       if (_cmdChar == null) {
@@ -1157,7 +1157,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
       await _readCurrentContacts();
 
-      // Đăng ký nhận thông báo Status Notify
+      // ÃÂÃÂÃÂÃÂng kÃÂÃÂ½ nhÃÂ¡ÃÂºÃÂ­n thÃÂÃÂ´ng bÃÂÃÂ¡o Status Notify
       if (_statusChar != null) {
         await _statusChar!.setNotifyValue(true);
         _statusSub?.cancel();
@@ -1170,7 +1170,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         });
       }
 
-      // Đăng ký nhận Telemetry thời gian thực & Dữ liệu Hộp đen
+      // ÃÂÃÂÃÂÃÂng kÃÂÃÂ½ nhÃÂ¡ÃÂºÃÂ­n Telemetry thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c & DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen
       if (_telemetryChar != null) {
         try {
           await _telemetryChar!.setNotifyValue(true);
@@ -1197,7 +1197,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         });
       }
 
-      // Tự động tải lịch sử hộp đen ngay sau khi kết nối
+      // TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng tÃÂ¡ÃÂºÃÂ£i lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen ngay sau khi kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
       _fetchHistory();
       _sendCommand("GET_VERSION");
 
@@ -1205,7 +1205,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       setState(() {
         _isConnected = false;
         _connectedDevice = null;
-        _statusMessage = "Kết nối thất bại: $e";
+        _statusMessage = "KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i: $e";
       });
     }
   }
@@ -1216,7 +1216,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _isConnected = false;
       _connectedDevice = null;
       _sysState = "DISCONNECTED";
-      _statusMessage = "Đã ngắt kết nối";
+      _statusMessage = "ÃÂÃÂÃÂÃÂ£ ngÃÂ¡ÃÂºÃÂ¯t kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi";
     });
   }
 
@@ -1246,14 +1246,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         _deviceIpController.text = ip;
       });
       _saveWifiMonitoringSettings();
-      _showSnackbar("ESP32 đã kết nối Wi-Fi! IP: $ip (Tự động lưu)", Colors.green);
+      _showSnackbar("ESP32 ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Wi-Fi! IP: $ip (TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂÃÂ°u)", Colors.green);
       if (!_isWifiMonitoringEnabled) {
         _toggleWifiMonitoring(true);
       }
     } else if (msg == "WIFI_CONNECT_FAILED") {
-      _showSnackbar("ESP32 kết nối Wi-Fi thất bại! Kiểm tra mật khẩu.", Colors.red);
+      _showSnackbar("ESP32 kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Wi-Fi thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i! KiÃÂ¡ÃÂ»ÃÂm tra mÃÂ¡ÃÂºÃÂ­t khÃÂ¡ÃÂºÃÂ©u.", Colors.red);
     } else if (msg == "CONFIG_UPDATED_OK") {
-      _showSnackbar("Cấu hình danh bạ đã lưu thành công!", Colors.green);
+      _showSnackbar("CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh danh bÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂÃÂ£ lÃÂÃÂ°u thÃÂÃÂ nh cÃÂÃÂ´ng!", Colors.green);
     } else if (msg == "NETWORK_RESET_REBOOTING") {
       _stopWifiPolling();
       setState(() {
@@ -1261,7 +1261,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         _deviceIpController.clear();
         _isWifiConnected = false;
       });
-      _showSnackbar("Đã xóa cấu hình Wi-Fi. Thiết bị đang khởi động lại.", Colors.orange);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ xÃÂÃÂ³a cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh Wi-Fi. ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i.", Colors.orange);
     } else if (msg == "FACTORY_RESET_REBOOTING") {
       _stopWifiPolling();
       setState(() {
@@ -1269,22 +1269,22 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         _deviceIpController.clear();
         _isWifiConnected = false;
       });
-      _showSnackbar("Đã khôi phục toàn bộ mặc định. Thiết bị đang khởi động lại.", Colors.orange);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ khÃÂÃÂ´i phÃÂ¡ÃÂ»ÃÂ¥c toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh. ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i.", Colors.orange);
     } else if (msg == "NIGHTLIGHT_SCHEDULE_SAVED") {
-      _showSnackbar("Lịch night light đã lưu vào ESP32!", Colors.green);
+      _showSnackbar("LÃÂ¡ÃÂ»ÃÂch night light ÃÂÃÂÃÂÃÂ£ lÃÂÃÂ°u vÃÂÃÂ o ESP32!", Colors.green);
     } else if (msg == "NIGHTLIGHT_SCHEDULE_ERROR") {
-      _showSnackbar("Lịch night light không hợp lệ.", Colors.red);
+      _showSnackbar("LÃÂ¡ÃÂ»ÃÂch night light khÃÂÃÂ´ng hÃÂ¡ÃÂ»ÃÂ£p lÃÂ¡ÃÂ»ÃÂ.", Colors.red);
     } else if (msg == "EMERGENCY_DISPATCHED") {
       _showCriticalEmergencyDialog(isFall: true);
     } else if (msg == "HISTORY_SENT") {
-      _showSnackbar("Đã tải dữ liệu hộp đen NVS!", Colors.blueAccent);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ tÃÂ¡ÃÂºÃÂ£i dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS!", Colors.blueAccent);
     } else if (msg == "HISTORY_CLEARED_OK") {
       setState(() {
         _eventHistory.clear();
       });
-      _showSnackbar("Đã xóa sạch nhật ký hộp đen!", Colors.orange);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ xÃÂÃÂ³a sÃÂ¡ÃÂºÃÂ¡ch nhÃÂ¡ÃÂºÃÂ­t kÃÂÃÂ½ hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen!", Colors.orange);
     } else if (msg == "TEST_EVENT_ADDED") {
-      _showSnackbar("Đã thêm sự cố mẫu vào hộp đen NVS!", Colors.green);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ thÃÂÃÂªm sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂºÃÂ«u vÃÂÃÂ o hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS!", Colors.green);
     } else if (msg.startsWith("FIRMWARE_VERSION:")) {
       setState(() {
         _deviceFirmwareVersion = msg.replaceFirst("FIRMWARE_VERSION:", "").trim();
@@ -1292,23 +1292,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     } else if (msg.startsWith("OTA_")) {
       _otaStatusNotifier.value = msg;
       if (msg == "OTA_SUCCESS_REBOOTING") {
-        _showSnackbar("Nạp firmware ESP32 thành công 100%! Thiết bị đang khởi động lại...", Colors.green);
+        _showSnackbar("NÃÂ¡ÃÂºÃÂ¡p firmware ESP32 thÃÂÃÂ nh cÃÂÃÂ´ng 100%! ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i...", Colors.green);
       } else if (msg.startsWith("OTA_ERROR:")) {
-        _showSnackbar("Lỗi cập nhật firmware: ${msg.replaceFirst('OTA_ERROR:', '')}", Colors.red);
+        _showSnackbar("LÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t firmware: ${msg.replaceFirst('OTA_ERROR:', '')}", Colors.red);
       }
     }
   }
 
-  // Gửi cấu hình Wi-Fi
+  // GÃÂ¡ÃÂ»ÃÂ­i cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh Wi-Fi
   Future<void> _sendWifiConfig() async {
     if (_wifiChar == null) {
-      _showSnackbar("Chưa kết nối BLE với thiết bị!", Colors.red);
+      _showSnackbar("ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi BLE vÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ!", Colors.red);
       return;
     }
     String ssid = _ssidController.text.trim();
     String pass = _passController.text.trim();
     if (ssid.isEmpty) {
-      _showSnackbar("Vui lòng nhập tên Wi-Fi (SSID)!", Colors.orange);
+      _showSnackbar("Vui lÃÂÃÂ²ng nhÃÂ¡ÃÂºÃÂ­p tÃÂÃÂªn Wi-Fi (SSID)!", Colors.orange);
       return;
     }
 
@@ -1317,16 +1317,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     try {
       await _wifiChar!.write(utf8.encode(jsonStr), withoutResponse: false);
-      _showSnackbar("Đã gửi Wi-Fi. Thiết bị đang khởi động lại để kết nối...", Colors.blue);
+      _showSnackbar("ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i Wi-Fi. ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i ÃÂÃÂÃÂ¡ÃÂ»ÃÂ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi...", Colors.blue);
     } catch (e) {
-      _showSnackbar("Gửi Wi-Fi thất bại: $e", Colors.red);
+      _showSnackbar("GÃÂ¡ÃÂ»ÃÂ­i Wi-Fi thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i: $e", Colors.red);
     }
   }
 
-  // Gửi cấu hình danh bạ khẩn cấp
+  // GÃÂ¡ÃÂ»ÃÂ­i cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh danh bÃÂ¡ÃÂºÃÂ¡ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p
   Future<void> _sendContactsConfig() async {
     if (_contactChar == null) {
-      _showSnackbar("Chưa kết nối BLE với thiết bị!", Colors.red);
+      _showSnackbar("ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi BLE vÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ!", Colors.red);
       return;
     }
 
@@ -1342,26 +1342,26 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     String jsonStr = jsonEncode(payload);
     try {
       await _contactChar!.write(utf8.encode(jsonStr), withoutResponse: false);
-      _showSnackbar("Đang lưu cấu hình...", Colors.blue);
+      _showSnackbar("ÃÂÃÂang lÃÂÃÂ°u cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh...", Colors.blue);
     } catch (e) {
-      _showSnackbar("Lưu danh bạ thất bại: $e", Colors.red);
+      _showSnackbar("LÃÂÃÂ°u danh bÃÂ¡ÃÂºÃÂ¡ thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i: $e", Colors.red);
     }
   }
 
-  // Gửi lệnh điều khiển
+  // GÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn
   Future<void> _sendCommand(String cmd) async {
     if (_cmdChar == null) {
-      _showSnackbar("Chưa kết nối BLE!", Colors.red);
+      _showSnackbar("ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi BLE!", Colors.red);
       return;
     }
     try {
       await _cmdChar!.write(utf8.encode(cmd), withoutResponse: false);
     } catch (e) {
-      _showSnackbar("Lỗi gửi lệnh $cmd: $e", Colors.red);
+      _showSnackbar("LÃÂ¡ÃÂ»ÃÂi gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh $cmd: $e", Colors.red);
     }
   }
 
-  // Đọc lịch sử sự kiện Hộp đen
+  // ÃÂÃÂÃÂ¡ÃÂ»ÃÂc lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen
   Future<void> _fetchHistory() async {
     if (!_isConnected) return;
     setState(() {
@@ -1378,7 +1378,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   // =========================================================================
-  // GIÁM SÁT TRỰC TIẾP QUA MẠNG WI-FI NỘI BỘ (DIRECT WI-FI LAN TELEMETRY)
+  // GIÃÂÃÂM SÃÂÃÂT TRÃÂ¡ÃÂ»ÃÂ°C TIÃÂ¡ÃÂºÃÂ¾P QUA MÃÂ¡ÃÂºÃÂ NG WI-FI NÃÂ¡ÃÂ»ÃÂI BÃÂ¡ÃÂ»ÃÂ (DIRECT WI-FI LAN TELEMETRY)
   // =========================================================================
   void _toggleWifiMonitoring(bool enabled) {
     setState(() {
@@ -1399,7 +1399,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   void _startWifiPolling() {
     _wifiPollTimer?.cancel();
     _pollWifiTelemetry();
-    // Thăm dò dữ liệu liên tục mỗi 700ms qua HTTP LAN
+    // ThÃÂÃÂm dÃÂÃÂ² dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu liÃÂÃÂªn tÃÂ¡ÃÂ»ÃÂ¥c mÃÂ¡ÃÂ»ÃÂi 700ms qua HTTP LAN
     _wifiPollTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
       _pollWifiTelemetry();
     });
@@ -1482,7 +1482,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _sendWifiCommand(String cmd) async {
     final ip = _deviceIp.trim();
     if (ip.isEmpty) {
-      _showSnackbar("Vui lòng nhập địa chỉ IP của thiết bị trước!", Colors.orange);
+      _showSnackbar("Vui lÃÂÃÂ²ng nhÃÂ¡ÃÂºÃÂ­p ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP cÃÂ¡ÃÂ»ÃÂ§a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc!", Colors.orange);
       return;
     }
 
@@ -1492,13 +1492,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       final request = await client.getUrl(uri);
       final response = await request.close().timeout(const Duration(milliseconds: 2500));
       if (response.statusCode == 200) {
-        _showSnackbar("Đã gửi lệnh qua Wi-Fi: $cmd", Colors.green);
+        _showSnackbar("ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh qua Wi-Fi: $cmd", Colors.green);
         _pollWifiTelemetry();
       } else {
-        _showSnackbar("Gửi lệnh qua Wi-Fi thất bại (HTTP ${response.statusCode})", Colors.red);
+        _showSnackbar("GÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh qua Wi-Fi thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i (HTTP ${response.statusCode})", Colors.red);
       }
     } catch (e) {
-      _showSnackbar("Không thể kết nối Wi-Fi tới $ip: $e", Colors.red);
+      _showSnackbar("KhÃÂÃÂ´ng thÃÂ¡ÃÂ»ÃÂ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Wi-Fi tÃÂ¡ÃÂ»ÃÂi $ip: $e", Colors.red);
     } finally {
       client.close();
     }
@@ -1507,7 +1507,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _fetchHistoryOverWifi() async {
     final ip = _deviceIp.trim();
     if (ip.isEmpty) {
-      _showSnackbar("Vui lòng nhập địa chỉ IP của thiết bị trước!", Colors.orange);
+      _showSnackbar("Vui lÃÂÃÂ²ng nhÃÂ¡ÃÂºÃÂ­p ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP cÃÂ¡ÃÂ»ÃÂ§a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc!", Colors.orange);
       return;
     }
 
@@ -1525,7 +1525,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             _eventHistory = data["events"];
             _isLoadingHistory = false;
           });
-          _showSnackbar("Đã tải hộp đen qua Wi-Fi (${_eventHistory.length} sự cố)", Colors.blueAccent);
+          _showSnackbar("ÃÂÃÂÃÂÃÂ£ tÃÂ¡ÃÂºÃÂ£i hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen qua Wi-Fi (${_eventHistory.length} sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ)", Colors.blueAccent);
           return;
         }
       }
@@ -1545,7 +1545,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           children: [
             Icon(Icons.wifi, color: Colors.tealAccent),
             SizedBox(width: 8),
-            Text("Cấu hình IP Wi-Fi"),
+            Text("CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh IP Wi-Fi"),
           ],
         ),
         content: Column(
@@ -1553,14 +1553,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Nhập địa chỉ IP mạng nội bộ của thiết bị ESP32 (hiển thị khi ESP32 kết nối Wi-Fi):",
+              "NhÃÂ¡ÃÂºÃÂ­p ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP mÃÂ¡ÃÂºÃÂ¡ng nÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂ»ÃÂ§a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ESP32 (hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ khi ESP32 kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Wi-Fi):",
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _deviceIpController,
               decoration: const InputDecoration(
-                labelText: "Địa chỉ IP",
+                labelText: "ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP",
                 hintText: "192.168.1.xxx",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.router),
@@ -1569,7 +1569,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              "Mẹo: Địa chỉ IP cũng sẽ tự động lưu khi thiết bị kết nối Wi-Fi qua Bluetooth.",
+              "MÃÂ¡ÃÂºÃÂ¹o: ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP cÃÂÃÂ©ng sÃÂ¡ÃÂºÃÂ½ tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂÃÂ°u khi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Wi-Fi qua Bluetooth.",
               style: TextStyle(fontSize: 10, color: Colors.grey),
             ),
           ],
@@ -1577,7 +1577,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Hủy"),
+            child: const Text("HÃÂ¡ÃÂ»ÃÂ§y"),
           ),
           FilledButton(
             onPressed: () {
@@ -1591,25 +1591,25 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               }
               Navigator.pop(ctx);
             },
-            child: const Text("Lưu & Kết nối"),
+            child: const Text("LÃÂÃÂ°u & KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi"),
           ),
         ],
       ),
     );
   }
 
-  // Mở màn hình quản trị chi tiết thiết bị (Gồm Giám sát, Hộp đen và Cài đặt)
+  // MÃÂ¡ÃÂ»ÃÂ mÃÂÃÂ n hÃÂÃÂ¬nh quÃÂ¡ÃÂºÃÂ£n trÃÂ¡ÃÂ»ÃÂ chi tiÃÂ¡ÃÂºÃÂ¿t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ (GÃÂ¡ÃÂ»ÃÂm GiÃÂÃÂ¡m sÃÂÃÂ¡t, HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen vÃÂÃÂ  CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t)
   void _openDeviceDetail(BluetoothDevice device, {int initialTab = 0}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (ctx) => ValueListenableBuilder<int>(
           valueListenable: _telemetryRevision,
-          builder: (context, _, __) => DeviceDetailScreen(
+          builder: (context, _, _) => DeviceDetailScreen(
           device: device,
           isConnected: _isConnected,
           initialTabIndex: initialTab,
-          // Dữ liệu thời gian thực
+          // DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c
           sysState: _sysState,
           aiPosture: _aiPosture,
           aiConfidence: _aiConfidence,
@@ -1657,30 +1657,30 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Định dạng thời gian kết nối gần nhất
+  // ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh dÃÂ¡ÃÂºÃÂ¡ng thÃÂ¡ÃÂ»ÃÂi gian kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t
   String _formatLastSeen(DateTime? dt) {
-    if (dt == null) return "Gần đây";
+    if (dt == null) return "GÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂÃÂ¢y";
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return "Vừa xong";
-    if (diff.inMinutes < 60) return "${diff.inMinutes} phút trước";
-    if (diff.inHours < 24) return "${diff.inHours} giờ trước";
+    if (diff.inMinutes < 1) return "VÃÂ¡ÃÂ»ÃÂ«a xong";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} phÃÂÃÂºt trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc";
+    if (diff.inHours < 24) return "${diff.inHours} giÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc";
     return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
-  // Hộp thoại đổi tên vị trí thiết bị trong lịch sử
+  // HÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i ÃÂÃÂÃÂ¡ÃÂ»ÃÂi tÃÂÃÂªn vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ trong lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­
   void _showRenameDialog(String id, String currentName) {
     final controller = TextEditingController(text: currentName);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Đặt tên vị trí thiết bị"),
+        title: const Text("ÃÂÃÂÃÂ¡ÃÂºÃÂ·t tÃÂÃÂªn vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Đặt tên theo phòng để dễ theo dõi (VD: Phòng ngủ Ông Bà, Nhà tắm tầng 2, Phòng khách):",
+              "ÃÂÃÂÃÂ¡ÃÂºÃÂ·t tÃÂÃÂªn theo phÃÂÃÂ²ng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ dÃÂ¡ÃÂ»ÃÂ theo dÃÂÃÂµi (VD: PhÃÂÃÂ²ng ngÃÂ¡ÃÂ»ÃÂ§ ÃÂÃÂng BÃÂÃÂ , NhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m tÃÂ¡ÃÂºÃÂ§ng 2, PhÃÂÃÂ²ng khÃÂÃÂ¡ch):",
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
@@ -1688,7 +1688,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               controller: controller,
               autofocus: true,
               decoration: const InputDecoration(
-                labelText: "Tên vị trí",
+                labelText: "TÃÂÃÂªn vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.room),
               ),
@@ -1696,20 +1696,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("HÃÂ¡ÃÂ»ÃÂ§y")),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               _renameDeviceInHistory(id, controller.text);
             },
-            child: const Text("Lưu tên"),
+            child: const Text("LÃÂÃÂ°u tÃÂÃÂªn"),
           ),
         ],
       ),
     );
   }
 
-  // Mở màn hình Cài đặt chung của ứng dụng
+  // MÃÂ¡ÃÂ»ÃÂ mÃÂÃÂ n hÃÂÃÂ¬nh CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung cÃÂ¡ÃÂ»ÃÂ§a ÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂ»ÃÂ¥ng
   void _openGeneralSettings() {
     Navigator.push(
       context,
@@ -1747,7 +1747,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Widget hiển thị danh sách thiết bị từng kết nối
+  // Widget hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ danh sÃÂÃÂ¡ch thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
   Widget _buildDeviceHistoryList() {
     return Column(
       children: _deviceHistory.map((item) {
@@ -1756,7 +1756,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         final String rawName = item['name'] ?? 'FallDetector_S3R8';
         final String lastTime = item['lastConnected'] != null
             ? _formatLastSeen(DateTime.tryParse(item['lastConnected']))
-            : "Gần đây";
+            : "GÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂÃÂ¢y";
         final bool isCurrent = _isConnected && _connectedDevice?.remoteId.str == id;
 
         return Card(
@@ -1795,7 +1795,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: Colors.green),
                     ),
-                    child: const Text("Đang kết nối", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+                    child: const Text("ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
                   ),
               ],
             ),
@@ -1809,7 +1809,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  "Lần kết nối cuối: $lastTime",
+                  "LÃÂ¡ÃÂºÃÂ§n kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi cuÃÂ¡ÃÂ»ÃÂi: $lastTime",
                   style: const TextStyle(fontSize: 10, color: Colors.teal, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -1826,12 +1826,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () => _connectToDevice(BluetoothDevice.fromId(id)),
-                    child: const Text("Kết nối lại", style: TextStyle(fontSize: 12)),
+                    child: const Text("KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi lÃÂ¡ÃÂºÃÂ¡i", style: TextStyle(fontSize: 12)),
                   )
                 else
                   IconButton(
                     icon: const Icon(Icons.tune, color: Colors.green),
-                    tooltip: "Vào chi tiết thiết bị",
+                    tooltip: "VÃÂÃÂ o chi tiÃÂ¡ÃÂºÃÂ¿t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ",
                     onPressed: () {
                       if (_connectedDevice != null) _openDeviceDetail(_connectedDevice!);
                     },
@@ -1852,7 +1852,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         children: [
                           Icon(Icons.edit, size: 16),
                           SizedBox(width: 8),
-                          Text("Đổi tên phòng / vị trí"),
+                          Text("ÃÂÃÂÃÂ¡ÃÂ»ÃÂi tÃÂÃÂªn phÃÂÃÂ²ng / vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­"),
                         ],
                       ),
                     ),
@@ -1862,7 +1862,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         children: [
                           Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
                           SizedBox(width: 8),
-                          Text("Quên thiết bị này", style: TextStyle(color: Colors.redAccent)),
+                          Text("QuÃÂÃÂªn thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ y", style: TextStyle(color: Colors.redAccent)),
                         ],
                       ),
                     ),
@@ -1883,7 +1883,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Widget hiển thị trạng thái màn hình khóa & trực tiếp (Feature 6 & 1)
+  // Widget hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i mÃÂÃÂ n hÃÂÃÂ¬nh khÃÂÃÂ³a & trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p (Feature 6 & 1)
   Widget _buildGlanceableLiveStatusCard() {
     final bool isActivelyMonitored = _isConnected || _isWifiConnected;
     final Color badgeColor = _sysState == "ALERT"
@@ -1934,17 +1934,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       Text(
                         isActivelyMonitored
                             ? (_sysState == "ALERT"
-                                ? "🚨 CẢNH BÁO TÉ NGÃ KHẨN CẤP"
+                                ? "ÃÂ°ÃÂÃÂÃÂ¨ CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO TÃÂÃÂ NGÃÂÃÂ KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P"
                                 : (_isWifiConnected && !_isConnected
-                                    ? "🌐 GIÁM SÁT TRỰC TIẾP QUA WI-FI"
+                                    ? "ÃÂ°ÃÂÃÂÃÂ GIÃÂÃÂM SÃÂÃÂT TRÃÂ¡ÃÂ»ÃÂ°C TIÃÂ¡ÃÂºÃÂ¾P QUA WI-FI"
                                     : (_isWifiConnected && _isConnected
-                                        ? "🟢 GIÁM SÁT KÉP (BLE + WI-FI)"
-                                        : "🟢 AN TOÀN - ĐANG GIÁM SÁT BLE 24/7")))
-                            : "⚪ CHỜ KẾT NỐI (BLUETOOTH HOẶC WI-FI)",
+                                        ? "ÃÂ°ÃÂÃÂÃÂ¢ GIÃÂÃÂM SÃÂÃÂT KÃÂÃÂP (BLE + WI-FI)"
+                                        : "ÃÂ°ÃÂÃÂÃÂ¢ AN TOÃÂÃÂN - ÃÂÃÂANG GIÃÂÃÂM SÃÂÃÂT BLE 24/7")))
+                            : "ÃÂ¢ÃÂÃÂª CHÃÂ¡ÃÂ»ÃÂ KÃÂ¡ÃÂºÃÂ¾T NÃÂ¡ÃÂ»ÃÂI (BLUETOOTH HOÃÂ¡ÃÂºÃÂ¶C WI-FI)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: badgeColor),
                       ),
                       Text(
-                        "Khu vực: $_monitoredRoomName • ${_medicalProfile.fullName}",
+                        "Khu vÃÂ¡ÃÂ»ÃÂ±c: $_monitoredRoomName ÃÂ¢ÃÂÃÂ¢ ${_medicalProfile.fullName}",
                         style: const TextStyle(fontSize: 11, color: Colors.grey),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1953,14 +1953,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.widgets_outlined, size: 20),
-                  tooltip: "Mô phỏng Widget Màn hình khóa",
+                  tooltip: "MÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng Widget MÃÂÃÂ n hÃÂÃÂ¬nh khÃÂÃÂ³a",
                   onPressed: _openLockscreenWidgetPreview,
                 ),
               ],
             ),
             const SizedBox(height: 10),
 
-            // Thanh tiến trình lưu trú nhà tắm & bất động
+            // Thanh tiÃÂ¡ÃÂºÃÂ¿n trÃÂÃÂ¬nh lÃÂÃÂ°u trÃÂÃÂº nhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m & bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng
             if (isActivelyMonitored) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1969,10 +1969,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     children: [
                       const Icon(Icons.timer, size: 14, color: Colors.amberAccent),
                       const SizedBox(width: 4),
-                      Text("Hiện diện: ${minutes}p ${seconds}s", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text("HiÃÂ¡ÃÂ»ÃÂn diÃÂ¡ÃÂ»ÃÂn: ${minutes}p ${seconds}s", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     ],
                   ),
-                  Text("Ngưỡng an toàn: < ${_inactivityThresholdMinutes}p", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text("NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng an toÃÂÃÂ n: < ${_inactivityThresholdMinutes}p", style: const TextStyle(fontSize: 10, color: Colors.grey)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -1990,15 +1990,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 10),
             ],
 
-            // 3 thông số mini
+            // 3 thÃÂÃÂ´ng sÃÂ¡ÃÂ»ÃÂ mini
             Row(
               children: [
                 Expanded(
-                  child: _buildMiniStatusChip("Tư thế AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent),
+                  child: _buildMiniStatusChip("TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: _buildMiniStatusChip("Độ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent),
+                  child: _buildMiniStatusChip("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -2012,7 +2012,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Widget Giám sát trực tiếp qua Wi-Fi LAN
+  // Widget GiÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Wi-Fi LAN
   Widget _buildWifiMonitoringCard() {
     final bool isOnline = _isWifiConnected;
     final double screenWidth = MediaQuery.sizeOf(context).width;
@@ -2033,7 +2033,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Tiêu đề và nút bật/tắt Wi-Fi
+            // TiÃÂÃÂªu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  nÃÂÃÂºt bÃÂ¡ÃÂºÃÂ­t/tÃÂ¡ÃÂºÃÂ¯t Wi-Fi
             Row(
               children: [
                 Icon(
@@ -2047,15 +2047,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Giám sát trực tiếp qua Wi-Fi (LAN)",
+                        "GiÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Wi-Fi (LAN)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       Text(
                         _isWifiMonitoringEnabled
                             ? (_deviceIp.isEmpty
-                                ? "Chưa cấu hình địa chỉ IP thiết bị"
-                                : "IP: $_deviceIp • ${isOnline ? 'Độ trễ: ${_wifiDelayMs}ms' : 'Đang kết nối...'}")
-                            : "Theo dõi từ xa xuyên phòng không cần Bluetooth",
+                                ? "ChÃÂÃÂ°a cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ"
+                                : "IP: $_deviceIp ÃÂ¢ÃÂÃÂ¢ ${isOnline ? 'ÃÂÃÂÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ: ${_wifiDelayMs}ms' : 'ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi...'}")
+                            : "Theo dÃÂÃÂµi tÃÂ¡ÃÂ»ÃÂ« xa xuyÃÂÃÂªn phÃÂÃÂ²ng khÃÂÃÂ´ng cÃÂ¡ÃÂºÃÂ§n Bluetooth",
                         style: TextStyle(fontSize: 11, color: isOnline ? Colors.tealAccent : Colors.grey),
                       ),
                     ],
@@ -2077,7 +2077,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
             if (_isWifiMonitoringEnabled) ...[
               const Divider(height: 16),
-              // Thanh địa chỉ IP và công cụ
+              // Thanh ÃÂÃÂÃÂ¡ÃÂ»ÃÂa chÃÂ¡ÃÂ»ÃÂ IP vÃÂÃÂ  cÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ¥
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -2098,7 +2098,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          isOnline ? "Đang truyền (${_wifiDelayMs}ms)" : "Chờ phản hồi...",
+                          isOnline ? "ÃÂÃÂang truyÃÂ¡ÃÂ»ÃÂn (${_wifiDelayMs}ms)" : "ChÃÂ¡ÃÂ»ÃÂ phÃÂ¡ÃÂºÃÂ£n hÃÂ¡ÃÂ»ÃÂi...",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -2117,12 +2117,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           visualDensity: VisualDensity.compact,
                         ),
                         icon: const Icon(Icons.edit, size: 14),
-                        label: const Text("Đổi IP", style: TextStyle(fontSize: 11)),
+                        label: const Text("ÃÂÃÂÃÂ¡ÃÂ»ÃÂi IP", style: TextStyle(fontSize: 11)),
                         onPressed: _showWifiIpDialog,
                       ),
                       IconButton(
                         icon: const Icon(Icons.refresh, size: 18, color: Colors.cyanAccent),
-                        tooltip: "Làm mới dữ liệu Wi-Fi ngay",
+                        tooltip: "LÃÂÃÂ m mÃÂ¡ÃÂ»ÃÂi dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu Wi-Fi ngay",
                         onPressed: _pollWifiTelemetry,
                       ),
                     ],
@@ -2131,7 +2131,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Bảng dữ liệu thông số trực tiếp nhận qua Wi-Fi
+              // BÃÂ¡ÃÂºÃÂ£ng dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu thÃÂÃÂ´ng sÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p nhÃÂ¡ÃÂºÃÂ­n qua Wi-Fi
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -2145,16 +2145,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   spacing: 4,
                   runSpacing: 8,
                   children: [
-                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Tư thế AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent)),
-                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Độ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent)),
-                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Động năng", "$_radarMotion/100", Icons.directions_run, Colors.orangeAccent)),
-                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("Nhịp thở", "$_radarStatic/100", Icons.air, Colors.tealAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ AI", _aiPosture, Icons.accessibility_new, Colors.indigoAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", "${_tofHeight}mm", Icons.height, Colors.blueAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng", "$_radarMotion/100", Icons.directions_run, Colors.orangeAccent)),
+                    SizedBox(width: compact ? (screenWidth - 64) / 2 : null, child: _buildMiniWifiMetric("NhÃÂ¡ÃÂ»ÃÂp thÃÂ¡ÃÂ»ÃÂ", "$_radarStatic/100", Icons.air, Colors.tealAccent)),
                   ],
                 ),
               ),
               const SizedBox(height: 10),
 
-              // Nút hành động nhanh Wi-Fi
+              // NÃÂÃÂºt hÃÂÃÂ nh ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nhanh Wi-Fi
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -2179,13 +2179,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                       ),
                       icon: const Icon(Icons.volume_off, size: 16),
-                      label: const Text("Tắt còi Wi-Fi", style: TextStyle(fontSize: 12)),
+                      label: const Text("TÃÂ¡ÃÂºÃÂ¯t cÃÂÃÂ²i Wi-Fi", style: TextStyle(fontSize: 12)),
                       onPressed: () => _sendWifiCommand("CANCEL_ALARM"),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.history, color: Colors.blueAccent),
-                    tooltip: "Tải hộp đen NVS qua Wi-Fi",
+                    tooltip: "TÃÂ¡ÃÂºÃÂ£i hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS qua Wi-Fi",
                     onPressed: _fetchHistoryOverWifi,
                   ),
                 ],
@@ -2233,7 +2233,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  // Thanh công cụ y tế & đánh giá nhanh 1 chạm (Feature 2, 7, 3, 1)
+  // Thanh cÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ¥ y tÃÂ¡ÃÂºÃÂ¿ & ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ nhanh 1 chÃÂ¡ÃÂºÃÂ¡m (Feature 2, 7, 3, 1)
   Widget _buildQuickHealthActionBar() {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2243,7 +2243,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           children: [
             ActionChip(
               avatar: const Icon(Icons.badge, size: 16, color: Colors.redAccent),
-              label: const Text("Thẻ Y Tế", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              label: const Text("ThÃÂ¡ÃÂºÃÂ» Y TÃÂ¡ÃÂºÃÂ¿", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               backgroundColor: Colors.red.withValues(alpha: 0.12),
               side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
               onPressed: _openMedicalIdCard,
@@ -2251,7 +2251,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.quiz, size: 16, color: Colors.blueAccent),
-              label: Text("Khám CDC: $_cdcSteadiScoređ", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              label: Text("KhÃÂÃÂ¡m CDC: $_cdcSteadiScoreÃÂÃÂ", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               backgroundColor: Colors.blue.withValues(alpha: 0.12),
               side: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.4)),
               onPressed: _openCdcSteadiAssessment,
@@ -2259,7 +2259,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.description, size: 16, color: Colors.tealAccent),
-              label: const Text("Báo Cáo Y Khoa", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              label: const Text("BÃÂÃÂ¡o CÃÂÃÂ¡o Y Khoa", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               backgroundColor: Colors.teal.withValues(alpha: 0.12),
               side: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.4)),
               onPressed: _openMedicalAuditReport,
@@ -2267,7 +2267,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.bathtub, size: 16, color: Colors.amberAccent),
-              label: Text("Giám sát: ${_inactivityThresholdMinutes}p", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              label: Text("GiÃÂÃÂ¡m sÃÂÃÂ¡t: ${_inactivityThresholdMinutes}p", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               backgroundColor: Colors.amber.withValues(alpha: 0.12),
               side: BorderSide(color: Colors.amberAccent.withValues(alpha: 0.4)),
               onPressed: _openInactivitySettingsSheet,
@@ -2280,7 +2280,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Tập hợp danh sách thiết bị (đưa thiết bị đã kết nối lên đầu)
+    // TÃÂ¡ÃÂºÃÂ­p hÃÂ¡ÃÂ»ÃÂ£p danh sÃÂÃÂ¡ch thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ (ÃÂÃÂÃÂÃÂ°a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi lÃÂÃÂªn ÃÂÃÂÃÂ¡ÃÂºÃÂ§u)
     final bool compact = MediaQuery.sizeOf(context).width < 380;
     List<BluetoothDevice> displayedDevices = [];
     if (_connectedDevice != null && _isConnected) {
@@ -2317,21 +2317,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'medical', child: Text('Thẻ Y tế khẩn cấp')),
-                PopupMenuItem(value: 'report', child: Text('Báo cáo y khoa')),
-                PopupMenuItem(value: 'device', child: Text('Thiết bị đang kết nối')),
-                PopupMenuItem(value: 'settings', child: Text('Cài đặt chung')),
+                PopupMenuItem(value: 'medical', child: Text('ThÃÂ¡ÃÂºÃÂ» Y tÃÂ¡ÃÂºÃÂ¿ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p')),
+                PopupMenuItem(value: 'report', child: Text('BÃÂÃÂ¡o cÃÂÃÂ¡o y khoa')),
+                PopupMenuItem(value: 'device', child: Text('ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi')),
+                PopupMenuItem(value: 'settings', child: Text('CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung')),
               ],
             ),
           if (!compact) ...[
             IconButton(
               icon: const Icon(Icons.badge, color: Colors.redAccent),
-              tooltip: "Thẻ Y Tế Khẩn Cấp",
+              tooltip: "ThÃÂ¡ÃÂºÃÂ» Y TÃÂ¡ÃÂºÃÂ¿ KhÃÂ¡ÃÂºÃÂ©n CÃÂ¡ÃÂºÃÂ¥p",
               onPressed: _openMedicalIdCard,
             ),
             IconButton(
               icon: const Icon(Icons.description, color: Colors.tealAccent),
-              tooltip: "Báo Cáo Y Khoa Định Kỳ",
+              tooltip: "BÃÂÃÂ¡o CÃÂÃÂ¡o Y Khoa ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh KÃÂ¡ÃÂ»ÃÂ³",
               onPressed: _openMedicalAuditReport,
             ),
             IconButton(
@@ -2339,7 +2339,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 _isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
                 color: _isConnected ? Colors.greenAccent : Colors.grey,
               ),
-              tooltip: _isConnected ? "Đã kết nối" : "Chưa kết nối",
+              tooltip: _isConnected ? "ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi" : "ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi",
               onPressed: () {
                 if (_isConnected && _connectedDevice != null) {
                   _openDeviceDetail(_connectedDevice!);
@@ -2348,7 +2348,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.settings_outlined),
-              tooltip: "Cài đặt chung",
+              tooltip: "CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung",
               onPressed: _openGeneralSettings,
             ),
           ],
@@ -2363,22 +2363,22 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Thẻ trạng thái Glanceable Live Status Card (Feature 6 & 1)
+            // ThÃÂ¡ÃÂºÃÂ» trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i Glanceable Live Status Card (Feature 6 & 1)
             _buildGlanceableLiveStatusCard(),
 
-            // Thẻ giám sát trực tiếp qua Wi-Fi LAN
+            // ThÃÂ¡ÃÂºÃÂ» giÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Wi-Fi LAN
             _buildWifiMonitoringCard(),
 
-            // Thanh công cụ y tế nhanh 1 chạm (Feature 2, 7, 3, 1)
+            // Thanh cÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ¥ y tÃÂ¡ÃÂºÃÂ¿ nhanh 1 chÃÂ¡ÃÂºÃÂ¡m (Feature 2, 7, 3, 1)
             _buildQuickHealthActionBar(),
 
-            // Nút Quét thiết bị trên cùng
+            // NÃÂÃÂºt QuÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ trÃÂÃÂªn cÃÂÃÂ¹ng
             ElevatedButton.icon(
               onPressed: _isScanning ? null : _startScan,
               icon: _isScanning
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.search),
-              label: Text(_isScanning ? "Đang quét xung quanh..." : "Quét thiết bị FallDetector_S3R8"),
+              label: Text(_isScanning ? "ÃÂÃÂang quÃÂÃÂ©t xung quanh..." : "QuÃÂÃÂ©t thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ FallDetector_S3R8"),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 backgroundColor: Theme.of(context).colorScheme.primary,
@@ -2388,7 +2388,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // PHẦN 1: LỊCH SỬ THIẾT BỊ TỪNG KẾT NỐI (PAIRED / HISTORY DEVICES)
+            // PHÃÂ¡ÃÂºÃÂ¦N 1: LÃÂ¡ÃÂ»ÃÂCH SÃÂ¡ÃÂ»ÃÂ¬ THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ TÃÂ¡ÃÂ»ÃÂªNG KÃÂ¡ÃÂºÃÂ¾T NÃÂ¡ÃÂ»ÃÂI (PAIRED / HISTORY DEVICES)
             if (_deviceHistory.isNotEmpty) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2397,10 +2397,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     children: [
                       Icon(Icons.history_toggle_off, size: 18, color: Colors.blueAccent),
                       SizedBox(width: 6),
-                      Text("Thiết bị từng kết nối:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text("ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     ],
                   ),
-                  Text("${_deviceHistory.length} thiết bị đã lưu", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text("${_deviceHistory.length} thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ£ lÃÂÃÂ°u", style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2408,13 +2408,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 14),
             ],
 
-            // PHẦN 2: THIẾT BỊ TÌM THẤY QUA QUÉT BLE
+            // PHÃÂ¡ÃÂºÃÂ¦N 2: THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ TÃÂÃÂM THÃÂ¡ÃÂºÃÂ¤Y QUA QUÃÂÃÂT BLE
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Thiết bị tìm thấy xung quanh:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const Text("ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂÃÂ¬m thÃÂ¡ÃÂºÃÂ¥y xung quanh:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 if (displayedDevices.isNotEmpty)
-                  Text("${displayedDevices.length} thiết bị", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("${displayedDevices.length} thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ", style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 8),
@@ -2428,7 +2428,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           Icon(Icons.bluetooth_searching, size: 52, color: Colors.grey.shade400),
                           const SizedBox(height: 12),
                           Text(
-                            _isScanning ? "Đang tìm kiếm sóng Bluetooth..." : "Nhấn 'Quét' để tìm thiết bị FallDetector_S3R8",
+                            _isScanning ? "ÃÂÃÂang tÃÂÃÂ¬m kiÃÂ¡ÃÂºÃÂ¿m sÃÂÃÂ³ng Bluetooth..." : "NhÃÂ¡ÃÂºÃÂ¥n 'QuÃÂÃÂ©t' ÃÂÃÂÃÂ¡ÃÂ»ÃÂ tÃÂÃÂ¬m thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ FallDetector_S3R8",
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],
@@ -2442,7 +2442,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         final String devName = device.platformName.isEmpty ? "FallDetector_S3R8" : device.platformName;
                         final int? rssi = _rssiMap[device.remoteId.str];
 
-                        // Thiết bị đã kết nối: Viền xanh lá, hiển thị xanh "Đã kết nối", có nút Ngắt (Đã xóa "Chạm để cài đặt")
+                        // ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi: ViÃÂ¡ÃÂ»ÃÂn xanh lÃÂÃÂ¡, hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ xanh "ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi", cÃÂÃÂ³ nÃÂÃÂºt NgÃÂ¡ÃÂºÃÂ¯t (ÃÂÃÂÃÂÃÂ£ xÃÂÃÂ³a "ChÃÂ¡ÃÂºÃÂ¡m ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t")
                         if (isThisConnected) {
                           return Card(
                             margin: const EdgeInsets.symmetric(vertical: 6),
@@ -2483,14 +2483,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                                               Icon(Icons.check_circle, color: Colors.green, size: 15),
                                               SizedBox(width: 5),
                                               Text(
-                                                "Đã kết nối",
+                                                "ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi",
                                                 style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            "RSSI: ${rssi != null ? '$rssi dBm' : 'Tốt'} | ID: ${device.remoteId}",
+                                            "RSSI: ${rssi != null ? '$rssi dBm' : 'TÃÂ¡ÃÂ»ÃÂt'} | ID: ${device.remoteId}",
                                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -2498,7 +2498,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    // Nút ngắt kết nối trực tiếp
+                                    // NÃÂÃÂºt ngÃÂ¡ÃÂºÃÂ¯t kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p
                                     OutlinedButton(
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: Colors.redAccent,
@@ -2507,7 +2507,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                       ),
                                       onPressed: _disconnect,
-                                      child: const Text("Ngắt", style: TextStyle(fontWeight: FontWeight.bold)),
+                                      child: const Text("NgÃÂ¡ÃÂºÃÂ¯t", style: TextStyle(fontWeight: FontWeight.bold)),
                                     ),
                                     const SizedBox(width: 2),
                                     const Icon(Icons.chevron_right, color: Colors.green),
@@ -2518,7 +2518,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           );
                         }
 
-                        // Thiết bị chưa kết nối
+                        // ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ chÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2564,7 +2564,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                     ),
                                     onPressed: () => _connectToDevice(device),
-                                    child: const Text("Kết nối"),
+                                    child: const Text("KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi"),
                                   ),
                                 ],
                               ),
@@ -2605,14 +2605,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 }
 
 // =========================================================================
-// MÀN HÌNH QUẢN TRỊ THIẾT BỊ: GỒM 3 TAB (GIÁM SÁT, HỘP ĐEN & GRAPH, CÀI ĐẶT)
+// MÃÂÃÂN HÃÂÃÂNH QUÃÂ¡ÃÂºÃÂ¢N TRÃÂ¡ÃÂ»ÃÂ THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ: GÃÂ¡ÃÂ»ÃÂM 3 TAB (GIÃÂÃÂM SÃÂÃÂT, HÃÂ¡ÃÂ»ÃÂP ÃÂÃÂEN & GRAPH, CÃÂÃÂI ÃÂÃÂÃÂ¡ÃÂºÃÂ¶T)
 // =========================================================================
 class DeviceDetailScreen extends StatefulWidget {
   final BluetoothDevice device;
   final bool isConnected;
   final int initialTabIndex;
 
-  // Dữ liệu Telemetry
+  // DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu Telemetry
   final String sysState;
   final String aiPosture;
   final double aiConfidence;
@@ -2624,7 +2624,7 @@ class DeviceDetailScreen extends StatefulWidget {
   final bool isLoadingHistory;
   final List<Map<String, double>> telemetryHistory;
 
-  // Controllers cấu hình
+  // Controllers cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh
   final TextEditingController ssidController;
   final TextEditingController passController;
   final TextEditingController phoneController;
@@ -2644,7 +2644,7 @@ class DeviceDetailScreen extends StatefulWidget {
   final ValueNotifier<String> otaStatusNotifier;
   final String firmwareVersion;
 
-  // Giám sát trực tiếp qua Wi-Fi LAN
+  // GiÃÂÃÂ¡m sÃÂÃÂ¡t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Wi-Fi LAN
   final String deviceIp;
   final bool isWifiConnected;
   final int wifiDelayMs;
@@ -2698,9 +2698,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   bool _obscurePass = true;
   late double _currentFloorThreshold;
   int _selectedEventIndex = 0;
-  int _blackBoxSubTab = 0; // 0: Trực tiếp thời gian thực, 1: Hộp đen NVS
+  int _blackBoxSubTab = 0; // 0: TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c, 1: HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS
 
-  // Xử lý gửi lệnh qua kênh khả dụng (BLE hoặc Wi-Fi)
+  // XÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh qua kÃÂÃÂªnh khÃÂ¡ÃÂºÃÂ£ dÃÂ¡ÃÂ»ÃÂ¥ng (BLE hoÃÂ¡ÃÂºÃÂ·c Wi-Fi)
   Future<void> _handleDeviceCommand(String cmd) async {
     if (widget.isConnected) {
       await widget.onSendCommand(cmd);
@@ -2709,7 +2709,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Chưa kết nối thiết bị qua Bluetooth hoặc Wi-Fi!"), backgroundColor: Colors.red),
+          const SnackBar(content: Text("ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ qua Bluetooth hoÃÂ¡ÃÂºÃÂ·c Wi-Fi!"), backgroundColor: Colors.red),
         );
       }
     }
@@ -2723,7 +2723,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     final picked = await showTimePicker(
       context: context,
       initialTime: isStart ? _nightStart : _nightEnd,
-      helpText: isStart ? "Giờ bắt đầu bật đèn" : "Giờ kết thúc đèn",
+      helpText: isStart ? "GiÃÂ¡ÃÂ»ÃÂ bÃÂ¡ÃÂºÃÂ¯t ÃÂÃÂÃÂ¡ÃÂºÃÂ§u bÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂÃÂ¨n" : "GiÃÂ¡ÃÂ»ÃÂ kÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂºc ÃÂÃÂÃÂÃÂ¨n",
     );
     if (!mounted || picked == null) return;
     setState(() {
@@ -2741,12 +2741,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         "${_nightEnd.hour},${_nightEnd.minute}";
     _handleDeviceCommand(command);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Đã gửi lịch night light ${_formatTime(_nightStart)}–${_formatTime(_nightEnd)}")),
+      SnackBar(content: Text("ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂch night light ${_formatTime(_nightStart)}ÃÂ¢ÃÂÃÂ${_formatTime(_nightEnd)}")),
     );
   }
 
-  // Cấu hình thông minh cho thiết bị
-  int _alarmGracePeriod = 15; // 15 giây trễ trước khi hú còi lớn
+  // CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh thÃÂÃÂ´ng minh cho thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ
+  int _alarmGracePeriod = 15; // 15 giÃÂÃÂ¢y trÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi hÃÂÃÂº cÃÂÃÂ²i lÃÂ¡ÃÂ»ÃÂn
   String _nightlightMode = "AUTO_MOTION"; // "AUTO_MOTION", "ALWAYS_ON", "OFF"
   double _nightlightBrightness = 40.0;
   String _nightlightColor = "WARM_YELLOW";
@@ -2761,11 +2761,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('HÃÂ¡ÃÂ»ÃÂ§y')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận'),
+            child: const Text('XÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n'),
           ),
         ],
       ),
@@ -2774,12 +2774,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       await _handleDeviceCommand(command);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã gửi lệnh. Thiết bị sẽ khởi động lại.')),
+          const SnackBar(content: Text('ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh. ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ sÃÂ¡ÃÂºÃÂ½ khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i.')),
         );
       }
     }
   }
-  bool _buzzerActiveHigh = false; // Mặc định khớp với module còi 3 chân: Active-LOW (High-Z im lặng, 0V báo động)
+  bool _buzzerActiveHigh = false; // MÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh khÃÂ¡ÃÂ»ÃÂp vÃÂ¡ÃÂ»ÃÂi module cÃÂÃÂ²i 3 chÃÂÃÂ¢n: Active-LOW (High-Z im lÃÂ¡ÃÂºÃÂ·ng, 0V bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng)
   bool _buzzerMuted = false;
 
   @override
@@ -2848,9 +2848,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           indicatorSize: TabBarIndicatorSize.label,
           dividerColor: Colors.transparent,
           tabs: const [
-            Tab(icon: Icon(Icons.monitor_heart), text: "Giám sát"),
-            Tab(icon: Icon(Icons.timeline), text: "Hộp đen NVS"),
-            Tab(icon: Icon(Icons.settings), text: "Cài đặt"),
+            Tab(icon: Icon(Icons.monitor_heart), text: "GiÃÂÃÂ¡m sÃÂÃÂ¡t"),
+            Tab(icon: Icon(Icons.timeline), text: "HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS"),
+            Tab(icon: Icon(Icons.settings), text: "CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t"),
           ],
         ),
       ),
@@ -2865,7 +2865,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
-  // TAB 1: GIÁM SÁT THỜI GIAN THỰC & ĐIỀU KHIỂN TỪ XA
+  // TAB 1: GIÃÂÃÂM SÃÂÃÂT THÃÂ¡ÃÂ»ÃÂI GIAN THÃÂ¡ÃÂ»ÃÂ°C & ÃÂÃÂIÃÂ¡ÃÂ»ÃÂU KHIÃÂ¡ÃÂ»ÃÂN TÃÂ¡ÃÂ»ÃÂª XA
   Widget _buildMonitorTab() {
     final bool canControl = widget.isConnected || widget.isWifiConnected;
     final double screenWidth = MediaQuery.sizeOf(context).width;
@@ -2876,7 +2876,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Huy hiệu nguồn kết nối (BLE & Wi-Fi)
+          // Huy hiÃÂ¡ÃÂ»ÃÂu nguÃÂ¡ÃÂ»ÃÂn kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi (BLE & Wi-Fi)
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 8,
@@ -2895,7 +2895,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     Icon(widget.isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
                          size: 14, color: widget.isConnected ? Colors.green : Colors.grey),
                     const SizedBox(width: 4),
-                    Text(widget.isConnected ? "Bluetooth: Đã kết nối" : "Bluetooth: Ngắt",
+                    Text(widget.isConnected ? "Bluetooth: ÃÂÃÂÃÂÃÂ£ kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi" : "Bluetooth: NgÃÂ¡ÃÂºÃÂ¯t",
                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
                                           color: widget.isConnected ? Colors.green : Colors.grey)),
                   ],
@@ -2916,8 +2916,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     const SizedBox(width: 4),
                     Text(
                       widget.isWifiConnected
-                          ? "Wi-Fi: Trực tiếp (${widget.wifiDelayMs}ms)"
-                          : (widget.deviceIp.isNotEmpty ? "Wi-Fi: ${widget.deviceIp}" : "Wi-Fi: Chưa bật"),
+                          ? "Wi-Fi: TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p (${widget.wifiDelayMs}ms)"
+                          : (widget.deviceIp.isNotEmpty ? "Wi-Fi: ${widget.deviceIp}" : "Wi-Fi: ChÃÂÃÂ°a bÃÂ¡ÃÂºÃÂ­t"),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -2931,7 +2931,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 12),
 
-          // Thẻ trạng thái khẩn cấp
+          // ThÃÂ¡ÃÂºÃÂ» trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p
           Card(
             color: _getStateColor(widget.sysState).withValues(alpha: 0.10),
             shape: RoundedRectangleBorder(
@@ -2959,10 +2959,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.sysState == "ALERT" ? "🚨 CẢNH BÁO TÉ NGÃ KHẨN CẤP!" :
-                    widget.sysState == "PRE_ALARM" ? "⚠️ ĐANG ĐẾM NGƯỢC PRE-ALARM (30s)" :
-                    widget.sysState == "SUSPECTED" ? "Xác thực va chạm tiếp đất..." :
-                    widget.sysState == "NORMAL" ? "Môi trường bình thường & An toàn" : "Chưa kết nối",
+                    widget.sysState == "ALERT" ? "ÃÂ°ÃÂÃÂÃÂ¨ CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO TÃÂÃÂ NGÃÂÃÂ KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P!" :
+                    widget.sysState == "PRE_ALARM" ? "ÃÂ¢ÃÂÃÂ ÃÂ¯ÃÂ¸ÃÂ ÃÂÃÂANG ÃÂÃÂÃÂ¡ÃÂºÃÂ¾M NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂ¢C PRE-ALARM (30s)" :
+                    widget.sysState == "SUSPECTED" ? "XÃÂÃÂ¡c thÃÂ¡ÃÂ»ÃÂ±c va chÃÂ¡ÃÂºÃÂ¡m tiÃÂ¡ÃÂºÃÂ¿p ÃÂÃÂÃÂ¡ÃÂºÃÂ¥t..." :
+                    widget.sysState == "NORMAL" ? "MÃÂÃÂ´i trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng bÃÂÃÂ¬nh thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng & An toÃÂÃÂ n" : "ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi",
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                 ],
@@ -2971,7 +2971,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 14),
 
-          // Lưới các thông số thời gian thực
+          // LÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cÃÂÃÂ¡c thÃÂÃÂ´ng sÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -2980,19 +2980,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             mainAxisSpacing: 10,
             childAspectRatio: compact ? 1.28 : 1.55,
             children: [
-              _buildMetricCard("Tư thế AI", widget.aiPosture, "Tin cậy: ${(widget.aiConfidence * 100).toStringAsFixed(0)}%", Icons.accessibility_new, const Color(0xFF477B72)),
-              _buildMetricCard("Độ cao ToF", "${widget.tofHeight} mm", "V_drop: ${widget.dropRate.toStringAsFixed(0)} mm/s", Icons.height, const Color(0xFF3D6F8E)),
-              _buildMetricCard("Động năng Radar", "${widget.radarMotion} / 100", "LD2410 Peak Move", Icons.directions_run, const Color(0xFF9A6B35)),
-              _buildMetricCard("Tĩnh học Hô hấp", "${widget.radarStatic} / 100", "LD2410 Static Gate", Icons.air, const Color(0xFF3F7C73)),
+              _buildMetricCard("TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ AI", widget.aiPosture, "Tin cÃÂ¡ÃÂºÃÂ­y: ${(widget.aiConfidence * 100).toStringAsFixed(0)}%", Icons.accessibility_new, const Color(0xFF477B72)),
+              _buildMetricCard("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", "${widget.tofHeight} mm", "V_drop: ${widget.dropRate.toStringAsFixed(0)} mm/s", Icons.height, const Color(0xFF3D6F8E)),
+              _buildMetricCard("ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar", "${widget.radarMotion} / 100", "LD2410 Peak Move", Icons.directions_run, const Color(0xFF9A6B35)),
+              _buildMetricCard("TÃÂÃÂ©nh hÃÂ¡ÃÂ»ÃÂc HÃÂÃÂ´ hÃÂ¡ÃÂºÃÂ¥p", "${widget.radarStatic} / 100", "LD2410 Static Gate", Icons.air, const Color(0xFF3F7C73)),
             ],
           ),
           const SizedBox(height: 14),
 
-          // Nút bấm khẩn cấp SOS từ xa
+          // NÃÂÃÂºt bÃÂ¡ÃÂºÃÂ¥m khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p SOS tÃÂ¡ÃÂ»ÃÂ« xa
           ElevatedButton.icon(
             onPressed: canControl ? () => _handleDeviceCommand("PANIC_SOS") : null,
             icon: const Icon(Icons.emergency, size: 28),
-            label: const Text("KÍCH HOẠT SOS CẤP CỨU TỪ XA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            label: const Text("KÃÂÃÂCH HOÃÂ¡ÃÂºÃÂ T SOS CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U TÃÂ¡ÃÂ»ÃÂª XA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               backgroundColor: Colors.red.shade700,
@@ -3002,7 +3002,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 10),
 
-          // Các nút lệnh nhanh
+          // CÃÂÃÂ¡c nÃÂÃÂºt lÃÂ¡ÃÂ»ÃÂnh nhanh
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -3012,7 +3012,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("CANCEL_ALARM") : null,
                   icon: const Icon(Icons.volume_off),
-                  label: const Text("Tắt còi / Hủy"),
+                  label: const Text("TÃÂ¡ÃÂºÃÂ¯t cÃÂÃÂ²i / HÃÂ¡ÃÂ»ÃÂ§y"),
                 ),
               ),
               SizedBox(
@@ -3020,7 +3020,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("CALIBRATE_FLOOR") : null,
                   icon: const Icon(Icons.straighten),
-                  label: const Text("Hiệu chuẩn sàn"),
+                  label: const Text("HiÃÂ¡ÃÂ»ÃÂu chuÃÂ¡ÃÂºÃÂ©n sÃÂÃÂ n"),
                 ),
               ),
             ],
@@ -3035,10 +3035,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 child: OutlinedButton.icon(
                   onPressed: canControl ? () => _handleDeviceCommand("TEST_ALARM") : null,
                   icon: const Icon(Icons.speaker),
-                  label: const Text("Test chuông/đèn"),
+                  label: const Text("Test chuÃÂÃÂ´ng/ÃÂÃÂÃÂÃÂ¨n"),
                 ),
               ),
-              // Nút xem hộp đen: Chuyển thẳng sang Tab 2 và fetch dữ liệu
+              // NÃÂÃÂºt xem hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen: ChuyÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂºÃÂ³ng sang Tab 2 vÃÂÃÂ  fetch dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu
               SizedBox(
                 width: compact ? double.infinity : (screenWidth - 48) / 2,
                 child: ElevatedButton.icon(
@@ -3055,7 +3055,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     _deviceTabController.animateTo(1);
                   },
                   icon: const Icon(Icons.timeline),
-                  label: const Text("Xem Hộp Đen"),
+                  label: const Text("Xem HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen"),
                 ),
               ),
             ],
@@ -3065,10 +3065,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
-  // TAB 2: HỘP ĐEN & PHÂN TÍCH ĐỘNG HỌC KHÔNG GIAN (TRỰC TIẾP & LỊCH SỬ)
+  // TAB 2: HÃÂ¡ÃÂ»ÃÂP ÃÂÃÂEN & PHÃÂÃÂN TÃÂÃÂCH ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG HÃÂ¡ÃÂ»ÃÂC KHÃÂÃÂNG GIAN (TRÃÂ¡ÃÂ»ÃÂ°C TIÃÂ¡ÃÂºÃÂ¾P & LÃÂ¡ÃÂ»ÃÂCH SÃÂ¡ÃÂ»ÃÂ¬)
   Widget _buildBlackBoxTab() {
     final bool compact = MediaQuery.sizeOf(context).width < 380;
-    // Dữ liệu mô phỏng trực tiếp từ cảm biến thời gian thực
+    // DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu mÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ« cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c
     final Map<String, dynamic> liveEvent = {
       "type": (widget.aiPosture == "FALL") ? 1 : 0,
       "sec": 0,
@@ -3077,7 +3077,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       "dst": widget.tofHeight > 0 ? (widget.tofHeight / 10).round() : 160,
     };
 
-    // Dữ liệu mẫu nếu Hộp đen NVS chưa có sự cố thực tế
+    // DÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu mÃÂ¡ÃÂºÃÂ«u nÃÂ¡ÃÂºÃÂ¿u HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS chÃÂÃÂ°a cÃÂÃÂ³ sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂ±c tÃÂ¡ÃÂºÃÂ¿
     final Map<String, dynamic> demoEvent = {
       "type": 1,
       "sec": 128,
@@ -3098,7 +3098,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. THANH CHUYỂN ĐỔI CHẾ ĐỘ: TRỰC TIẾP (LIVE) vs LỊCH SỬ HỘP ĐEN (NVS)
+          // 1. THANH CHUYÃÂ¡ÃÂ»ÃÂN ÃÂÃÂÃÂ¡ÃÂ»ÃÂI CHÃÂ¡ÃÂºÃÂ¾ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ: TRÃÂ¡ÃÂ»ÃÂ°C TIÃÂ¡ÃÂºÃÂ¾P (LIVE) vs LÃÂ¡ÃÂ»ÃÂCH SÃÂ¡ÃÂ»ÃÂ¬ HÃÂ¡ÃÂ»ÃÂP ÃÂÃÂEN (NVS)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -3125,7 +3125,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           const SizedBox(width: 6),
                            Flexible(
                              child: Text(
-                               "Trực tiếp thời gian thực",
+                               "TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c",
                                maxLines: 2,
                                overflow: TextOverflow.ellipsis,
                                textAlign: TextAlign.center,
@@ -3159,7 +3159,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           const SizedBox(width: 6),
                            Flexible(
                              child: Text(
-                               "Hộp đen NVS (${widget.eventHistory.length})",
+                               "HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS (${widget.eventHistory.length})",
                                maxLines: 2,
                                overflow: TextOverflow.ellipsis,
                                textAlign: TextAlign.center,
@@ -3181,10 +3181,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           const SizedBox(height: 14),
 
           // ===================================================================
-          // PHÂN ĐOẠN 1: THEO DÕI TRỰC TIẾP THỜI GIAN THỰC (LIVE TELEMETRY)
+          // PHÃÂÃÂN ÃÂÃÂOÃÂ¡ÃÂºÃÂ N 1: THEO DÃÂÃÂI TRÃÂ¡ÃÂ»ÃÂ°C TIÃÂ¡ÃÂºÃÂ¾P THÃÂ¡ÃÂ»ÃÂI GIAN THÃÂ¡ÃÂ»ÃÂ°C (LIVE TELEMETRY)
           // ===================================================================
           if (_blackBoxSubTab == 0) ...[
-            // Thẻ hiển thị nhanh tình trạng cảm biến thực tế
+            // ThÃÂ¡ÃÂºÃÂ» hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ nhanh tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n thÃÂ¡ÃÂ»ÃÂ±c tÃÂ¡ÃÂºÃÂ¿
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
@@ -3206,7 +3206,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text("Cảm biến & Tư thế trực tiếp:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const Text("CÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n & TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ],
                         ),
                         Container(
@@ -3218,7 +3218,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            "${widget.aiPosture} • ${(widget.aiConfidence * 100).toInt()}%",
+                            "${widget.aiPosture} ÃÂ¢ÃÂÃÂ¢ ${(widget.aiConfidence * 100).toInt()}%",
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
                           ),
                         ),
@@ -3236,7 +3236,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             ),
                             child: Column(
                               children: [
-                                const Text("Độ cao ToF", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                const Text("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", style: TextStyle(fontSize: 11, color: Colors.grey)),
                                 const SizedBox(height: 2),
                                 Text("${widget.tofHeight} mm", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.cyanAccent)),
                               ],
@@ -3253,7 +3253,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             ),
                             child: Column(
                               children: [
-                                const Text("Động năng Radar", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                const Text("ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar", style: TextStyle(fontSize: 11, color: Colors.grey)),
                                 const SizedBox(height: 2),
                                 Text("${widget.radarMotion}/100", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.orangeAccent)),
                               ],
@@ -3270,7 +3270,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             ),
                             child: Column(
                               children: [
-                                const Text("Hô hấp / Tĩnh", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                const Text("HÃÂÃÂ´ hÃÂ¡ÃÂºÃÂ¥p / TÃÂÃÂ©nh", style: TextStyle(fontSize: 11, color: Colors.grey)),
                                 const SizedBox(height: 2),
                                 Text("${widget.radarStatic}/100", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.tealAccent)),
                               ],
@@ -3285,13 +3285,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             ),
             const SizedBox(height: 14),
 
-            // Chỉ hiển thị đồ thị từ mẫu telemetry thật nhận được.
+            // ChÃÂ¡ÃÂ»ÃÂ hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ« mÃÂ¡ÃÂºÃÂ«u telemetry thÃÂ¡ÃÂºÃÂ­t nhÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c.
             LiveTelemetryChart(samples: widget.telemetryHistory),
           ] else ...[
             // ===================================================================
-            // PHÂN ĐOẠN 2: LỊCH SỬ HỘP ĐEN NVS (FLASH BLACK BOX AUDIT)
+            // PHÃÂÃÂN ÃÂÃÂOÃÂ¡ÃÂºÃÂ N 2: LÃÂ¡ÃÂ»ÃÂCH SÃÂ¡ÃÂ»ÃÂ¬ HÃÂ¡ÃÂ»ÃÂP ÃÂÃÂEN NVS (FLASH BLACK BOX AUDIT)
             // ===================================================================
-            // Thanh công cụ Hộp đen
+            // Thanh cÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ¥ HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -3309,14 +3309,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               widget.onFetchWifiHistory!();
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Chưa kết nối Bluetooth hoặc Wi-Fi để tải lịch sử!"), backgroundColor: Colors.orange),
+                                const SnackBar(content: Text("ChÃÂÃÂ°a kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Bluetooth hoÃÂ¡ÃÂºÃÂ·c Wi-Fi ÃÂÃÂÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ£i lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­!"), backgroundColor: Colors.orange),
                               );
                             }
                           },
                     icon: widget.isLoadingHistory
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.refresh),
-                    label: const Text("Tải lại từ ESP32"),
+                    label: const Text("TÃÂ¡ÃÂºÃÂ£i lÃÂ¡ÃÂºÃÂ¡i tÃÂ¡ÃÂ»ÃÂ« ESP32"),
                   ),
                 ),
                 SizedBox(
@@ -3324,7 +3324,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   child: OutlinedButton.icon(
                     onPressed: () => _handleDeviceCommand("CLEAR_HISTORY"),
                     icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-                    label: const Text("Xóa", style: TextStyle(color: Colors.redAccent)),
+                    label: const Text("XÃÂÃÂ³a", style: TextStyle(color: Colors.redAccent)),
                   ),
                 ),
                 SizedBox(
@@ -3332,7 +3332,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   child: OutlinedButton.icon(
                     onPressed: () => _handleDeviceCommand("ADD_TEST_EVENT"),
                     icon: const Icon(Icons.add_alert, color: Colors.orangeAccent),
-                    label: const Text("Tạo Test"),
+                    label: const Text("TÃÂ¡ÃÂºÃÂ¡o Test"),
                   ),
                 ),
               ],
@@ -3353,7 +3353,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "Hộp đen NVS hiện chưa có vụ ngã thật. Đang hiển thị sự cố mẫu minh họa!",
+                        "HÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen NVS hiÃÂ¡ÃÂ»ÃÂn chÃÂÃÂ°a cÃÂÃÂ³ vÃÂ¡ÃÂ»ÃÂ¥ ngÃÂÃÂ£ thÃÂ¡ÃÂºÃÂ­t. ÃÂÃÂang hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂºÃÂ«u minh hÃÂ¡ÃÂ»ÃÂa!",
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ),
@@ -3364,12 +3364,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
 
             const SizedBox(height: 8),
 
-            // Danh sách các sự kiện ghi nhận trong hộp đen
+            // Danh sÃÂÃÂ¡ch cÃÂÃÂ¡c sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn ghi nhÃÂ¡ÃÂºÃÂ­n trong hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Danh sách sự kiện ghi nhận trong NVS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                Text("${widget.eventHistory.length} sự cố", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text("Danh sÃÂÃÂ¡ch sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn ghi nhÃÂ¡ÃÂºÃÂ­n trong NVS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Text("${widget.eventHistory.length} sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ", style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 8),
@@ -3384,12 +3384,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         Icon(Icons.verified_user, size: 40, color: Colors.green.shade400),
                         const SizedBox(height: 8),
                         const Text(
-                          "Hệ thống an toàn. Chưa có cú ngã nào xảy ra!",
+                          "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng an toÃÂÃÂ n. ChÃÂÃÂ°a cÃÂÃÂ³ cÃÂÃÂº ngÃÂÃÂ£ nÃÂÃÂ o xÃÂ¡ÃÂºÃÂ£y ra!",
                           style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          "Bạn có thể nhấn 'Tạo Test' ở trên để nạp sự kiện mẫu vào bộ nhớ Flash NVS.",
+                          "BÃÂ¡ÃÂºÃÂ¡n cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂºÃÂ¥n 'TÃÂ¡ÃÂºÃÂ¡o Test' ÃÂ¡ÃÂ»ÃÂ trÃÂÃÂªn ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡p sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn mÃÂ¡ÃÂºÃÂ«u vÃÂÃÂ o bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ Flash NVS.",
                           style: TextStyle(fontSize: 11, color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
@@ -3411,7 +3411,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     Widget _buildEventListItem(Map<String, dynamic> e, int index) {
     final bool isSelected = _selectedEventIndex == index;
     final int type = (e["type"] ?? 0) as int;
-    final String typeTitle = (type == 3) ? "SOS Thủ công" : (type == 2 ? "Ngã chậm (15s)" : "Ngã va chạm mạnh");
+    final String typeTitle = (type == 3) ? "SOS ThÃÂ¡ÃÂ»ÃÂ§ cÃÂÃÂ´ng" : (type == 2 ? "NgÃÂÃÂ£ chÃÂ¡ÃÂºÃÂ­m (15s)" : "NgÃÂÃÂ£ va chÃÂ¡ÃÂºÃÂ¡m mÃÂ¡ÃÂºÃÂ¡nh");
     final IconData icon = (type == 3) ? Icons.touch_app : Icons.personal_injury;
     final double vel = (e["vel"] as num?)?.toDouble() ?? 0.0;
     final int mot = (e["mot"] as num?)?.toInt() ?? 0;
@@ -3435,10 +3435,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           child: Icon(icon, color: Colors.redAccent),
         ),
         title: Text(typeTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        subtitle: Text("V_drop: ${vel.toStringAsFixed(0)} mm/s | Động năng: $mot/100 | Lúc: ${sec}s"),
+        subtitle: Text("V_drop: ${vel.toStringAsFixed(0)} mm/s | ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng: $mot/100 | LÃÂÃÂºc: ${sec}s"),
         trailing: isSelected
             ? const Chip(
-                label: Text("Đang xem Graph", style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                label: Text("ÃÂÃÂang xem Graph", style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
                 padding: EdgeInsets.zero,
               )
             : const Icon(Icons.chevron_right, color: Colors.grey),
@@ -3446,7 +3446,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
-  // Hộp thoại tự kiểm tra chẩn đoán cảm biến phần cứng
+  // HÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i tÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂm tra chÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n phÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂ»ÃÂ©ng
   void _showHardwareSelfTestModal() {
     showModalBottomSheet(
       context: context,
@@ -3462,21 +3462,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               children: [
                 Icon(Icons.fact_check, color: Colors.teal, size: 24),
                 SizedBox(width: 8),
-                Text("Chẩn đoán tự kiểm tra cảm biến", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                Text("ChÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n tÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂm tra cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
               ],
             ),
             const SizedBox(height: 6),
             const Text(
-              "Kiểm tra tính toàn vẹn phần cứng của hệ thống phát hiện té ngã ESP32-S3R8:",
+              "KiÃÂ¡ÃÂ»ÃÂm tra tÃÂÃÂ­nh toÃÂÃÂ n vÃÂ¡ÃÂºÃÂ¹n phÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂ»ÃÂ©ng cÃÂ¡ÃÂ»ÃÂ§a hÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn tÃÂÃÂ© ngÃÂÃÂ£ ESP32-S3R8:",
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),
-            _buildSelfTestItem(Icons.radar, "Radar FMCW 24GHz (LD2410B)", "Đang quét 9 cổng cự ly | Sóng vi ba ổn định", Colors.green),
-            _buildSelfTestItem(Icons.height, "Laser ToF (VL53L1X)", "Khoảng cách đo trần nhà: ${widget.tofHeight} mm | Chính xác", Colors.green),
-            _buildSelfTestItem(Icons.motion_photos_on, "Cảm biến PIR (AM312)", "Đang hoạt động | Phát hiện chuyển động thân nhiệt hồng ngoại (GPIO 4)", Colors.green),
-            _buildSelfTestItem(Icons.volume_up, "Còi báo động Active Buzzer", "Đã thử còi | Mức âm lượng đạt chuẩn 85dB", Colors.teal),
-            _buildSelfTestItem(Icons.lightbulb, "Đèn ngủ LED RGB WS2812B", "Chuỗi LED đổi màu bình thường", Colors.teal),
-            _buildSelfTestItem(Icons.battery_charging_full, "Khối nguồn 220V AC & Pin UPS", "HLK-5M05 cấp điện | Pin 18650 dự phòng sẵn sàng", Colors.blueAccent),
+            _buildSelfTestItem(Icons.radar, "Radar FMCW 24GHz (LD2410B)", "ÃÂÃÂang quÃÂÃÂ©t 9 cÃÂ¡ÃÂ»ÃÂng cÃÂ¡ÃÂ»ÃÂ± ly | SÃÂÃÂ³ng vi ba ÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh", Colors.green),
+            _buildSelfTestItem(Icons.height, "Laser ToF (VL53L1X)", "KhoÃÂ¡ÃÂºÃÂ£ng cÃÂÃÂ¡ch ÃÂÃÂo trÃÂ¡ÃÂºÃÂ§n nhÃÂÃÂ : ${widget.tofHeight} mm | ChÃÂÃÂ­nh xÃÂÃÂ¡c", Colors.green),
+            _buildSelfTestItem(Icons.motion_photos_on, "CÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n PIR (AM312)", "ÃÂÃÂang hoÃÂ¡ÃÂºÃÂ¡t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng | PhÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng thÃÂÃÂ¢n nhiÃÂ¡ÃÂ»ÃÂt hÃÂ¡ÃÂ»ÃÂng ngoÃÂ¡ÃÂºÃÂ¡i (GPIO 4)", Colors.green),
+            _buildSelfTestItem(Icons.volume_up, "CÃÂÃÂ²i bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng Active Buzzer", "ÃÂÃÂÃÂÃÂ£ thÃÂ¡ÃÂ»ÃÂ­ cÃÂÃÂ²i | MÃÂ¡ÃÂ»ÃÂ©c ÃÂÃÂ¢m lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng ÃÂÃÂÃÂ¡ÃÂºÃÂ¡t chuÃÂ¡ÃÂºÃÂ©n 85dB", Colors.teal),
+            _buildSelfTestItem(Icons.lightbulb, "ÃÂÃÂÃÂÃÂ¨n ngÃÂ¡ÃÂ»ÃÂ§ LED RGB WS2812B", "ChuÃÂ¡ÃÂ»ÃÂi LED ÃÂÃÂÃÂ¡ÃÂ»ÃÂi mÃÂÃÂ u bÃÂÃÂ¬nh thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng", Colors.teal),
+            _buildSelfTestItem(Icons.battery_charging_full, "KhÃÂ¡ÃÂ»ÃÂi nguÃÂ¡ÃÂ»ÃÂn 220V AC & Pin UPS", "HLK-5M05 cÃÂ¡ÃÂºÃÂ¥p ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn | Pin 18650 dÃÂ¡ÃÂ»ÃÂ± phÃÂÃÂ²ng sÃÂ¡ÃÂºÃÂµn sÃÂÃÂ ng", Colors.blueAccent),
             const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -3488,10 +3488,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 widget.onSendCommand("TEST_BEEP");
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Đã gửi lệnh kiểm tra chuông đèn tới thiết bị!")),
+                  const SnackBar(content: Text("ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh kiÃÂ¡ÃÂ»ÃÂm tra chuÃÂÃÂ´ng ÃÂÃÂÃÂÃÂ¨n tÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ!")),
                 );
               },
-              child: const Text("Kích hoạt Test Chuông & Đèn ngay"),
+              child: const Text("KÃÂÃÂ­ch hoÃÂ¡ÃÂºÃÂ¡t Test ChuÃÂÃÂ´ng & ÃÂÃÂÃÂÃÂ¨n ngay"),
             ),
           ],
         ),
@@ -3525,7 +3525,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     );
   }
 
-  // TAB 3: CÀI ĐẶT THIẾT BỊ
+  // TAB 3: CÃÂÃÂI ÃÂÃÂÃÂ¡ÃÂºÃÂ¶T THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ
   Widget _buildSettingsTab() {
     final bool compact = MediaQuery.sizeOf(context).width < 380;
     return SingleChildScrollView(
@@ -3533,7 +3533,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Cấu hình Wi-Fi
+          // 1. CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh Wi-Fi
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -3544,14 +3544,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.wifi, color: Colors.blueAccent),
                       SizedBox(width: 8),
-                      Text("Cấu hình Wi-Fi cho ESP32", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh Wi-Fi cho ESP32", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: widget.ssidController,
                     decoration: const InputDecoration(
-                      labelText: "Tên mạng Wi-Fi (SSID)",
+                      labelText: "TÃÂÃÂªn mÃÂ¡ÃÂºÃÂ¡ng Wi-Fi (SSID)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.router),
                     ),
@@ -3561,7 +3561,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     controller: widget.passController,
                     obscureText: _obscurePass,
                     decoration: InputDecoration(
-                      labelText: "Mật khẩu Wi-Fi",
+                      labelText: "MÃÂ¡ÃÂºÃÂ­t khÃÂ¡ÃÂºÃÂ©u Wi-Fi",
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
@@ -3574,7 +3574,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ElevatedButton.icon(
                     onPressed: widget.isConnected ? widget.onSaveWifi : null,
                     icon: const Icon(Icons.save),
-                    label: const Text("Lưu Wi-Fi & Khởi động lại ESP32"),
+                    label: const Text("LÃÂÃÂ°u Wi-Fi & KhÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i ESP32"),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(45),
                       backgroundColor: Colors.blueAccent,
@@ -3596,22 +3596,22 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   const Row(children: [
                     Icon(Icons.restart_alt, color: Colors.orangeAccent),
                     SizedBox(width: 8),
-                    Text('Khôi phục hệ thống', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('KhÃÂÃÂ´i phÃÂ¡ÃÂ»ÃÂ¥c hÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ]),
                   const SizedBox(height: 8),
-                  const Text('Xóa cấu hình mạng hoặc đưa thiết bị về trạng thái mặc định.', style: TextStyle(color: Colors.grey)),
+                  const Text('XÃÂÃÂ³a cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh mÃÂ¡ÃÂºÃÂ¡ng hoÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂÃÂ°a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i mÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh.', style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () => _confirmDeviceReset('RESET_NETWORK', 'Đặt lại Wi-Fi?', 'Thiết bị sẽ xóa SSID/mật khẩu Wi-Fi và khởi động lại.'),
+                    onPressed: () => _confirmDeviceReset('RESET_NETWORK', 'ÃÂÃÂÃÂ¡ÃÂºÃÂ·t lÃÂ¡ÃÂºÃÂ¡i Wi-Fi?', 'ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ sÃÂ¡ÃÂºÃÂ½ xÃÂÃÂ³a SSID/mÃÂ¡ÃÂºÃÂ­t khÃÂ¡ÃÂºÃÂ©u Wi-Fi vÃÂÃÂ  khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i.'),
                     icon: const Icon(Icons.wifi_off),
-                    label: const Text('Xóa cấu hình mạng'),
+                    label: const Text('XÃÂÃÂ³a cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh mÃÂ¡ÃÂºÃÂ¡ng'),
                   ),
                   const SizedBox(height: 8),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-                    onPressed: () => _confirmDeviceReset('FACTORY_RESET', 'Khôi phục toàn bộ?', 'Xóa toàn bộ cấu hình, Wi-Fi, danh bạ và lịch sử hộp đen.'),
+                    onPressed: () => _confirmDeviceReset('FACTORY_RESET', 'KhÃÂÃÂ´i phÃÂ¡ÃÂ»ÃÂ¥c toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ?', 'XÃÂÃÂ³a toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh, Wi-Fi, danh bÃÂ¡ÃÂºÃÂ¡ vÃÂÃÂ  lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ hÃÂ¡ÃÂ»ÃÂp ÃÂÃÂen.'),
                     icon: const Icon(Icons.delete_forever),
-                    label: const Text('Khôi phục mặc định toàn bộ'),
+                    label: const Text('KhÃÂÃÂ´i phÃÂ¡ÃÂ»ÃÂ¥c mÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ'),
                   ),
                 ],
               ),
@@ -3619,7 +3619,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 2. Cấu hình danh bạ khẩn cấp
+          // 2. CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh danh bÃÂ¡ÃÂºÃÂ¡ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -3630,12 +3630,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.contact_phone, color: Colors.redAccent),
                       SizedBox(width: 8),
-                      Text("Danh bạ cứu hộ khẩn cấp", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("Danh bÃÂ¡ÃÂºÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u hÃÂ¡ÃÂ»ÃÂ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Hướng dẫn gửi nhiều người nhận & đa kênh
+                  // HÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n gÃÂ¡ÃÂ»ÃÂ­i nhiÃÂ¡ÃÂ»ÃÂu ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ­n & ÃÂÃÂa kÃÂÃÂªnh
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -3650,14 +3650,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           children: [
                             Icon(Icons.tips_and_updates, color: Colors.blueAccent, size: 18),
                             SizedBox(width: 6),
-                            Text("Báo động đa kênh & Nhiều người nhận", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                            Text("BÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng ÃÂÃÂa kÃÂÃÂªnh & NhiÃÂ¡ÃÂ»ÃÂu ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ­n", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
                           ],
                         ),
                         SizedBox(height: 6),
                         Text(
-                          "• Nhiều số SMS: Nhập các SĐT cách nhau bằng dấu phẩy (VD: 0901234567, 0988776655).\n"
-                          "• Nhóm Telegram: Thêm Bot vào nhóm gia đình rồi điền Group ID (có dấu -, VD: -100192837465) để cả nhà cùng nhận chuông cứu nạn đồng thời.\n"
-                          "• Nhiều Telegram cá nhân: Nhập các ID cách nhau dấu phẩy (VD: 123456789, 987654321).",
+                          "ÃÂ¢ÃÂÃÂ¢ NhiÃÂ¡ÃÂ»ÃÂu sÃÂ¡ÃÂ»ÃÂ SMS: NhÃÂ¡ÃÂºÃÂ­p cÃÂÃÂ¡c SÃÂÃÂT cÃÂÃÂ¡ch nhau bÃÂ¡ÃÂºÃÂ±ng dÃÂ¡ÃÂºÃÂ¥u phÃÂ¡ÃÂºÃÂ©y (VD: 0901234567, 0988776655).\n"
+                          "ÃÂ¢ÃÂÃÂ¢ NhÃÂÃÂ³m Telegram: ThÃÂÃÂªm Bot vÃÂÃÂ o nhÃÂÃÂ³m gia ÃÂÃÂÃÂÃÂ¬nh rÃÂ¡ÃÂ»ÃÂi ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn Group ID (cÃÂÃÂ³ dÃÂ¡ÃÂºÃÂ¥u -, VD: -100192837465) ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂºÃÂ£ nhÃÂÃÂ  cÃÂÃÂ¹ng nhÃÂ¡ÃÂºÃÂ­n chuÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ©u nÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng thÃÂ¡ÃÂ»ÃÂi.\n"
+                          "ÃÂ¢ÃÂÃÂ¢ NhiÃÂ¡ÃÂ»ÃÂu Telegram cÃÂÃÂ¡ nhÃÂÃÂ¢n: NhÃÂ¡ÃÂºÃÂ­p cÃÂÃÂ¡c ID cÃÂÃÂ¡ch nhau dÃÂ¡ÃÂºÃÂ¥u phÃÂ¡ÃÂºÃÂ©y (VD: 123456789, 987654321).",
                           style: TextStyle(fontSize: 11, height: 1.4),
                         ),
                       ],
@@ -3669,9 +3669,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     controller: widget.phoneController,
                     keyboardType: TextInputType.text,
                     decoration: const InputDecoration(
-                      labelText: "Số điện thoại người thân (SMS)",
+                      labelText: "SÃÂ¡ÃÂ»ÃÂ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n (SMS)",
                       hintText: "0901234567, 0912345678",
-                      helperText: "Hỗ trợ nhiều số điện thoại, phân cách bằng dấu phẩy (,)",
+                      helperText: "HÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ nhiÃÂ¡ÃÂ»ÃÂu sÃÂ¡ÃÂ»ÃÂ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i, phÃÂÃÂ¢n cÃÂÃÂ¡ch bÃÂ¡ÃÂºÃÂ±ng dÃÂ¡ÃÂºÃÂ¥u phÃÂ¡ÃÂºÃÂ©y (,)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.phone),
                     ),
@@ -3683,7 +3683,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     decoration: const InputDecoration(
                       labelText: "Telegram Chat ID / Group ID",
                       hintText: "-100192837465, 123456789",
-                      helperText: "Group ID gia đình (có dấu -) hoặc nhiều ID cá nhân (,)",
+                      helperText: "Group ID gia ÃÂÃÂÃÂÃÂ¬nh (cÃÂÃÂ³ dÃÂ¡ÃÂºÃÂ¥u -) hoÃÂ¡ÃÂºÃÂ·c nhiÃÂ¡ÃÂ»ÃÂu ID cÃÂÃÂ¡ nhÃÂÃÂ¢n (,)",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.send),
                     ),
@@ -3693,15 +3693,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     controller: widget.botTokenController,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      labelText: "Telegram Bot Token (Tùy chọn)",
-                      hintText: "Để trống nếu dùng mặc định",
+                      labelText: "Telegram Bot Token (TÃÂÃÂ¹y chÃÂ¡ÃÂ»ÃÂn)",
+                      hintText: "ÃÂÃÂÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂng nÃÂ¡ÃÂºÃÂ¿u dÃÂÃÂ¹ng mÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.key),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Ngưỡng chiều cao sàn: ${_currentFloorThreshold.toInt()} mm",
+                    "NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng chiÃÂ¡ÃÂ»ÃÂu cao sÃÂÃÂ n: ${_currentFloorThreshold.toInt()} mm",
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   Slider(
@@ -3721,7 +3721,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   ElevatedButton.icon(
                     onPressed: widget.isConnected ? widget.onSaveContacts : null,
                     icon: const Icon(Icons.save_as),
-                    label: const Text("Cập nhật Danh bạ & Ngưỡng sàn"),
+                    label: const Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t Danh bÃÂ¡ÃÂºÃÂ¡ & NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng sÃÂÃÂ n"),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(45),
                       backgroundColor: Colors.teal,
@@ -3734,7 +3734,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 3. THỜI GIAN CHỜ HOÃN BÁO ĐỘNG (GRACE PERIOD)
+          // 3. THÃÂ¡ÃÂ»ÃÂI GIAN CHÃÂ¡ÃÂ»ÃÂ HOÃÂÃÂN BÃÂÃÂO ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG (GRACE PERIOD)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -3746,12 +3746,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.timer, color: Colors.amber),
                       SizedBox(width: 8),
-                      Text("Thời gian hoãn báo động (Grace Period)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ThÃÂ¡ÃÂ»ÃÂi gian hoÃÂÃÂ£n bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (Grace Period)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Thời gian chờ người dùng tự đứng dậy hoặc bấm nút Hủy trước khi thiết bị hú còi lớn và gửi tin nhắn/Telegram khẩn cấp:",
+                    "ThÃÂ¡ÃÂ»ÃÂi gian chÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi dÃÂÃÂ¹ng tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂºÃÂ­y hoÃÂ¡ÃÂºÃÂ·c bÃÂ¡ÃÂºÃÂ¥m nÃÂÃÂºt HÃÂ¡ÃÂ»ÃÂ§y trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ hÃÂÃÂº cÃÂÃÂ²i lÃÂ¡ÃÂ»ÃÂn vÃÂÃÂ  gÃÂ¡ÃÂ»ÃÂ­i tin nhÃÂ¡ÃÂºÃÂ¯n/Telegram khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p:",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                   const SizedBox(height: 12),
@@ -3786,7 +3786,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 4. CHẾ ĐỘ ĐÈN NGỦ THÔNG MINH (SMART NIGHTLIGHT)
+          // 4. CHÃÂ¡ÃÂºÃÂ¾ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂN NGÃÂ¡ÃÂ»ÃÂ¦ THÃÂÃÂNG MINH (SMART NIGHTLIGHT)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -3798,12 +3798,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.nightlight_round, color: Colors.indigoAccent),
                       SizedBox(width: 8),
-                      Text("Chế độ Đèn ngủ thông minh", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ChÃÂ¡ÃÂºÃÂ¿ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ¨n ngÃÂ¡ÃÂ»ÃÂ§ thÃÂÃÂ´ng minh", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Tùy chỉnh đèn ngủ WS2812B trên thiết bị hỗ trợ người cao tuổi thức giấc ban đêm:",
+                    "TÃÂÃÂ¹y chÃÂ¡ÃÂ»ÃÂnh ÃÂÃÂÃÂÃÂ¨n ngÃÂ¡ÃÂ»ÃÂ§ WS2812B trÃÂÃÂªn thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cao tuÃÂ¡ÃÂ»ÃÂi thÃÂ¡ÃÂ»ÃÂ©c giÃÂ¡ÃÂºÃÂ¥c ban ÃÂÃÂÃÂÃÂªm:",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                   const SizedBox(height: 12),
@@ -3811,9 +3811,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     scrollDirection: Axis.horizontal,
                     child: SegmentedButton<String>(
                       segments: const [
-                        ButtonSegment(value: "AUTO_MOTION", label: Text("Tự động (Radar)", style: TextStyle(fontSize: 11))),
-                        ButtonSegment(value: "ALWAYS_ON", label: Text("Luôn sáng", style: TextStyle(fontSize: 11))),
-                        ButtonSegment(value: "OFF", label: Text("Tắt", style: TextStyle(fontSize: 11))),
+                        ButtonSegment(value: "AUTO_MOTION", label: Text("TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (Radar)", style: TextStyle(fontSize: 11))),
+                        ButtonSegment(value: "ALWAYS_ON", label: Text("LuÃÂÃÂ´n sÃÂÃÂ¡ng", style: TextStyle(fontSize: 11))),
+                        ButtonSegment(value: "OFF", label: Text("TÃÂ¡ÃÂºÃÂ¯t", style: TextStyle(fontSize: 11))),
                       ],
                       selected: {_nightlightMode},
                       onSelectionChanged: (val) => setState(() => _nightlightMode = val.first),
@@ -3822,9 +3822,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   const SizedBox(height: 12),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Chỉ bật trong khung giờ ban đêm", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    title: const Text("ChÃÂ¡ÃÂ»ÃÂ bÃÂ¡ÃÂºÃÂ­t trong khung giÃÂ¡ÃÂ»ÃÂ ban ÃÂÃÂÃÂÃÂªm", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     subtitle: Text(
-                      _nightScheduleEnabled ? "Mặc định: 18:00 – 06:00" : "Night light hoạt động cả ngày",
+                      _nightScheduleEnabled ? "MÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh: 18:00 ÃÂ¢ÃÂÃÂ 06:00" : "Night light hoÃÂ¡ÃÂºÃÂ¡t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng cÃÂ¡ÃÂºÃÂ£ ngÃÂÃÂ y",
                       style: const TextStyle(fontSize: 11),
                     ),
                     value: _nightScheduleEnabled,
@@ -3837,7 +3837,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           child: OutlinedButton.icon(
                             onPressed: () => _pickNightTime(true),
                             icon: const Icon(Icons.login, size: 18),
-                            label: Text("Bật ${_formatTime(_nightStart)}"),
+                            label: Text("BÃÂ¡ÃÂºÃÂ­t ${_formatTime(_nightStart)}"),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -3845,7 +3845,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           child: OutlinedButton.icon(
                             onPressed: () => _pickNightTime(false),
                             icon: const Icon(Icons.logout, size: 18),
-                            label: Text("Tắt ${_formatTime(_nightEnd)}"),
+                            label: Text("TÃÂ¡ÃÂºÃÂ¯t ${_formatTime(_nightEnd)}"),
                           ),
                         ),
                       ],
@@ -3854,13 +3854,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   FilledButton.icon(
                     onPressed: _saveNightlightSchedule,
                     icon: const Icon(Icons.schedule),
-                    label: const Text("Lưu lịch night light vào thiết bị"),
+                    label: const Text("LÃÂÃÂ°u lÃÂ¡ÃÂ»ÃÂch night light vÃÂÃÂ o thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ"),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Độ sáng đèn ngủ:", style: TextStyle(fontSize: 12)),
+                      const Text("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡ng ÃÂÃÂÃÂÃÂ¨n ngÃÂ¡ÃÂ»ÃÂ§:", style: TextStyle(fontSize: 12)),
                       Text("${_nightlightBrightness.toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigoAccent)),
                     ],
                   ),
@@ -3875,15 +3875,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Màu ánh sáng:", style: TextStyle(fontSize: 12)),
+                      const Text("MÃÂÃÂ u ÃÂÃÂ¡nh sÃÂÃÂ¡ng:", style: TextStyle(fontSize: 12)),
                       const SizedBox(height: 6),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: SegmentedButton<String>(
                         segments: const [
-                          ButtonSegment(value: "WARM_YELLOW", label: Text("Vàng ấm", style: TextStyle(fontSize: 10))),
-                          ButtonSegment(value: "SOFT_WHITE", label: Text("Trắng dịu", style: TextStyle(fontSize: 10))),
-                          ButtonSegment(value: "CYAN", label: Text("Xanh ngọc", style: TextStyle(fontSize: 10))),
+                          ButtonSegment(value: "WARM_YELLOW", label: Text("VÃÂÃÂ ng ÃÂ¡ÃÂºÃÂ¥m", style: TextStyle(fontSize: 10))),
+                          ButtonSegment(value: "SOFT_WHITE", label: Text("TrÃÂ¡ÃÂºÃÂ¯ng dÃÂ¡ÃÂ»ÃÂu", style: TextStyle(fontSize: 10))),
+                          ButtonSegment(value: "CYAN", label: Text("Xanh ngÃÂ¡ÃÂ»ÃÂc", style: TextStyle(fontSize: 10))),
                         ],
                         selected: {_nightlightColor},
                         onSelectionChanged: (val) => setState(() => _nightlightColor = val.first),
@@ -3897,7 +3897,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 5. TỰ KIỂM TRA PHẦN CỨNG (HARDWARE DIAGNOSTIC SELF-TEST)
+          // 5. TÃÂ¡ÃÂ»ÃÂ° KIÃÂ¡ÃÂ»ÃÂM TRA PHÃÂ¡ÃÂºÃÂ¦N CÃÂ¡ÃÂ»ÃÂ¨NG (HARDWARE DIAGNOSTIC SELF-TEST)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -3909,12 +3909,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.fact_check, color: Colors.teal),
                       SizedBox(width: 8),
-                      Text("Chẩn đoán kiểm tra phần cứng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ChÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n kiÃÂ¡ÃÂ»ÃÂm tra phÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂ»ÃÂ©ng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Kiểm tra tình trạng hoạt động của Cụm cảm biến đa phương thức (PIR AM312 + Radar 24GHz + Laser ToF + Còi & Pin UPS):",
+                    "KiÃÂ¡ÃÂ»ÃÂm tra tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng hoÃÂ¡ÃÂºÃÂ¡t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng cÃÂ¡ÃÂ»ÃÂ§a CÃÂ¡ÃÂ»ÃÂ¥m cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n ÃÂÃÂa phÃÂÃÂ°ÃÂÃÂ¡ng thÃÂ¡ÃÂ»ÃÂ©c (PIR AM312 + Radar 24GHz + Laser ToF + CÃÂÃÂ²i & Pin UPS):",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                   const SizedBox(height: 12),
@@ -3925,13 +3925,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     ),
                     onPressed: _showHardwareSelfTestModal,
                     icon: const Icon(Icons.speed, color: Colors.teal),
-                    label: const Text("Chạy chẩn đoán cảm biến & nguồn", style: TextStyle(color: Colors.teal)),
+                    label: const Text("ChÃÂ¡ÃÂºÃÂ¡y chÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n & nguÃÂ¡ÃÂ»ÃÂn", style: TextStyle(color: Colors.teal)),
                   ),
                 ],
               ),
             ),
           ),
-          // Cấu hình phân cực Còi Báo Động (Active HIGH / Active LOW)
+          // CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh phÃÂÃÂ¢n cÃÂ¡ÃÂ»ÃÂ±c CÃÂÃÂ²i BÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (Active HIGH / Active LOW)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -3943,23 +3943,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.volume_up, color: Colors.orangeAccent),
                       SizedBox(width: 8),
-                      Text("Cấu hình Còi Báo Động (Buzzer)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("CÃÂ¡ÃÂºÃÂ¥u hÃÂÃÂ¬nh CÃÂÃÂ²i BÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (Buzzer)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Mặc định chuẩn: Kích mức Cao (Active-HIGH, chân GPIO 5 ở 0V tắt còi). Nếu còi tự kêu khi cắm điện, thử chọn 'Mức Thấp' hoặc bật 'Tắt hoàn toàn còi' để test yên tĩnh:",
+                    "MÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh chuÃÂ¡ÃÂºÃÂ©n: KÃÂÃÂ­ch mÃÂ¡ÃÂ»ÃÂ©c Cao (Active-HIGH, chÃÂÃÂ¢n GPIO 5 ÃÂ¡ÃÂ»ÃÂ 0V tÃÂ¡ÃÂºÃÂ¯t cÃÂÃÂ²i). NÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ²i tÃÂ¡ÃÂ»ÃÂ± kÃÂÃÂªu khi cÃÂ¡ÃÂºÃÂ¯m ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn, thÃÂ¡ÃÂ»ÃÂ­ chÃÂ¡ÃÂ»ÃÂn 'MÃÂ¡ÃÂ»ÃÂ©c ThÃÂ¡ÃÂºÃÂ¥p' hoÃÂ¡ÃÂºÃÂ·c bÃÂ¡ÃÂºÃÂ­t 'TÃÂ¡ÃÂºÃÂ¯t hoÃÂÃÂ n toÃÂÃÂ n cÃÂÃÂ²i' ÃÂÃÂÃÂ¡ÃÂ»ÃÂ test yÃÂÃÂªn tÃÂÃÂ©nh:",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Phân cực còi:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const Text("PhÃÂÃÂ¢n cÃÂ¡ÃÂ»ÃÂ±c cÃÂÃÂ²i:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       SegmentedButton<bool>(
                         segments: const [
-                          ButtonSegment(value: true, label: Text("Mức Cao (HIGH)", style: TextStyle(fontSize: 11))),
-                          ButtonSegment(value: false, label: Text("Mức Thấp (LOW)", style: TextStyle(fontSize: 11))),
+                          ButtonSegment(value: true, label: Text("MÃÂ¡ÃÂ»ÃÂ©c Cao (HIGH)", style: TextStyle(fontSize: 11))),
+                          ButtonSegment(value: false, label: Text("MÃÂ¡ÃÂ»ÃÂ©c ThÃÂ¡ÃÂºÃÂ¥p (LOW)", style: TextStyle(fontSize: 11))),
                         ],
                         selected: {_buzzerActiveHigh},
                         onSelectionChanged: (val) async {
@@ -3971,7 +3971,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(isHigh ? "Đã gửi lệnh: Còi kích mức Cao (Active-HIGH, 0V Tắt)" : "Đã gửi lệnh: Còi kích mức Thấp (Active-LOW, 3.3V Tắt)"),
+                              content: Text(isHigh ? "ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh: CÃÂÃÂ²i kÃÂÃÂ­ch mÃÂ¡ÃÂ»ÃÂ©c Cao (Active-HIGH, 0V TÃÂ¡ÃÂºÃÂ¯t)" : "ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh: CÃÂÃÂ²i kÃÂÃÂ­ch mÃÂ¡ÃÂ»ÃÂ©c ThÃÂ¡ÃÂºÃÂ¥p (Active-LOW, 3.3V TÃÂ¡ÃÂºÃÂ¯t)"),
                               backgroundColor: Colors.teal,
                             ),
                           );
@@ -3982,8 +3982,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   const SizedBox(height: 10),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Tắt hoàn toàn còi (Mute khi test)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: const Text("Vô hiệu hóa còi vật lý, chỉ báo động qua LED và điện thoại", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    title: const Text("TÃÂ¡ÃÂºÃÂ¯t hoÃÂÃÂ n toÃÂÃÂ n cÃÂÃÂ²i (Mute khi test)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    subtitle: const Text("VÃÂÃÂ´ hiÃÂ¡ÃÂ»ÃÂu hÃÂÃÂ³a cÃÂÃÂ²i vÃÂ¡ÃÂºÃÂ­t lÃÂÃÂ½, chÃÂ¡ÃÂ»ÃÂ bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng qua LED vÃÂÃÂ  ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i", style: TextStyle(fontSize: 11, color: Colors.grey)),
                     value: _buzzerMuted,
                     onChanged: (val) async {
                       setState(() => _buzzerMuted = val);
@@ -3993,7 +3993,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(val ? "Đã tắt hoàn toàn còi (Muted)" : "Đã kích hoạt lại còi (Unmuted)"),
+                          content: Text(val ? "ÃÂÃÂÃÂÃÂ£ tÃÂ¡ÃÂºÃÂ¯t hoÃÂÃÂ n toÃÂÃÂ n cÃÂÃÂ²i (Muted)" : "ÃÂÃÂÃÂÃÂ£ kÃÂÃÂ­ch hoÃÂ¡ÃÂºÃÂ¡t lÃÂ¡ÃÂºÃÂ¡i cÃÂÃÂ²i (Unmuted)"),
                           backgroundColor: val ? Colors.deepOrange : Colors.teal,
                         ),
                       );
@@ -4004,7 +4004,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(38)),
                     onPressed: widget.isConnected ? () => widget.onSendCommand("TEST_BEEP") : null,
                     icon: const Icon(Icons.speaker, size: 18),
-                    label: const Text("Bấm thử tiếng còi (Test Beep 200ms)", style: TextStyle(fontSize: 12)),
+                    label: const Text("BÃÂ¡ÃÂºÃÂ¥m thÃÂ¡ÃÂ»ÃÂ­ tiÃÂ¡ÃÂºÃÂ¿ng cÃÂÃÂ²i (Test Beep 200ms)", style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -4021,21 +4021,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.tune, color: Colors.orangeAccent),
                       SizedBox(width: 8),
-                      Text("Công cụ thiết bị", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("CÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ¥ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: widget.isConnected ? () => widget.onSendCommand("CALIBRATE_FLOOR") : null,
                     icon: const Icon(Icons.straighten),
-                    label: const Text("Hiệu chuẩn sàn tự động (ToF)"),
+                    label: const Text("HiÃÂ¡ÃÂ»ÃÂu chuÃÂ¡ÃÂºÃÂ©n sÃÂÃÂ n tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (ToF)"),
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: widget.onDisconnect,
                     icon: const Icon(Icons.bluetooth_disabled, color: Colors.redAccent),
-                    label: const Text("Ngắt kết nối thiết bị này", style: TextStyle(color: Colors.redAccent)),
+                    label: const Text("NgÃÂ¡ÃÂºÃÂ¯t kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ y", style: TextStyle(color: Colors.redAccent)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.redAccent),
                       minimumSize: const Size.fromHeight(42),
@@ -4047,7 +4047,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 7. CẬP NHẬT FIRMWARE THIẾT BỊ (ESP32-S3 FIRMWARE OTA)
+          // 7. CÃÂ¡ÃÂºÃÂ¬P NHÃÂ¡ÃÂºÃÂ¬T FIRMWARE THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ (ESP32-S3 FIRMWARE OTA)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -4059,12 +4059,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.memory, color: Colors.purpleAccent),
                       SizedBox(width: 8),
-                      Text("Cập nhật Firmware Thiết bị (ESP32 OTA)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t Firmware ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ (ESP32 OTA)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Cập nhật hệ điều hành & thuật toán nhận diện té ngã cho vi điều khiển ESP32-S3-N16R8 mà không cần cắm dây cáp máy tính.",
+                    "CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t hÃÂ¡ÃÂ»ÃÂ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu hÃÂÃÂ nh & thuÃÂ¡ÃÂºÃÂ­t toÃÂÃÂ¡n nhÃÂ¡ÃÂºÃÂ­n diÃÂ¡ÃÂ»ÃÂn tÃÂÃÂ© ngÃÂÃÂ£ cho vi ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn ESP32-S3-N16R8 mÃÂÃÂ  khÃÂÃÂ´ng cÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂºÃÂ¯m dÃÂÃÂ¢y cÃÂÃÂ¡p mÃÂÃÂ¡y tÃÂÃÂ­nh.",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                   const SizedBox(height: 12),
@@ -4080,7 +4080,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Firmware hiện tại trên chip:", style: TextStyle(fontSize: 12)),
+                            const Text("Firmware hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i trÃÂÃÂªn chip:", style: TextStyle(fontSize: 12)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
@@ -4095,14 +4095,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Bản mới nhất trên Cloud:", style: TextStyle(fontSize: 12)),
+                            const Text("BÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t trÃÂÃÂªn Cloud:", style: TextStyle(fontSize: 12)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.purple.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text("v1.2.0 (Mới nhất)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purpleAccent)),
+                              child: const Text("v1.2.0 (MÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.purpleAccent)),
                             ),
                           ],
                         ),
@@ -4113,7 +4113,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   FilledButton.icon(
                     onPressed: widget.isConnected ? _showEsp32OtaDialog : null,
                     icon: const Icon(Icons.cloud_sync),
-                    label: const Text("Cài đặt Firmware cho thiết bị (1-Chạm)"),
+                    label: const Text("CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t Firmware cho thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ (1-ChÃÂ¡ÃÂºÃÂ¡m)"),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.purpleAccent.shade700,
                       minimumSize: const Size.fromHeight(44),
@@ -4125,7 +4125,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
           ),
           const SizedBox(height: 16),
 
-          // 4. CẬP NHẬT ỨNG DỤNG KHÔNG DÂY (OTA UPDATE CHO ANDROID & IPHONE)
+          // 4. CÃÂ¡ÃÂºÃÂ¬P NHÃÂ¡ÃÂºÃÂ¬T ÃÂ¡ÃÂ»ÃÂ¨NG DÃÂ¡ÃÂ»ÃÂ¤NG KHÃÂÃÂNG DÃÂÃÂY (OTA UPDATE CHO ANDROID & IPHONE)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -4137,19 +4137,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                     children: [
                       Icon(Icons.system_update_alt, color: Colors.blueAccent),
                       SizedBox(width: 8),
-                      Text("Cập nhật phần mềm (OTA Update)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t phÃÂ¡ÃÂºÃÂ§n mÃÂ¡ÃÂ»ÃÂm (OTA Update)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Phiên bản: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)\nTự động tải và cập nhật trực tiếp phiên bản mới nhất từ GitHub qua mạng không cần cắm cáp máy tính.",
+                    "PhiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)\nTÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng tÃÂ¡ÃÂºÃÂ£i vÃÂÃÂ  cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p phiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t tÃÂ¡ÃÂ»ÃÂ« GitHub qua mÃÂ¡ÃÂºÃÂ¡ng khÃÂÃÂ´ng cÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂºÃÂ¯m cÃÂÃÂ¡p mÃÂÃÂ¡y tÃÂÃÂ­nh.",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     onPressed: _triggerOtaUpdate,
                     icon: const Icon(Icons.cloud_download),
-                    label: const Text("Kiểm tra & Cập nhật phiên bản mới"),
+                    label: const Text("KiÃÂ¡ÃÂ»ÃÂm tra & CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t phiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi"),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
                       minimumSize: const Size.fromHeight(44),
@@ -4226,7 +4226,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   Icon(Icons.system_update, color: Colors.blueAccent, size: 28),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text("Cập nhật ứng dụng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    child: Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t ÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂ»ÃÂ¥ng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   ),
                 ],
               ),
@@ -4252,7 +4252,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("GitHub Releases (Trực tiếp)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  const Text("GitHub Releases (TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
                                   Text(
                                     Platform.isIOS ? "Apple In-House OTA (FallGuard_iOS_unsigned.ipa)" : "Android APK Release (app-release.apk)",
                                     style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -4276,7 +4276,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("PhiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
                               ],
                             ),
@@ -4284,9 +4284,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                const Text("BÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi trÃÂÃÂªn GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text(
-                                  releaseInfo?['name']?.toString() ?? (isLoading ? "Đang kết nối..." : "Fall Guard Latest Release"),
+                                  releaseInfo?['name']?.toString() ?? (isLoading ? "ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi..." : "Fall Guard Latest Release"),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
                                 ),
                               ],
@@ -4296,7 +4296,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const Text("Dung lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   Text(
                                     "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -4310,8 +4310,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       const SizedBox(height: 12),
                       Text(
                         Platform.isIOS
-                            ? "Hệ thống sẽ mở đường dẫn cài đặt trực tiếp từ GitHub Releases. Nhấn [Cài đặt] để nâng cấp."
-                            : "Hệ thống kết nối trực tiếp tới bản APK mới nhất trên GitHub Releases và mở trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                            ? "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng sÃÂ¡ÃÂºÃÂ½ mÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ« GitHub Releases. NhÃÂ¡ÃÂºÃÂ¥n [CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t] ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ¢ng cÃÂ¡ÃÂºÃÂ¥p."
+                            : "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂºÃÂ£n APK mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t trÃÂÃÂªn GitHub Releases vÃÂÃÂ  mÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ¬nh cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t Android ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ¢ng cÃÂ¡ÃÂºÃÂ¥p ÃÂÃÂÃÂÃÂ¨ giÃÂ¡ÃÂ»ÃÂ¯ nguyÃÂÃÂªn dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu.",
                         style: const TextStyle(fontSize: 12, height: 1.4),
                       ),
                     ],
@@ -4321,7 +4321,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Đóng"),
+                  child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -4354,14 +4354,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
+                            SnackBar(content: Text("LÃÂ¡ÃÂ»ÃÂi mÃÂ¡ÃÂ»ÃÂ liÃÂÃÂªn kÃÂ¡ÃÂºÃÂ¿t APK: $e")),
                           );
                         }
                       }
                     }
                   },
                   icon: const Icon(Icons.cloud_download),
-                  label: const Text("Cài đặt cập nhật ngay"),
+                  label: const Text("CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t ngay"),
                 ),
               ],
             );
@@ -4393,7 +4393,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "Cập nhật Firmware ESP32",
+                      "CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t Firmware ESP32",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -4419,7 +4419,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                "Hệ thống hỗ trợ cơ chế A/B Dual-OTA trên chip ESP32-S3 (16MB Flash). Đảm bảo thiết bị luôn được cấp nguồn trong suốt quá trình cập nhật.",
+                                "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ cÃÂÃÂ¡ chÃÂ¡ÃÂºÃÂ¿ A/B Dual-OTA trÃÂÃÂªn chip ESP32-S3 (16MB Flash). ÃÂÃÂÃÂ¡ÃÂºÃÂ£m bÃÂ¡ÃÂºÃÂ£o thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ luÃÂÃÂ´n ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c cÃÂ¡ÃÂºÃÂ¥p nguÃÂ¡ÃÂ»ÃÂn trong suÃÂ¡ÃÂ»ÃÂt quÃÂÃÂ¡ trÃÂÃÂ¬nh cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t.",
                                 style: TextStyle(fontSize: 11, height: 1.4),
                               ),
                             ),
@@ -4428,12 +4428,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        "1. Cập nhật tự động qua Wi-Fi (Khuyên dùng)",
+                        "1. CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng qua Wi-Fi (KhuyÃÂÃÂªn dÃÂÃÂ¹ng)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purpleAccent),
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        "ESP32 kết nối Internet qua Wi-Fi và tự tải file firmware.bin trực tiếp từ GitHub chỉ mất 5-10 giây.",
+                        "ESP32 kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Internet qua Wi-Fi vÃÂÃÂ  tÃÂ¡ÃÂ»ÃÂ± tÃÂ¡ÃÂºÃÂ£i file firmware.bin trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ« GitHub chÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂºÃÂ¥t 5-10 giÃÂÃÂ¢y.",
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       const SizedBox(height: 10),
@@ -4441,7 +4441,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         controller: urlController,
                         style: const TextStyle(fontSize: 11),
                         decoration: const InputDecoration(
-                          labelText: "Đường dẫn tải Firmware (.bin)",
+                          labelText: "ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n tÃÂ¡ÃÂºÃÂ£i Firmware (.bin)",
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link, size: 18),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -4482,19 +4482,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         valueListenable: widget.otaStatusNotifier,
                         builder: (context, otaStatus, _) {
                           double? wifiPct;
-                          String wifiText = "Sẵn sàng cập nhật";
+                          String wifiText = "SÃÂ¡ÃÂºÃÂµn sÃÂÃÂ ng cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t";
                           if (otaStatus == "OTA_STARTING") {
-                            wifiText = "Đang kết nối Cloud và tải firmware...";
+                            wifiText = "ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Cloud vÃÂÃÂ  tÃÂ¡ÃÂºÃÂ£i firmware...";
                             wifiPct = 0.1;
                           } else if (otaStatus.startsWith("OTA_PROGRESS:")) {
                             int p = int.tryParse(otaStatus.replaceFirst("OTA_PROGRESS:", "")) ?? 0;
                             wifiPct = p / 100.0;
-                            wifiText = "Tiến độ nạp vào Flash: $p%";
+                            wifiText = "TiÃÂ¡ÃÂºÃÂ¿n ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡p vÃÂÃÂ o Flash: $p%";
                           } else if (otaStatus == "OTA_SUCCESS_REBOOTING") {
                             wifiPct = 1.0;
-                            wifiText = "Thành công 100%! Thiết bị đang khởi động lại...";
+                            wifiText = "ThÃÂÃÂ nh cÃÂÃÂ´ng 100%! ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i...";
                           } else if (otaStatus.startsWith("OTA_ERROR:")) {
-                            wifiText = "Lỗi: ${otaStatus.replaceFirst('OTA_ERROR:', '')}";
+                            wifiText = "LÃÂ¡ÃÂ»ÃÂi: ${otaStatus.replaceFirst('OTA_ERROR:', '')}";
                           }
 
                           return Column(
@@ -4531,7 +4531,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                                   }
                                 },
                                 icon: const Icon(Icons.wifi, size: 18),
-                                label: const Text("Bắt đầu cập nhật qua Wi-Fi"),
+                                label: const Text("BÃÂ¡ÃÂºÃÂ¯t ÃÂÃÂÃÂ¡ÃÂºÃÂ§u cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t qua Wi-Fi"),
                               ),
                             ],
                           );
@@ -4540,12 +4540,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       if (widget.deviceIp.isNotEmpty) ...[
                         const Divider(height: 28),
                         const Text(
-                          "2. Nạp trực tiếp qua Web OTA nội bộ (Siêu nhanh)",
+                          "2. NÃÂ¡ÃÂºÃÂ¡p trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p qua Web OTA nÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ (SiÃÂÃÂªu nhanh)",
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.greenAccent),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          "Mở trang nạp http://${widget.deviceIp}/update trực tiếp trong mạng Wi-Fi để nạp file firmware.bin không cần Internet.",
+                          "MÃÂ¡ÃÂ»ÃÂ trang nÃÂ¡ÃÂºÃÂ¡p http://${widget.deviceIp}/update trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p trong mÃÂ¡ÃÂºÃÂ¡ng Wi-Fi ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡p file firmware.bin khÃÂÃÂ´ng cÃÂ¡ÃÂºÃÂ§n Internet.",
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                         const SizedBox(height: 10),
@@ -4561,23 +4561,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             } catch (e) {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Lỗi mở Web OTA: $e")),
+                                  SnackBar(content: Text("LÃÂ¡ÃÂ»ÃÂi mÃÂ¡ÃÂ»ÃÂ Web OTA: $e")),
                                 );
                               }
                             }
                           },
                           icon: const Icon(Icons.language, size: 18, color: Colors.greenAccent),
-                          label: Text("Mở Web OTA (http://${widget.deviceIp}/update)", style: const TextStyle(color: Colors.greenAccent)),
+                          label: Text("MÃÂ¡ÃÂ»ÃÂ Web OTA (http://${widget.deviceIp}/update)", style: const TextStyle(color: Colors.greenAccent)),
                         ),
                       ],
                       const Divider(height: 32),
                       Text(
-                        widget.deviceIp.isNotEmpty ? "3. Nạp qua Bluetooth Low Energy (BLE OTA)" : "2. Nạp qua Bluetooth Low Energy (BLE OTA)",
+                        widget.deviceIp.isNotEmpty ? "3. NÃÂ¡ÃÂºÃÂ¡p qua Bluetooth Low Energy (BLE OTA)" : "2. NÃÂ¡ÃÂºÃÂ¡p qua Bluetooth Low Energy (BLE OTA)",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent),
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        "Dùng cho trường hợp thiết bị ở nơi chưa có Wi-Fi hoặc không có Internet.",
+                        "DÃÂÃÂ¹ng cho trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂ£p thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ¡i chÃÂÃÂ°a cÃÂÃÂ³ Wi-Fi hoÃÂ¡ÃÂºÃÂ·c khÃÂÃÂ´ng cÃÂÃÂ³ Internet.",
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       const SizedBox(height: 10),
@@ -4602,14 +4602,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         onPressed: isBleFlashing ? null : () async {
                           if (widget.otaChar == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Không tìm thấy cổng OTA Bluetooth trên thiết bị!"), backgroundColor: Colors.red),
+                              const SnackBar(content: Text("KhÃÂÃÂ´ng tÃÂÃÂ¬m thÃÂ¡ÃÂºÃÂ¥y cÃÂ¡ÃÂ»ÃÂng OTA Bluetooth trÃÂÃÂªn thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ!"), backgroundColor: Colors.red),
                             );
                             return;
                           }
                           setDialogState(() {
                             isBleFlashing = true;
                             bleProgress = 0.05;
-                            bleStatusText = "Đang tải firmware từ GitHub về điện thoại...";
+                            bleStatusText = "ÃÂÃÂang tÃÂ¡ÃÂºÃÂ£i firmware tÃÂ¡ÃÂ»ÃÂ« GitHub vÃÂ¡ÃÂ»ÃÂ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i...";
                           });
 
                           try {
@@ -4620,30 +4620,30 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             req.maxRedirects = 5;
                             final resp = await req.close();
                             if (resp.statusCode != 200) {
-                              throw Exception("Máy chủ phản hồi mã lỗi HTTP ${resp.statusCode}");
+                              throw Exception("MÃÂÃÂ¡y chÃÂ¡ÃÂ»ÃÂ§ phÃÂ¡ÃÂºÃÂ£n hÃÂ¡ÃÂ»ÃÂi mÃÂÃÂ£ lÃÂ¡ÃÂ»ÃÂi HTTP ${resp.statusCode}");
                             }
                             final bytes = await consolidateHttpClientResponseBytes(resp);
                             if (bytes.length < 50000 || bytes[0] != 0xE9) {
-                              throw Exception("File tải về (${bytes.length} bytes) không phải firmware ESP32 hợp lệ (magic byte 0xE9 không khớp)!");
+                              throw Exception("File tÃÂ¡ÃÂºÃÂ£i vÃÂ¡ÃÂ»ÃÂ (${bytes.length} bytes) khÃÂÃÂ´ng phÃÂ¡ÃÂºÃÂ£i firmware ESP32 hÃÂ¡ÃÂ»ÃÂ£p lÃÂ¡ÃÂ»ÃÂ (magic byte 0xE9 khÃÂÃÂ´ng khÃÂ¡ÃÂ»ÃÂp)!");
                             }
 
-                            // Xóa thông báo cũ
+                            // XÃÂÃÂ³a thÃÂÃÂ´ng bÃÂÃÂ¡o cÃÂÃÂ©
                             widget.otaStatusNotifier.value = "";
 
                             setDialogState(() {
                               bleProgress = 0.05;
-                              bleStatusText = "Đang khởi tạo và xóa phân vùng Flash trên ESP32...";
+                              bleStatusText = "ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi tÃÂ¡ÃÂºÃÂ¡o vÃÂÃÂ  xÃÂÃÂ³a phÃÂÃÂ¢n vÃÂÃÂ¹ng Flash trÃÂÃÂªn ESP32...";
                             });
 
-                            // Gửi lệnh bắt đầu OTA
+                            // GÃÂ¡ÃÂ»ÃÂ­i lÃÂ¡ÃÂ»ÃÂnh bÃÂ¡ÃÂºÃÂ¯t ÃÂÃÂÃÂ¡ÃÂºÃÂ§u OTA
                             await widget.otaChar!.write(utf8.encode("OTA_BEGIN:${bytes.length}"), withoutResponse: false);
 
-                            // Chờ ESP32 thực hiện Flash sector erase (mất khoảng 1-3 giây)
+                            // ChÃÂ¡ÃÂ»ÃÂ ESP32 thÃÂ¡ÃÂ»ÃÂ±c hiÃÂ¡ÃÂ»ÃÂn Flash sector erase (mÃÂ¡ÃÂºÃÂ¥t khoÃÂ¡ÃÂºÃÂ£ng 1-3 giÃÂÃÂ¢y)
                             for (int i = 0; i < 40; i++) {
                               await Future.delayed(const Duration(milliseconds: 100));
                               final st = widget.otaStatusNotifier.value;
                               if (st.startsWith("OTA_ERROR:")) {
-                                throw Exception("ESP32 từ chối OTA: ${st.replaceFirst('OTA_ERROR:', '')}");
+                                throw Exception("ESP32 tÃÂ¡ÃÂ»ÃÂ« chÃÂ¡ÃÂ»ÃÂi OTA: ${st.replaceFirst('OTA_ERROR:', '')}");
                               }
                               if (st == "OTA_READY") {
                                 break;
@@ -4656,7 +4656,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                             while (sent < total) {
                               final st = widget.otaStatusNotifier.value;
                               if (st.startsWith("OTA_ERROR:")) {
-                                throw Exception("ESP32 ngắt quá trình nạp: ${st.replaceFirst('OTA_ERROR:', '')}");
+                                throw Exception("ESP32 ngÃÂ¡ÃÂºÃÂ¯t quÃÂÃÂ¡ trÃÂÃÂ¬nh nÃÂ¡ÃÂºÃÂ¡p: ${st.replaceFirst('OTA_ERROR:', '')}");
                               }
                               final end = (sent + chunkSize < total) ? sent + chunkSize : total;
                               final chunk = bytes.sublist(sent, end);
@@ -4664,20 +4664,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                               sent = end;
                               setDialogState(() {
                                 bleProgress = 0.05 + (sent / total) * 0.90;
-                                bleStatusText = "Đang nạp qua BLE: ${(sent / 1024).toStringAsFixed(1)} / ${(total / 1024).toStringAsFixed(1)} KB (${(bleProgress * 100).toInt()}%)";
+                                bleStatusText = "ÃÂÃÂang nÃÂ¡ÃÂºÃÂ¡p qua BLE: ${(sent / 1024).toStringAsFixed(1)} / ${(total / 1024).toStringAsFixed(1)} KB (${(bleProgress * 100).toInt()}%)";
                               });
                               await Future.delayed(const Duration(milliseconds: 20));
                             }
 
                             setDialogState(() {
                               bleProgress = 0.96;
-                              bleStatusText = "Đang kiểm tra tính toàn vẹn (Checksum & Verify) trên chip...";
+                              bleStatusText = "ÃÂÃÂang kiÃÂ¡ÃÂ»ÃÂm tra tÃÂÃÂ­nh toÃÂÃÂ n vÃÂ¡ÃÂºÃÂ¹n (Checksum & Verify) trÃÂÃÂªn chip...";
                             });
 
                             await Future.delayed(const Duration(milliseconds: 500));
                             await widget.otaChar!.write(utf8.encode("OTA_END"), withoutResponse: false);
 
-                            // Chờ ESP32 xác nhận hoàn tất và reboot trong tối đa 10 giây
+                            // ChÃÂ¡ÃÂ»ÃÂ ESP32 xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n hoÃÂÃÂ n tÃÂ¡ÃÂºÃÂ¥t vÃÂÃÂ  reboot trong tÃÂ¡ÃÂ»ÃÂi ÃÂÃÂa 10 giÃÂÃÂ¢y
                             bool isRebooting = false;
                             for (int i = 0; i < 100; i++) {
                               await Future.delayed(const Duration(milliseconds: 100));
@@ -4686,27 +4686,27 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                                 isRebooting = true;
                                 break;
                               } else if (st.startsWith("OTA_ERROR:")) {
-                                throw Exception("Xác thực firmware thất bại: ${st.replaceFirst('OTA_ERROR:', '')}");
+                                throw Exception("XÃÂÃÂ¡c thÃÂ¡ÃÂ»ÃÂ±c firmware thÃÂ¡ÃÂºÃÂ¥t bÃÂ¡ÃÂºÃÂ¡i: ${st.replaceFirst('OTA_ERROR:', '')}");
                               }
                             }
 
                             if (isRebooting) {
                               setDialogState(() {
                                 bleProgress = 1.0;
-                                bleStatusText = "Thành công 100%! ESP32 đang khởi động lại vào firmware mới...";
+                                bleStatusText = "ThÃÂÃÂ nh cÃÂÃÂ´ng 100%! ESP32 ÃÂÃÂang khÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lÃÂ¡ÃÂºÃÂ¡i vÃÂÃÂ o firmware mÃÂ¡ÃÂ»ÃÂi...";
                               });
                             } else {
-                              throw Exception("Hết thời gian chờ phản hồi xác nhận từ ESP32 sau khi gửi hết dữ liệu.");
+                              throw Exception("HÃÂ¡ÃÂºÃÂ¿t thÃÂ¡ÃÂ»ÃÂi gian chÃÂ¡ÃÂ»ÃÂ phÃÂ¡ÃÂºÃÂ£n hÃÂ¡ÃÂ»ÃÂi xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n tÃÂ¡ÃÂ»ÃÂ« ESP32 sau khi gÃÂ¡ÃÂ»ÃÂ­i hÃÂ¡ÃÂºÃÂ¿t dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu.");
                             }
                           } catch (e) {
                             setDialogState(() {
                               isBleFlashing = false;
-                              bleStatusText = "Lỗi nạp BLE: $e";
+                              bleStatusText = "LÃÂ¡ÃÂ»ÃÂi nÃÂ¡ÃÂºÃÂ¡p BLE: $e";
                             });
                           }
                         },
                         icon: const Icon(Icons.bluetooth, size: 18, color: Colors.blueAccent),
-                        label: const Text("Tải & Nạp firmware qua BLE", style: TextStyle(color: Colors.blueAccent)),
+                        label: const Text("TÃÂ¡ÃÂºÃÂ£i & NÃÂ¡ÃÂºÃÂ¡p firmware qua BLE", style: TextStyle(color: Colors.blueAccent)),
                       ),
                     ],
                   ),
@@ -4715,7 +4715,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               actions: [
                 TextButton(
                   onPressed: isBleFlashing ? null : () => Navigator.pop(dialogCtx),
-                  child: const Text("Đóng"),
+                  child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
                 ),
               ],
             );
@@ -4770,7 +4770,7 @@ class LiveTelemetryChart extends StatelessWidget {
           child: Row(children: const [
             Icon(Icons.show_chart, color: Colors.grey),
             SizedBox(width: 10),
-            Expanded(child: Text('Đang chờ đủ dữ liệu telemetry để vẽ biểu đồ thời gian thực...', style: TextStyle(color: Colors.grey))),
+            Expanded(child: Text('ÃÂÃÂang chÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ§ dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu telemetry ÃÂÃÂÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂºÃÂ½ biÃÂ¡ÃÂ»ÃÂu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c...', style: TextStyle(color: Colors.grey))),
           ]),
         ),
       );
@@ -4779,16 +4779,16 @@ class LiveTelemetryChart extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [Icon(Icons.timeline, color: Colors.cyanAccent), SizedBox(width: 8), Text('Telemetry thời gian thực', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))]),
+          const Row(children: [Icon(Icons.timeline, color: Colors.cyanAccent), SizedBox(width: 8), Text('Telemetry thÃÂ¡ÃÂ»ÃÂi gian thÃÂ¡ÃÂ»ÃÂ±c', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))]),
           const SizedBox(height: 4),
-          const Text('120 mẫu gần nhất • ToF mm • Radar /100', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const Text('120 mÃÂ¡ÃÂºÃÂ«u gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t ÃÂ¢ÃÂÃÂ¢ ToF mm ÃÂ¢ÃÂÃÂ¢ Radar /100', style: TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 12),
           SizedBox(height: 210, child: CustomPaint(painter: LiveTelemetryPainter(samples))),
           const SizedBox(height: 8),
           const Wrap(spacing: 14, children: [
             _ChartLegend(color: Colors.cyanAccent, label: 'ToF'),
-            _ChartLegend(color: Colors.orangeAccent, label: 'Radar động'),
-            _ChartLegend(color: Colors.tealAccent, label: 'Radar tĩnh'),
+            _ChartLegend(color: Colors.orangeAccent, label: 'Radar ÃÂÃÂÃÂ¡ÃÂ»ÃÂng'),
+            _ChartLegend(color: Colors.tealAccent, label: 'Radar tÃÂÃÂ©nh'),
           ]),
         ]),
       ),
@@ -4810,8 +4810,12 @@ class LiveTelemetryPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final grid = Paint()..color = Colors.grey.withValues(alpha: .18)..strokeWidth = 1;
-    for (var i = 0; i <= 4; i++) canvas.drawLine(Offset(0, size.height * i / 4), Offset(size.width, size.height * i / 4), grid);
-    for (var i = 0; i <= 6; i++) canvas.drawLine(Offset(size.width * i / 6, 0), Offset(size.width * i / 6, size.height), grid);
+    for (var i = 0; i <= 4; i++) {
+      canvas.drawLine(Offset(0, size.height * i / 4), Offset(size.width, size.height * i / 4), grid);
+    }
+    for (var i = 0; i <= 6; i++) {
+      canvas.drawLine(Offset(size.width * i / 6, 0), Offset(size.width * i / 6, size.height), grid);
+    }
     final series = [('h', Colors.cyanAccent, 2000.0), ('m', Colors.orangeAccent, 100.0), ('s', Colors.tealAccent, 100.0)];
     for (final item in series) {
       final paint = Paint()..color = item.$2..style = PaintingStyle.stroke..strokeWidth = 2.2..strokeCap = StrokeCap.round;
@@ -4820,7 +4824,11 @@ class LiveTelemetryPainter extends CustomPainter {
         final x = samples.length == 1 ? 0.0 : size.width * i / (samples.length - 1);
         final yValue = (samples[i][item.$1] ?? 0).clamp(0, item.$3);
         final y = size.height * (1 - yValue / item.$3);
-        if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
       }
       canvas.drawPath(path, paint);
     }
@@ -4859,11 +4867,11 @@ class FallKinematicGraph extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Biểu đồ động học cú ngã (Kinematic Graph)",
+                        "BiÃÂ¡ÃÂ»ÃÂu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂc cÃÂÃÂº ngÃÂÃÂ£ (Kinematic Graph)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       Text(
-                        "Cự ly: ${dist}cm | Vận tốc: ${vel.toStringAsFixed(0)} mm/s | Động năng: $motion/100",
+                        "CÃÂ¡ÃÂ»ÃÂ± ly: ${dist}cm | VÃÂ¡ÃÂºÃÂ­n tÃÂ¡ÃÂ»ÃÂc: ${vel.toStringAsFixed(0)} mm/s | ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng: $motion/100",
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                       ),
                     ],
@@ -4885,7 +4893,7 @@ class FallKinematicGraph extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Canvas vẽ đồ thị 2 đường cong
+            // Canvas vÃÂ¡ÃÂºÃÂ½ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂ 2 ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng cong
             SizedBox(
               height: 190,
               child: CustomPaint(
@@ -4898,13 +4906,13 @@ class FallKinematicGraph extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Chú thích đồ thị
+            // ChÃÂÃÂº thÃÂÃÂ­ch ÃÂÃÂÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂ
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildLegendItem(Colors.cyanAccent, "Độ cao ToF (mm)"),
-                _buildLegendItem(Colors.orangeAccent, "Động năng Radar (/100)"),
-                _buildLegendItem(Colors.redAccent, "Điểm va chạm (Impact)"),
+                _buildLegendItem(Colors.cyanAccent, "ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF (mm)"),
+                _buildLegendItem(Colors.orangeAccent, "ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar (/100)"),
+                _buildLegendItem(Colors.redAccent, "ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm va chÃÂ¡ÃÂºÃÂ¡m (Impact)"),
               ],
             ),
           ],
@@ -4928,7 +4936,7 @@ class FallKinematicGraph extends StatelessWidget {
   }
 }
 
-// Lớp CustomPainter vẽ biểu đồ tiếp sàn và chấn động động năng
+// LÃÂ¡ÃÂ»ÃÂp CustomPainter vÃÂ¡ÃÂºÃÂ½ biÃÂ¡ÃÂ»ÃÂu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ tiÃÂ¡ÃÂºÃÂ¿p sÃÂÃÂ n vÃÂÃÂ  chÃÂ¡ÃÂºÃÂ¥n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng
 class KinematicCurvePainter extends CustomPainter {
   final double dropVelocity;
   final int peakMotion;
@@ -4945,7 +4953,7 @@ class KinematicCurvePainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // 1. Vẽ khung lưới trục toạ độ
+    // 1. VÃÂ¡ÃÂºÃÂ½ khung lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi trÃÂ¡ÃÂ»ÃÂ¥c toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ
     final Paint gridPaint = Paint()
       ..color = Colors.grey.withValues(alpha: 0.2)
       ..strokeWidth = 1.0;
@@ -4959,7 +4967,7 @@ class KinematicCurvePainter extends CustomPainter {
       canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
     }
 
-    // 2. Vị trí tiếp sàn va chạm (Impact point) tại x = 50%
+    // 2. VÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ tiÃÂ¡ÃÂºÃÂ¿p sÃÂÃÂ n va chÃÂ¡ÃÂºÃÂ¡m (Impact point) tÃÂ¡ÃÂºÃÂ¡i x = 50%
     final double impactX = w * 0.50;
     final Paint impactLinePaint = Paint()
       ..color = Colors.redAccent.withValues(alpha: 0.5)
@@ -4967,21 +4975,21 @@ class KinematicCurvePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(impactX, 0), Offset(impactX, h), impactLinePaint);
 
-    // 3. Đường cong 1: Độ cao ToF (Màu xanh Cyan)
-    // t = -2s (Đứng cao 1700mm) -> t = -0.5s (Rơi) -> t = 0s (Chạm sàn 300mm) -> t = +2s (Nằm sàn)
+    // 3. ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng cong 1: ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF (MÃÂÃÂ u xanh Cyan)
+    // t = -2s (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng cao 1700mm) -> t = -0.5s (RÃÂÃÂ¡i) -> t = 0s (ChÃÂ¡ÃÂºÃÂ¡m sÃÂÃÂ n 300mm) -> t = +2s (NÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n)
     final Path heightPath = Path();
     final double hTop = h * 0.15;    // ~1700mm
     final double hFloor = h * 0.82;  // ~300mm
 
     heightPath.moveTo(0, hTop);
     heightPath.lineTo(w * 0.25, hTop + 5);
-    // Đoạn tụt dốc rơi tự do
+    // ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n tÃÂ¡ÃÂ»ÃÂ¥t dÃÂ¡ÃÂ»ÃÂc rÃÂÃÂ¡i tÃÂ¡ÃÂ»ÃÂ± do
     heightPath.cubicTo(
       w * 0.38, hTop + 10,
       w * 0.44, hFloor * 0.65,
       impactX, hFloor,
     );
-    // Đoạn nằm yên dưới sàn
+    // ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n nÃÂ¡ÃÂºÃÂ±m yÃÂÃÂªn dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi sÃÂÃÂ n
     heightPath.lineTo(w, hFloor + 3);
 
     final Paint heightPaint = Paint()
@@ -4990,10 +4998,10 @@ class KinematicCurvePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawPath(heightPath, heightPaint);
 
-    // 4. Đường cong 2: Động năng Radar (Màu cam)
-    // t = -2s (Thấp 15) -> t = 0s (Đỉnh va đập Peak Motion) -> t = +2s (Về 0-5)
+    // 4. ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng cong 2: ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar (MÃÂÃÂ u cam)
+    // t = -2s (ThÃÂ¡ÃÂºÃÂ¥p 15) -> t = 0s (ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p Peak Motion) -> t = +2s (VÃÂ¡ÃÂ»ÃÂ 0-5)
     final Path motionPath = Path();
-    final double mBase = h * 0.85; // Mức động năng thấp
+    final double mBase = h * 0.85; // MÃÂ¡ÃÂ»ÃÂ©c ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng thÃÂ¡ÃÂºÃÂ¥p
     final double mPeak = h * (1.0 - (math.min(100, math.max(20, peakMotion)) / 100.0) * 0.85);
 
     motionPath.moveTo(0, mBase - 10);
@@ -5003,7 +5011,7 @@ class KinematicCurvePainter extends CustomPainter {
       w * 0.46, mPeak,
       impactX, mPeak,
     );
-    // Động năng sau ngã tắt dần về gần 0
+    // ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng sau ngÃÂÃÂ£ tÃÂ¡ÃÂºÃÂ¯t dÃÂ¡ÃÂºÃÂ§n vÃÂ¡ÃÂ»ÃÂ gÃÂ¡ÃÂºÃÂ§n 0
     motionPath.cubicTo(
       w * 0.60, mBase - 20,
       w * 0.75, mBase - 5,
@@ -5016,7 +5024,7 @@ class KinematicCurvePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawPath(motionPath, motionPaint);
 
-    // 5. Điểm chấn động tiếp đất (Impact point pulse dot)
+    // 5. ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm chÃÂ¡ÃÂºÃÂ¥n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng tiÃÂ¡ÃÂºÃÂ¿p ÃÂÃÂÃÂ¡ÃÂºÃÂ¥t (Impact point pulse dot)
     final Paint pulseOuter = Paint()
       ..color = Colors.redAccent.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
@@ -5027,7 +5035,7 @@ class KinematicCurvePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(impactX, hFloor), 6, pulseInner);
 
-    // 6. Nhãn mốc thời gian dưới trục X
+    // 6. NhÃÂÃÂ£n mÃÂ¡ÃÂ»ÃÂc thÃÂ¡ÃÂ»ÃÂi gian dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi trÃÂ¡ÃÂ»ÃÂ¥c X
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     void drawText(String text, double x, double y, Color c) {
       tp.text = TextSpan(text: text, style: TextStyle(fontSize: 9, color: c));
@@ -5035,10 +5043,10 @@ class KinematicCurvePainter extends CustomPainter {
       tp.paint(canvas, Offset(x - tp.width / 2, y));
     }
 
-    drawText("-2s (Đứng)", w * 0.10, h - 14, Colors.grey);
-    drawText("-1s (Mất đà)", w * 0.32, h - 14, Colors.grey);
-    drawText("0s (Chạm sàn)", impactX, h - 14, Colors.redAccent);
-    drawText("+1s (Nằm yên)", w * 0.72, h - 14, Colors.grey);
+    drawText("-2s (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng)", w * 0.10, h - 14, Colors.grey);
+    drawText("-1s (MÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂÃÂ )", w * 0.32, h - 14, Colors.grey);
+    drawText("0s (ChÃÂ¡ÃÂºÃÂ¡m sÃÂÃÂ n)", impactX, h - 14, Colors.redAccent);
+    drawText("+1s (NÃÂ¡ÃÂºÃÂ±m yÃÂÃÂªn)", w * 0.72, h - 14, Colors.grey);
     drawText("+2s", w * 0.92, h - 14, Colors.grey);
   }
 
@@ -5051,8 +5059,8 @@ class KinematicCurvePainter extends CustomPainter {
 }
 
 // =========================================================================
-// WIDGET: BẢN GHI PHÁT LẠI QUÁ TRÌNH TÉ NGÃ (FALL PLAYBACK & AUDIT RECORD)
-// Mô phỏng chuỗi thời gian 4 giai đoạn (-2.0s -> 0s -> +2.0s) & Xuất biên bản
+// WIDGET: BÃÂ¡ÃÂºÃÂ¢N GHI PHÃÂÃÂT LÃÂ¡ÃÂºÃÂ I QUÃÂÃÂ TRÃÂÃÂNH TÃÂÃÂ NGÃÂÃÂ (FALL PLAYBACK & AUDIT RECORD)
+// MÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng chuÃÂ¡ÃÂ»ÃÂi thÃÂ¡ÃÂ»ÃÂi gian 4 giai ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n (-2.0s -> 0s -> +2.0s) & XuÃÂ¡ÃÂºÃÂ¥t biÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n
 // =========================================================================
 
 class VirtualThermalSpectrum extends StatefulWidget {
@@ -5065,9 +5073,9 @@ class VirtualThermalSpectrum extends StatefulWidget {
 }
 
 class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
-  bool _showPostFall = true;   // true: Sau khi ngã (nằm bệt), false: Trước khi ngã (đứng)
-  bool _showGrid128 = true;     // Hiển thị lưới toạ độ 128x128
-  Offset? _touchedPoint;        // Điểm chạm khảo sát mật độ năng lượng tương tác
+  bool _showPostFall = true;   // true: Sau khi ngÃÂÃÂ£ (nÃÂ¡ÃÂºÃÂ±m bÃÂ¡ÃÂ»ÃÂt), false: TrÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi ngÃÂÃÂ£ (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng)
+  bool _showGrid128 = true;     // HiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ 128x128
+  Offset? _touchedPoint;        // ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm chÃÂ¡ÃÂºÃÂ¡m khÃÂ¡ÃÂºÃÂ£o sÃÂÃÂ¡t mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng tÃÂÃÂ°ÃÂÃÂ¡ng tÃÂÃÂ¡c
 
   @override
   Widget build(BuildContext context) {
@@ -5082,7 +5090,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Tiêu đề và nhãn công nghệ HD 128x128
+            // 1. TiÃÂÃÂªu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  nhÃÂÃÂ£n cÃÂÃÂ´ng nghÃÂ¡ÃÂ»ÃÂ HD 128x128
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -5091,7 +5099,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                     Icon(Icons.radar, color: Colors.cyanAccent, size: 24),
                     SizedBox(width: 8),
                     Text(
-                      "Phổ năng lượng Radar không gian 128x128:",
+                      "PhÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar khÃÂÃÂ´ng gian 128x128:",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ],
@@ -5108,7 +5116,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                     children: [
                       Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 12),
                       SizedBox(width: 4),
-                      Text("16.384 Điểm FMCW", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                      Text("16.384 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm FMCW", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                     ],
                   ),
                 ),
@@ -5116,12 +5124,12 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 6),
             Text(
-              "Mô hình phân bố mật độ năng lượng Radar FMCW 24GHz (128x128) tái tạo từ ToF (độ cao trục Y) + 9 Cổng khoảng cách Radar LD2410 (cự ly trục X) + Động năng vận động.",
+              "MÃÂÃÂ´ hÃÂÃÂ¬nh phÃÂÃÂ¢n bÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar FMCW 24GHz (128x128) tÃÂÃÂ¡i tÃÂ¡ÃÂºÃÂ¡o tÃÂ¡ÃÂ»ÃÂ« ToF (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao trÃÂ¡ÃÂ»ÃÂ¥c Y) + 9 CÃÂ¡ÃÂ»ÃÂng khoÃÂ¡ÃÂºÃÂ£ng cÃÂÃÂ¡ch Radar LD2410 (cÃÂ¡ÃÂ»ÃÂ± ly trÃÂ¡ÃÂ»ÃÂ¥c X) + ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng.",
               style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 12),
 
-            // 2. Bộ nút điều khiển trạng thái (Trước / Sau ngã) và bật tắt lưới 128x128
+            // 2. BÃÂ¡ÃÂ»ÃÂ nÃÂÃÂºt ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn trÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i (TrÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc / Sau ngÃÂÃÂ£) vÃÂÃÂ  bÃÂ¡ÃÂºÃÂ­t tÃÂ¡ÃÂºÃÂ¯t lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi 128x128
             Row(
               children: [
                 Expanded(
@@ -5132,7 +5140,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                     icon: const Icon(Icons.accessibility_new, size: 16),
-                    label: const Text("Trước ngã (-2s: Đứng)", style: TextStyle(fontSize: 11)),
+                    label: const Text("TrÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc ngÃÂÃÂ£ (-2s: ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng)", style: TextStyle(fontSize: 11)),
                     onPressed: () => setState(() {
                       _showPostFall = false;
                       _touchedPoint = null;
@@ -5148,7 +5156,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                     icon: const Icon(Icons.airline_seat_flat, size: 16),
-                    label: const Text("Sau ngã (+2s: Sàn)", style: TextStyle(fontSize: 11)),
+                    label: const Text("Sau ngÃÂÃÂ£ (+2s: SÃÂÃÂ n)", style: TextStyle(fontSize: 11)),
                     onPressed: () => setState(() {
                       _showPostFall = true;
                       _touchedPoint = null;
@@ -5159,12 +5167,12 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 8),
 
-            // Tùy chọn chuyển đổi kiểu hiển thị
+            // TÃÂÃÂ¹y chÃÂ¡ÃÂ»ÃÂn chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂi kiÃÂ¡ÃÂ»ÃÂu hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Chạm / Kéo trên ảnh để đo năng lượng radar tại điểm:",
+                  "ChÃÂ¡ÃÂºÃÂ¡m / KÃÂÃÂ©o trÃÂÃÂªn ÃÂ¡ÃÂºÃÂ£nh ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂÃÂo nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng radar tÃÂ¡ÃÂºÃÂ¡i ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm:",
                   style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 GestureDetector(
@@ -5177,7 +5185,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                       border: Border.all(color: _showGrid128 ? Colors.teal : Colors.grey.shade700),
                     ),
                     child: Text(
-                      _showGrid128 ? "Lưới 128: BẬT" : "Lưới 128: TẮT",
+                      _showGrid128 ? "LÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi 128: BÃÂ¡ÃÂºÃÂ¬T" : "LÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi 128: TÃÂ¡ÃÂºÃÂ®T",
                       style: TextStyle(fontSize: 9, color: _showGrid128 ? Colors.tealAccent : Colors.grey),
                     ),
                   ),
@@ -5186,7 +5194,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 8),
 
-            // 3. Khung hiển thị Phổ năng lượng Radar 128x128 tương tác
+            // 3. Khung hiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ PhÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar 128x128 tÃÂÃÂ°ÃÂÃÂ¡ng tÃÂÃÂ¡c
             Center(
               child: GestureDetector(
                 onPanDown: (details) => setState(() => _touchedPoint = details.localPosition),
@@ -5226,20 +5234,20 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             ),
             const SizedBox(height: 10),
 
-            // 4. Chú giải 2 trục toạ độ không gian
+            // 4. ChÃÂÃÂº giÃÂ¡ÃÂºÃÂ£i 2 trÃÂ¡ÃÂ»ÃÂ¥c toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ khÃÂÃÂ´ng gian
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Trục dọc Y: Trần (0m) ➔ Sàn nhà (2.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text("Trục ngang X: Cổng radar (0.75m ➔ 6.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Text("TrÃÂ¡ÃÂ»ÃÂ¥c dÃÂ¡ÃÂ»ÃÂc Y: TrÃÂ¡ÃÂºÃÂ§n (0m) ÃÂ¢ÃÂÃÂ SÃÂÃÂ n nhÃÂÃÂ  (2.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Text("TrÃÂ¡ÃÂ»ÃÂ¥c ngang X: CÃÂ¡ÃÂ»ÃÂng radar (0.75m ÃÂ¢ÃÂÃÂ 6.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 10),
 
-            // 5. Thanh dải màu mức năng lượng phản xạ Radar FMCW (0% - 100%)
+            // 5. Thanh dÃÂ¡ÃÂºÃÂ£i mÃÂÃÂ u mÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ Radar FMCW (0% - 100%)
             Row(
               children: [
-                const Text("0% (Tĩnh)", style: TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                const Text("0% (TÃÂÃÂ©nh)", style: TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
@@ -5248,26 +5256,26 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                       borderRadius: BorderRadius.circular(4),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFF060B14), // Nền tĩnh (0% RF)
-                          Color(0xFF0F3854), // Tạp âm nền RF (15%)
-                          Color(0xFF0077B6), // Tín hiệu phản xạ nhẹ (35%)
-                          Color(0xFF00B4D8), // Hiện diện vi chuyển động (55%)
-                          Color(0xFFFFB703), // Chuyển động cơ thể (75%)
-                          Color(0xFFFB8500), // Động năng cao (90%)
-                          Color(0xFFFF0054), // Đỉnh va chạm (97%)
-                          Color(0xFFFFFFFF), // Điểm xung kích bão hòa (100%)
+                          Color(0xFF060B14), // NÃÂ¡ÃÂ»ÃÂn tÃÂÃÂ©nh (0% RF)
+                          Color(0xFF0F3854), // TÃÂ¡ÃÂºÃÂ¡p ÃÂÃÂ¢m nÃÂ¡ÃÂ»ÃÂn RF (15%)
+                          Color(0xFF0077B6), // TÃÂÃÂ­n hiÃÂ¡ÃÂ»ÃÂu phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ nhÃÂ¡ÃÂºÃÂ¹ (35%)
+                          Color(0xFF00B4D8), // HiÃÂ¡ÃÂ»ÃÂn diÃÂ¡ÃÂ»ÃÂn vi chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (55%)
+                          Color(0xFFFFB703), // ChuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng cÃÂÃÂ¡ thÃÂ¡ÃÂ»ÃÂ (75%)
+                          Color(0xFFFB8500), // ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng cao (90%)
+                          Color(0xFFFF0054), // ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh va chÃÂ¡ÃÂºÃÂ¡m (97%)
+                          Color(0xFFFFFFFF), // ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm xung kÃÂÃÂ­ch bÃÂÃÂ£o hÃÂÃÂ²a (100%)
                         ],
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text("100% (Đỉnh)", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                const Text("100% (ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh)", style: TextStyle(fontSize: 10, color: Colors.redAccent, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 12),
 
-            // 6. Hộp kết luận chẩn đoán AI từ 16.384 điểm năng lượng radar
+            // 6. HÃÂ¡ÃÂ»ÃÂp kÃÂ¡ÃÂºÃÂ¿t luÃÂ¡ÃÂºÃÂ­n chÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n AI tÃÂ¡ÃÂ»ÃÂ« 16.384 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng radar
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -5285,8 +5293,8 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                   Expanded(
                     child: Text(
                       _showPostFall
-                          ? "Phổ radar 128x128 chẩn đoán: 96% mật độ năng lượng phản xạ dồn xuống 15% đáy sàn (Y > 1.8m) và trải rộng ngang 2.4m (Cổng 2-5). Kết hợp xung lực va đập $motion/100 ➔ Xác thực tư thế nằm sàn bất động."
-                          : "Phổ radar 128x128 chẩn đoán: Cột năng lượng radar tập trung theo hình trụ đứng thẳng (Y: 0.3m ➔ 1.7m), bề ngang hẹp 0.6m tại Cổng 3. Trạng thái cơ thể bình thường và thăng bằng tốt.",
+                          ? "PhÃÂ¡ÃÂ»ÃÂ radar 128x128 chÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n: 96% mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ dÃÂ¡ÃÂ»ÃÂn xuÃÂ¡ÃÂ»ÃÂng 15% ÃÂÃÂÃÂÃÂ¡y sÃÂÃÂ n (Y > 1.8m) vÃÂÃÂ  trÃÂ¡ÃÂºÃÂ£i rÃÂ¡ÃÂ»ÃÂng ngang 2.4m (CÃÂ¡ÃÂ»ÃÂng 2-5). KÃÂ¡ÃÂºÃÂ¿t hÃÂ¡ÃÂ»ÃÂ£p xung lÃÂ¡ÃÂ»ÃÂ±c va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p $motion/100 ÃÂ¢ÃÂÃÂ XÃÂÃÂ¡c thÃÂ¡ÃÂ»ÃÂ±c tÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ nÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng."
+                          : "PhÃÂ¡ÃÂ»ÃÂ radar 128x128 chÃÂ¡ÃÂºÃÂ©n ÃÂÃÂoÃÂÃÂ¡n: CÃÂ¡ÃÂ»ÃÂt nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng radar tÃÂ¡ÃÂºÃÂ­p trung theo hÃÂÃÂ¬nh trÃÂ¡ÃÂ»ÃÂ¥ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng thÃÂ¡ÃÂºÃÂ³ng (Y: 0.3m ÃÂ¢ÃÂÃÂ 1.7m), bÃÂ¡ÃÂ»ÃÂ ngang hÃÂ¡ÃÂºÃÂ¹p 0.6m tÃÂ¡ÃÂºÃÂ¡i CÃÂ¡ÃÂ»ÃÂng 3. TrÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i cÃÂÃÂ¡ thÃÂ¡ÃÂ»ÃÂ bÃÂÃÂ¬nh thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng vÃÂÃÂ  thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng tÃÂ¡ÃÂ»ÃÂt.",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -5305,7 +5313,7 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
 }
 
 // =========================================================================
-// CUSTOM PAINTER: HIỂN THỊ PHỔ NĂNG LƯỢNG RADAR 128x128 (16.384 ĐIỂM GAUSS)
+// CUSTOM PAINTER: HIÃÂ¡ÃÂ»ÃÂN THÃÂ¡ÃÂ»ÃÂ PHÃÂ¡ÃÂ»ÃÂ NÃÂÃÂNG LÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂ¢NG RADAR 128x128 (16.384 ÃÂÃÂIÃÂ¡ÃÂ»ÃÂM GAUSS)
 // =========================================================================
 class ThermalSpectrumPainter128 extends CustomPainter {
   final bool isPostFall;
@@ -5322,14 +5330,14 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     required this.peakMotion,
   });
 
-  // Tính mật độ năng lượng phản xạ Radar FMCW tại toạ độ chuẩn hoá (nx, ny) [0.0 .. 1.0]
+  // TÃÂÃÂ­nh mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ Radar FMCW tÃÂ¡ÃÂºÃÂ¡i toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ chuÃÂ¡ÃÂºÃÂ©n hoÃÂÃÂ¡ (nx, ny) [0.0 .. 1.0]
   double _calcRadarEnergyAt(double nx, double ny) {
-    // Tạp âm nền RF môi trường ~ 3.5%
+    // TÃÂ¡ÃÂºÃÂ¡p ÃÂÃÂ¢m nÃÂ¡ÃÂ»ÃÂn RF mÃÂÃÂ´i trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng ~ 3.5%
     double ambient = 3.5 + 1.2 * math.sin(nx * 8) * math.cos(ny * 8);
 
     if (!isPostFall) {
-      // TRƯỚC NGÃ: Cơ thể đứng thẳng tại Cổng 3.5 (nx = 0.44), chiều cao (ny từ 0.25 đến 0.85)
-      // Vùng ngực/đầu (nx: 0.44, ny: 0.38)
+      // TRÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂC NGÃÂÃÂ: CÃÂÃÂ¡ thÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng thÃÂ¡ÃÂºÃÂ³ng tÃÂ¡ÃÂºÃÂ¡i CÃÂ¡ÃÂ»ÃÂng 3.5 (nx = 0.44), chiÃÂ¡ÃÂ»ÃÂu cao (ny tÃÂ¡ÃÂ»ÃÂ« 0.25 ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n 0.85)
+      // VÃÂÃÂ¹ng ngÃÂ¡ÃÂ»ÃÂ±c/ÃÂÃÂÃÂ¡ÃÂºÃÂ§u (nx: 0.44, ny: 0.38)
       double dHead = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.32) / 0.10, 2));
       double dChest = math.sqrt(math.pow((nx - 0.44) / 0.10, 2) + math.pow((ny - 0.48) / 0.14, 2));
       double dLegs = math.sqrt(math.pow((nx - 0.44) / 0.08, 2) + math.pow((ny - 0.72) / 0.18, 2));
@@ -5340,12 +5348,12 @@ class ThermalSpectrumPainter128 extends CustomPainter {
 
       return (ambient + math.max(energyHead, math.max(energyChest, energyLegs))).clamp(0.0, 100.0);
     } else {
-      // SAU NGÃ: Nằm ngang sát sàn (ny = 0.88, trải dài nx từ 0.22 đến 0.75)
-      // Điểm va đập thân trên (nx: 0.36, ny: 0.88)
+      // SAU NGÃÂÃÂ: NÃÂ¡ÃÂºÃÂ±m ngang sÃÂÃÂ¡t sÃÂÃÂ n (ny = 0.88, trÃÂ¡ÃÂºÃÂ£i dÃÂÃÂ i nx tÃÂ¡ÃÂ»ÃÂ« 0.22 ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n 0.75)
+      // ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p thÃÂÃÂ¢n trÃÂÃÂªn (nx: 0.36, ny: 0.88)
       double dUpper = math.sqrt(math.pow((nx - 0.36) / 0.12, 2) + math.pow((ny - 0.88) / 0.06, 2));
-      // Điểm hông/thân dưới (nx: 0.54, ny: 0.88)
+      // ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm hÃÂÃÂ´ng/thÃÂÃÂ¢n dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi (nx: 0.54, ny: 0.88)
       double dLower = math.sqrt(math.pow((nx - 0.54) / 0.14, 2) + math.pow((ny - 0.88) / 0.06, 2));
-      // Chân (nx: 0.70, ny: 0.89)
+      // ChÃÂÃÂ¢n (nx: 0.70, ny: 0.89)
       double dFeet = math.sqrt(math.pow((nx - 0.70) / 0.10, 2) + math.pow((ny - 0.89) / 0.06, 2));
 
       double energyUpper = 95.0 * math.exp(-0.5 * dUpper * dUpper);
@@ -5356,7 +5364,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     }
   }
 
-  // Chuyển mức năng lượng phản xạ Radar sang dải màu phổ sóng vô tuyến (Turbo/Jet Colormap)
+  // ChuyÃÂ¡ÃÂ»ÃÂn mÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ Radar sang dÃÂ¡ÃÂºÃÂ£i mÃÂÃÂ u phÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ³ng vÃÂÃÂ´ tuyÃÂ¡ÃÂºÃÂ¿n (Turbo/Jet Colormap)
   Color _energyToColor(double energy) {
     if (energy <= 15.0) {
       return Color.lerp(const Color(0xFF060B14), const Color(0xFF0F3854), energy / 15.0)!;
@@ -5380,24 +5388,24 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // 1. Vẽ nền RF 2D
+    // 1. VÃÂ¡ÃÂºÃÂ½ nÃÂ¡ÃÂ»ÃÂn RF 2D
     final Rect backgroundRect = Rect.fromLTWH(0, 0, w, h);
     final Paint bgPaint = Paint()..color = const Color(0xFF060B14);
     canvas.drawRect(backgroundRect, bgPaint);
 
-    // 2. Kết xuất các quầng mật độ năng lượng Radar (Radar Kinematic Clusters)
+    // 2. KÃÂ¡ÃÂºÃÂ¿t xuÃÂ¡ÃÂºÃÂ¥t cÃÂÃÂ¡c quÃÂ¡ÃÂºÃÂ§ng mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar (Radar Kinematic Clusters)
     if (!isPostFall) {
-      // ĐỨNG: 3 quầng năng lượng phản xạ (Đầu, Ngực, Chân)
+      // ÃÂÃÂÃÂ¡ÃÂ»ÃÂ¨NG: 3 quÃÂ¡ÃÂºÃÂ§ng nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ (ÃÂÃÂÃÂ¡ÃÂºÃÂ§u, NgÃÂ¡ÃÂ»ÃÂ±c, ChÃÂÃÂ¢n)
       _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.32), w * 0.22, h * 0.16, 85.0);
       _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.48), w * 0.26, h * 0.22, 90.0);
       _drawRadarEnergyCluster(canvas, Offset(w * 0.44, h * 0.72), w * 0.20, h * 0.24, 65.0);
     } else {
-      // NGÃ NẰM SÀN: Dải năng lượng nằm ngang dài sát đáy sàn
+      // NGÃÂÃÂ NÃÂ¡ÃÂºÃÂ°M SÃÂÃÂN: DÃÂ¡ÃÂºÃÂ£i nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng nÃÂ¡ÃÂºÃÂ±m ngang dÃÂÃÂ i sÃÂÃÂ¡t ÃÂÃÂÃÂÃÂ¡y sÃÂÃÂ n
       _drawRadarEnergyCluster(canvas, Offset(w * 0.36, h * 0.88), w * 0.28, h * 0.12, 98.0);
       _drawRadarEnergyCluster(canvas, Offset(w * 0.54, h * 0.88), w * 0.32, h * 0.12, 90.0);
       _drawRadarEnergyCluster(canvas, Offset(w * 0.70, h * 0.89), w * 0.22, h * 0.10, 60.0);
 
-      // Vùng sàn chấn động lan tỏa năng lượng va đập
+      // VÃÂÃÂ¹ng sÃÂÃÂ n chÃÂ¡ÃÂºÃÂ¥n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng lan tÃÂ¡ÃÂ»ÃÂa nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p
       final Paint floorSpread = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
@@ -5411,10 +5419,10 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       canvas.drawRect(Rect.fromLTWH(0, h * 0.80, w, h * 0.20), floorSpread);
     }
 
-    // 3. Vẽ đường đẳng mức năng lượng phản xạ (Iso-Energy Contours)
+    // 3. VÃÂ¡ÃÂºÃÂ½ ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂºÃÂ³ng mÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ (Iso-Energy Contours)
     _drawIsoEnergyContours(canvas, size);
 
-    // 4. Vẽ lưới toạ độ 128x128 (Hiển thị các vạch chia 16, 32, 64, 96, 128)
+    // 4. VÃÂ¡ÃÂºÃÂ½ lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ 128x128 (HiÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ¡c vÃÂ¡ÃÂºÃÂ¡ch chia 16, 32, 64, 96, 128)
     if (showGrid) {
       final Paint gridPaint = Paint()
         ..color = Colors.white.withValues(alpha: 0.08)
@@ -5427,11 +5435,11 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       }
     }
 
-    // 5. Vẽ hồng tâm quét mật độ năng lượng cực đại
+    // 5. VÃÂ¡ÃÂºÃÂ½ hÃÂ¡ÃÂ»ÃÂng tÃÂÃÂ¢m quÃÂÃÂ©t mÃÂ¡ÃÂºÃÂ­t ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng cÃÂ¡ÃÂ»ÃÂ±c ÃÂÃÂÃÂ¡ÃÂºÃÂ¡i
     final Offset peakPos = isPostFall ? Offset(w * 0.36, h * 0.88) : Offset(w * 0.44, h * 0.32);
-    _drawCrosshair(canvas, peakPos, isPostFall ? "E_max: 98% (Sàn Y: 0.15m)" : "E_max: 90% (Đứng Y: 1.5m)", Colors.redAccent);
+    _drawCrosshair(canvas, peakPos, isPostFall ? "E_max: 98% (SÃÂÃÂ n Y: 0.15m)" : "E_max: 90% (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng Y: 1.5m)", Colors.redAccent);
 
-    // 6. Vẽ điểm chạm của người dùng (Nếu có tương tác đo điểm)
+    // 6. VÃÂ¡ÃÂºÃÂ½ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm chÃÂ¡ÃÂºÃÂ¡m cÃÂ¡ÃÂ»ÃÂ§a ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi dÃÂÃÂ¹ng (NÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ³ tÃÂÃÂ°ÃÂÃÂ¡ng tÃÂÃÂ¡c ÃÂÃÂo ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm)
     if (touchedLocalPos != null) {
       final double tx = touchedLocalPos!.dx.clamp(0.0, w);
       final double ty = touchedLocalPos!.dy.clamp(0.0, h);
@@ -5447,7 +5455,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
       );
     }
 
-    // 7. Nhãn HUD góc trên bên trái
+    // 7. NhÃÂÃÂ£n HUD gÃÂÃÂ³c trÃÂÃÂªn bÃÂÃÂªn trÃÂÃÂ¡i
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = TextSpan(
       text: "RADAR FMCW 24GHz SPATIAL SPECTRUM\nMATRIX: 128x128 (16.384 PTS)\nFOV: 9 GATES x 2.0m ELEVATION",
@@ -5462,7 +5470,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     tp.paint(canvas, const Offset(8, 8));
   }
 
-  // Vẽ quầng tán xạ năng lượng Radar 2D
+  // VÃÂ¡ÃÂºÃÂ½ quÃÂ¡ÃÂºÃÂ§ng tÃÂÃÂ¡n xÃÂ¡ÃÂºÃÂ¡ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar 2D
   void _drawRadarEnergyCluster(Canvas canvas, Offset center, double rx, double ry, double peakEnergy) {
     final Rect rect = Rect.fromCenter(center: center, width: rx * 2, height: ry * 2);
     final Paint p = Paint()
@@ -5480,7 +5488,7 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     canvas.drawOval(rect, p);
   }
 
-  // Vẽ các đường đẳng mức năng lượng khép kín (Iso-Energy Contours)
+  // VÃÂ¡ÃÂºÃÂ½ cÃÂÃÂ¡c ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂºÃÂ³ng mÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng khÃÂÃÂ©p kÃÂÃÂ­n (Iso-Energy Contours)
   void _drawIsoEnergyContours(Canvas canvas, Size size) {
     final Paint contourPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -5500,24 +5508,24 @@ class ThermalSpectrumPainter128 extends CustomPainter {
     }
   }
 
-  // Vẽ hồng tâm đo năng lượng kèm chú thích toạ độ
+  // VÃÂ¡ÃÂºÃÂ½ hÃÂ¡ÃÂ»ÃÂng tÃÂÃÂ¢m ÃÂÃÂo nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng kÃÂÃÂ¨m chÃÂÃÂº thÃÂÃÂ­ch toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ
   void _drawCrosshair(Canvas canvas, Offset pos, String label, Color color) {
     final Paint p = Paint()
       ..color = color
       ..strokeWidth = 1.2;
 
-    // Vạch dấu thập
+    // VÃÂ¡ÃÂºÃÂ¡ch dÃÂ¡ÃÂºÃÂ¥u thÃÂ¡ÃÂºÃÂ­p
     canvas.drawLine(Offset(pos.dx - 10, pos.dy), Offset(pos.dx + 10, pos.dy), p);
     canvas.drawLine(Offset(pos.dx, pos.dy - 10), Offset(pos.dx, pos.dy + 10), p);
 
-    // Vòng tròn định vị
+    // VÃÂÃÂ²ng trÃÂÃÂ²n ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh vÃÂ¡ÃÂ»ÃÂ
     final Paint circlePaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
     canvas.drawCircle(pos, 6, circlePaint);
 
-    // Hộp chữ toạ độ và mức năng lượng
+    // HÃÂ¡ÃÂ»ÃÂp chÃÂ¡ÃÂ»ÃÂ¯ toÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  mÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = TextSpan(
       text: label,
@@ -5547,12 +5555,12 @@ class ThermalSpectrumPainter128 extends CustomPainter {
 }
 
 // =========================================================================
-// MÀN HÌNH CÀI ĐẶT CHUNG CỦA ỨNG DỤNG (GENERAL SETTINGS SCREEN)
+// MÃÂÃÂN HÃÂÃÂNH CÃÂÃÂI ÃÂÃÂÃÂ¡ÃÂºÃÂ¶T CHUNG CÃÂ¡ÃÂ»ÃÂ¦A ÃÂ¡ÃÂ»ÃÂ¨NG DÃÂ¡ÃÂ»ÃÂ¤NG (GENERAL SETTINGS SCREEN)
 // =========================================================================
 
 // =========================================================================
-// WIDGET: BẢN GHI PHÁT LẠI QUÁ TRÌNH TÉ NGÃ (FALL PLAYBACK & AUDIT RECORD)
-// Mô phỏng chuỗi thời gian 4 giai đoạn (-2.0s -> 0s -> +2.0s) & Xuất biên bản
+// WIDGET: BÃÂ¡ÃÂºÃÂ¢N GHI PHÃÂÃÂT LÃÂ¡ÃÂºÃÂ I QUÃÂÃÂ TRÃÂÃÂNH TÃÂÃÂ NGÃÂÃÂ (FALL PLAYBACK & AUDIT RECORD)
+// MÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng chuÃÂ¡ÃÂ»ÃÂi thÃÂ¡ÃÂ»ÃÂi gian 4 giai ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n (-2.0s -> 0s -> +2.0s) & XuÃÂ¡ÃÂºÃÂ¥t biÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n
 // =========================================================================
 class HumanPostureSimulation extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -5564,7 +5572,7 @@ class HumanPostureSimulation extends StatefulWidget {
 }
 
 class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
-  double _currentTime = -2.0; // Từ -2.0 đến +2.0 giây
+  double _currentTime = -2.0; // TÃÂ¡ÃÂ»ÃÂ« -2.0 ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n +2.0 giÃÂÃÂ¢y
   bool _isPlaying = false;
   double _speed = 1.0;
   Timer? _playbackTimer;
@@ -5585,7 +5593,7 @@ class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
       }
       setState(() => _isPlaying = true);
       _playbackTimer?.cancel();
-      const intervalMs = 50; // 20 FPS đồng bộ với tần số cảm biến 20Hz
+      const intervalMs = 50; // 20 FPS ÃÂÃÂÃÂ¡ÃÂ»ÃÂng bÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂ»ÃÂi tÃÂ¡ÃÂºÃÂ§n sÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n 20Hz
       _playbackTimer = Timer.periodic(const Duration(milliseconds: intervalMs), (timer) {
         setState(() {
           _currentTime += (intervalMs / 1000.0) * _speed;
@@ -5619,7 +5627,7 @@ class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
       heightMm = 1720.0 + 15.0 * math.sin(t * 5);
       currentVel = 40.0;
       currentMot = 12;
-      stageName = "1. Đứng vững thăng bằng";
+      stageName = "1. ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng vÃÂ¡ÃÂ»ÃÂ¯ng thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng";
       stageColor = Colors.greenAccent;
       angleDeg = 0.0;
     } else if (t < 0.0) {
@@ -5627,14 +5635,14 @@ class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
       heightMm = 1720.0 - (1720.0 - 240.0) * (progress * progress);
       currentVel = maxVel * progress;
       currentMot = (15 + (peakMot - 15) * progress * 0.7).toInt();
-      stageName = "2. Mất đà & Rơi tự do";
+      stageName = "2. MÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂÃÂ  & RÃÂÃÂ¡i tÃÂ¡ÃÂ»ÃÂ± do";
       stageColor = Colors.amberAccent;
       angleDeg = progress * 75.0;
     } else if (t < 0.4) {
       heightMm = 240.0;
       currentVel = maxVel * (1.0 - t / 0.4);
       currentMot = peakMot;
-      stageName = "3. VA CHẠM SÀN (CHẤN ĐỘNG)";
+      stageName = "3. VA CHÃÂ¡ÃÂºÃÂ M SÃÂÃÂN (CHÃÂ¡ÃÂºÃÂ¤N ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG)";
       stageColor = Colors.redAccent;
       angleDeg = 90.0;
     } else {
@@ -5642,7 +5650,7 @@ class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
       heightMm = 220.0 + 8.0 * math.sin(t * 3);
       currentVel = 0.0;
       currentMot = (peakMot * (1.0 - postProg * 0.85)).clamp(8, 25).toInt();
-      stageName = "4. Nằm sàn bất động (Hậu ngã)";
+      stageName = "4. NÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (HÃÂ¡ÃÂºÃÂ­u ngÃÂÃÂ£)";
       stageColor = Colors.indigoAccent;
       angleDeg = 90.0;
     }
@@ -5659,31 +5667,31 @@ class _HumanPostureSimulationState extends State<HumanPostureSimulation> {
 
   void _showExportRecordDialog(BuildContext context, double vel, int motion, int dist, int sec) {
     final recordText = """
-══════════════════════════════════════════════════════
-HỒ SƠ GIÁM ĐỊNH TAI NẠN TÉ NGÃ (FALL INCIDENT RECORD)
-Hệ thống giám sát: FallGuard S3R8 (ESP32-S3-WROOM-1-N16R8)
-Mã sự cố: #FALL-REC-${sec.toString().padLeft(6, '0')}
-Thời gian xảy ra: Cách đây ${sec}s
-══════════════════════════════════════════════════════
-1. THÔNG SỐ ĐỘNG HỌC CÚ NGÃ (KINEMATICS):
-   - Phân loại cú ngã: Ngã va đập động năng mạnh (High-Velocity Fall Impact)
-   - Vận tốc rơi tự do cực đại (V_drop): ${vel.toStringAsFixed(0)} mm/s (Ngưỡng: >= 550 mm/s)
-   - Động năng va đập đỉnh (Peak Motion): $motion/100 (Chấn động va chạm mức cao)
-   - Cự ly của nạn nhân: $dist cm (Cổng radar FMCW số 3)
-   - Độ cao trước ngã: 1.72 m (Đứng thẳng) ➔ Sau ngã: 0.22 m (Sát sàn nhà)
+ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+HÃÂ¡ÃÂ»ÃÂ SÃÂÃÂ  GIÃÂÃÂM ÃÂÃÂÃÂ¡ÃÂ»ÃÂNH TAI NÃÂ¡ÃÂºÃÂ N TÃÂÃÂ NGÃÂÃÂ (FALL INCIDENT RECORD)
+HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng giÃÂÃÂ¡m sÃÂÃÂ¡t: FallGuard S3R8 (ESP32-S3-WROOM-1-N16R8)
+MÃÂÃÂ£ sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ: #FALL-REC-${sec.toString().padLeft(6, '0')}
+ThÃÂ¡ÃÂ»ÃÂi gian xÃÂ¡ÃÂºÃÂ£y ra: CÃÂÃÂ¡ch ÃÂÃÂÃÂÃÂ¢y ${sec}s
+ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+1. THÃÂÃÂNG SÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG HÃÂ¡ÃÂ»ÃÂC CÃÂÃÂ NGÃÂÃÂ (KINEMATICS):
+   - PhÃÂÃÂ¢n loÃÂ¡ÃÂºÃÂ¡i cÃÂÃÂº ngÃÂÃÂ£: NgÃÂÃÂ£ va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng mÃÂ¡ÃÂºÃÂ¡nh (High-Velocity Fall Impact)
+   - VÃÂ¡ÃÂºÃÂ­n tÃÂ¡ÃÂ»ÃÂc rÃÂÃÂ¡i tÃÂ¡ÃÂ»ÃÂ± do cÃÂ¡ÃÂ»ÃÂ±c ÃÂÃÂÃÂ¡ÃÂºÃÂ¡i (V_drop): ${vel.toStringAsFixed(0)} mm/s (NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ¡ng: >= 550 mm/s)
+   - ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng va ÃÂÃÂÃÂ¡ÃÂºÃÂ­p ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh (Peak Motion): $motion/100 (ChÃÂ¡ÃÂºÃÂ¥n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng va chÃÂ¡ÃÂºÃÂ¡m mÃÂ¡ÃÂ»ÃÂ©c cao)
+   - CÃÂ¡ÃÂ»ÃÂ± ly cÃÂ¡ÃÂ»ÃÂ§a nÃÂ¡ÃÂºÃÂ¡n nhÃÂÃÂ¢n: $dist cm (CÃÂ¡ÃÂ»ÃÂng radar FMCW sÃÂ¡ÃÂ»ÃÂ 3)
+   - ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc ngÃÂÃÂ£: 1.72 m (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng thÃÂ¡ÃÂºÃÂ³ng) ÃÂ¢ÃÂÃÂ Sau ngÃÂÃÂ£: 0.22 m (SÃÂÃÂ¡t sÃÂÃÂ n nhÃÂÃÂ )
 
-2. ĐÁNH GIÁ TRẠNG THÁI NẠN NHÂN (POST-FALL STATUS):
-   - Trạng thái: Nằm sàn bất động (Immobile on floor)
-   - Năng lượng vận động sau ngã: <= 20/100 (Không có phản xạ gượng dậy)
-   - Năng lượng vi chuyển động tĩnh: >= 16/100 (Còn dấu hiệu hô hấp / nhịp tim)
-   - Kết luận AI: Cú ngã thật 100%, nạn nhân cần hỗ trợ y tế khẩn cấp.
+2. ÃÂÃÂÃÂÃÂNH GIÃÂÃÂ TRÃÂ¡ÃÂºÃÂ NG THÃÂÃÂI NÃÂ¡ÃÂºÃÂ N NHÃÂÃÂN (POST-FALL STATUS):
+   - TrÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i: NÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng (Immobile on floor)
+   - NÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng sau ngÃÂÃÂ£: <= 20/100 (KhÃÂÃÂ´ng cÃÂÃÂ³ phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ gÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng dÃÂ¡ÃÂºÃÂ­y)
+   - NÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng vi chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng tÃÂÃÂ©nh: >= 16/100 (CÃÂÃÂ²n dÃÂ¡ÃÂºÃÂ¥u hiÃÂ¡ÃÂ»ÃÂu hÃÂÃÂ´ hÃÂ¡ÃÂºÃÂ¥p / nhÃÂ¡ÃÂ»ÃÂp tim)
+   - KÃÂ¡ÃÂºÃÂ¿t luÃÂ¡ÃÂºÃÂ­n AI: CÃÂÃÂº ngÃÂÃÂ£ thÃÂ¡ÃÂºÃÂ­t 100%, nÃÂ¡ÃÂºÃÂ¡n nhÃÂÃÂ¢n cÃÂ¡ÃÂºÃÂ§n hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ y tÃÂ¡ÃÂºÃÂ¿ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p.
 
-3. HÀNH ĐỘNG CỨU NẠN TỰ ĐỘNG ĐÃ THỰC THI:
-   - Còi báo động Active Buzzer: Đã phát tín hiệu cảnh báo tại chỗ (85 dB)
-   - Đèn LED RGB WS2812B: Đổi màu Đỏ SOS nhấp nháy liên tục
-   - Gateway Wi-Fi: Đã gửi cảnh báo khẩn cấp Telegram Bot & SMS SpeedSMS
-══════════════════════════════════════════════════════
-Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ESP32-S3.
+3. HÃÂÃÂNH ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG CÃÂ¡ÃÂ»ÃÂ¨U NÃÂ¡ÃÂºÃÂ N TÃÂ¡ÃÂ»ÃÂ° ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG ÃÂÃÂÃÂÃÂ THÃÂ¡ÃÂ»ÃÂ°C THI:
+   - CÃÂÃÂ²i bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng Active Buzzer: ÃÂÃÂÃÂÃÂ£ phÃÂÃÂ¡t tÃÂÃÂ­n hiÃÂ¡ÃÂ»ÃÂu cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o tÃÂ¡ÃÂºÃÂ¡i chÃÂ¡ÃÂ»ÃÂ (85 dB)
+   - ÃÂÃÂÃÂÃÂ¨n LED RGB WS2812B: ÃÂÃÂÃÂ¡ÃÂ»ÃÂi mÃÂÃÂ u ÃÂÃÂÃÂ¡ÃÂ»ÃÂ SOS nhÃÂ¡ÃÂºÃÂ¥p nhÃÂÃÂ¡y liÃÂÃÂªn tÃÂ¡ÃÂ»ÃÂ¥c
+   - Gateway Wi-Fi: ÃÂÃÂÃÂÃÂ£ gÃÂ¡ÃÂ»ÃÂ­i cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p Telegram Bot & SMS SpeedSMS
+ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+BÃÂ¡ÃÂºÃÂ£n ghi ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c trÃÂÃÂ­ch xuÃÂ¡ÃÂºÃÂ¥t tÃÂ¡ÃÂ»ÃÂ« bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ Flash NVS cÃÂ¡ÃÂ»ÃÂ§a thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ESP32-S3.
 """;
 
     showDialog(
@@ -5694,7 +5702,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
           children: [
             Icon(Icons.assignment, color: Colors.cyanAccent),
             SizedBox(width: 8),
-            Expanded(child: Text("Biên bản sự cố té ngã", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+            Expanded(child: Text("BiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ tÃÂÃÂ© ngÃÂÃÂ£", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
           ],
         ),
         content: SizedBox(
@@ -5722,18 +5730,18 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.copy, size: 16),
-            label: const Text("Sao chép biên bản"),
+            label: const Text("Sao chÃÂÃÂ©p biÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n"),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: recordText));
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Đã sao chép biên bản sự cố vào bộ nhớ tạm!"), backgroundColor: Colors.green),
+                const SnackBar(content: Text("ÃÂÃÂÃÂÃÂ£ sao chÃÂÃÂ©p biÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ o bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ¡m!"), backgroundColor: Colors.green),
               );
             },
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Đóng"),
+            child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
           ),
         ],
       ),
@@ -5757,7 +5765,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tiêu đề & Nút xuất hồ sơ
+            // TiÃÂÃÂªu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ & NÃÂÃÂºt xuÃÂ¡ÃÂºÃÂ¥t hÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -5766,7 +5774,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
                     Icon(Icons.slow_motion_video, color: Colors.amberAccent, size: 24),
                     SizedBox(width: 8),
                     Text(
-                      "Bản ghi phát lại cú ngã (Record Playback):",
+                      "BÃÂ¡ÃÂºÃÂ£n ghi phÃÂÃÂ¡t lÃÂ¡ÃÂºÃÂ¡i cÃÂÃÂº ngÃÂÃÂ£ (Record Playback):",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ],
@@ -5777,19 +5785,19 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
                     side: const BorderSide(color: Colors.cyanAccent),
                   ),
                   icon: const Icon(Icons.receipt_long, size: 14, color: Colors.cyanAccent),
-                  label: const Text("Xuất biên bản", style: TextStyle(fontSize: 11, color: Colors.cyanAccent)),
+                  label: const Text("XuÃÂ¡ÃÂºÃÂ¥t biÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n", style: TextStyle(fontSize: 11, color: Colors.cyanAccent)),
                   onPressed: () => _showExportRecordDialog(context, vel, motion, dist, sec),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              "Tua lại quá trình té ngã 4 giây (-2s ➔ 0s ➔ +2s) tái tạo từ chuỗi mẫu cảm biến Laser ToF và Radar FMCW.",
+              "Tua lÃÂ¡ÃÂºÃÂ¡i quÃÂÃÂ¡ trÃÂÃÂ¬nh tÃÂÃÂ© ngÃÂÃÂ£ 4 giÃÂÃÂ¢y (-2s ÃÂ¢ÃÂÃÂ 0s ÃÂ¢ÃÂÃÂ +2s) tÃÂÃÂ¡i tÃÂ¡ÃÂºÃÂ¡o tÃÂ¡ÃÂ»ÃÂ« chuÃÂ¡ÃÂ»ÃÂi mÃÂ¡ÃÂºÃÂ«u cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n Laser ToF vÃÂÃÂ  Radar FMCW.",
               style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 12),
 
-            // Khung hình mô phỏng chuyển động người 2D
+            // Khung hÃÂÃÂ¬nh mÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂ»ÃÂng ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi 2D
             Container(
               height: 125,
               decoration: BoxDecoration(
@@ -5808,7 +5816,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
                   ),
                   child: Stack(
                     children: [
-                      // Badge mốc thời gian góc trên
+                      // Badge mÃÂ¡ÃÂ»ÃÂc thÃÂ¡ÃÂ»ÃÂi gian gÃÂÃÂ³c trÃÂÃÂªn
                       Positioned(
                         top: 8,
                         left: 10,
@@ -5825,7 +5833,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
                           ),
                         ),
                       ),
-                      // Badge giai đoạn góc trên phải
+                      // Badge giai ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n gÃÂÃÂ³c trÃÂÃÂªn phÃÂ¡ÃÂºÃÂ£i
                       Positioned(
                         top: 8,
                         right: 10,
@@ -5848,19 +5856,19 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
             ),
             const SizedBox(height: 10),
 
-            // Dải thông số cảm biến tức thời
+            // DÃÂ¡ÃÂºÃÂ£i thÃÂÃÂ´ng sÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n tÃÂ¡ÃÂ»ÃÂ©c thÃÂ¡ÃÂ»ÃÂi
             Row(
               children: [
-                _buildMetricChip("Độ cao ToF", "${(frame["height"] as double).toInt()} mm", Icons.height, Colors.cyanAccent),
+                _buildMetricChip("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", "${(frame["height"] as double).toInt()} mm", Icons.height, Colors.cyanAccent),
                 const SizedBox(width: 8),
-                _buildMetricChip("Vận tốc ToF", "${(frame["vel"] as double).toStringAsFixed(0)} mm/s", Icons.speed, Colors.orangeAccent),
+                _buildMetricChip("VÃÂ¡ÃÂºÃÂ­n tÃÂ¡ÃÂ»ÃÂc ToF", "${(frame["vel"] as double).toStringAsFixed(0)} mm/s", Icons.speed, Colors.orangeAccent),
                 const SizedBox(width: 8),
-                _buildMetricChip("Động năng Radar", "${frame["mot"]}/100", Icons.radar, Colors.redAccent),
+                _buildMetricChip("ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar", "${frame["mot"]}/100", Icons.radar, Colors.redAccent),
               ],
             ),
             const SizedBox(height: 10),
 
-            // Thanh trượt thời gian (Timeline Slider)
+            // Thanh trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£t thÃÂ¡ÃÂ»ÃÂi gian (Timeline Slider)
             Row(
               children: [
                 const Text("-2.0s", style: TextStyle(fontSize: 10, color: Colors.grey)),
@@ -5885,13 +5893,13 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
               ],
             ),
 
-            // Hàng nút điều khiển Play / Pause / Replay / Speed
+            // HÃÂÃÂ ng nÃÂÃÂºt ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn Play / Pause / Replay / Speed
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton.filledTonal(
                   icon: const Icon(Icons.replay),
-                  tooltip: "Tua lại từ đầu (-2s)",
+                  tooltip: "Tua lÃÂ¡ÃÂºÃÂ¡i tÃÂ¡ÃÂ»ÃÂ« ÃÂÃÂÃÂ¡ÃÂºÃÂ§u (-2s)",
                   onPressed: _resetPlayback,
                 ),
                 const SizedBox(width: 12),
@@ -5901,7 +5909,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
                   icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                  label: Text(_isPlaying ? "Tạm dừng" : "Phát lại quá trình ngã"),
+                  label: Text(_isPlaying ? "TÃÂ¡ÃÂºÃÂ¡m dÃÂ¡ÃÂ»ÃÂ«ng" : "PhÃÂÃÂ¡t lÃÂ¡ÃÂºÃÂ¡i quÃÂÃÂ¡ trÃÂÃÂ¬nh ngÃÂÃÂ£"),
                   onPressed: _togglePlay,
                 ),
                 const SizedBox(width: 12),
@@ -5958,7 +5966,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
 }
 
 // =========================================================================
-// CUSTOM PAINTER: VẼ HOẠT ẢNH NGƯỜI CHUYỂN ĐỘNG TRONG PHÁT LẠI CÚ NGÃ
+// CUSTOM PAINTER: VÃÂ¡ÃÂºÃÂ¼ HOÃÂ¡ÃÂºÃÂ T ÃÂ¡ÃÂºÃÂ¢NH NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂI CHUYÃÂ¡ÃÂ»ÃÂN ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG TRONG PHÃÂÃÂT LÃÂ¡ÃÂºÃÂ I CÃÂÃÂ NGÃÂÃÂ
 // =========================================================================
 class HumanMotionPlaybackPainter extends CustomPainter {
   final double angleDeg;
@@ -5978,14 +5986,14 @@ class HumanMotionPlaybackPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // Mặt sàn (Floor Line)
+    // MÃÂ¡ÃÂºÃÂ·t sÃÂÃÂ n (Floor Line)
     final double floorY = h - 18;
     final Paint floorPaint = Paint()
       ..color = Colors.grey.shade700
       ..strokeWidth = 2.0;
     canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
 
-    // Chùm đo laser ToF từ trần chiếu xuống đầu người
+    // ChÃÂÃÂ¹m ÃÂÃÂo laser ToF tÃÂ¡ÃÂ»ÃÂ« trÃÂ¡ÃÂºÃÂ§n chiÃÂ¡ÃÂºÃÂ¿u xuÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂºÃÂ§u ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi
     final double humanX = w * 0.48;
     final double normH = (heightMm / 2000.0).clamp(0.1, 0.95);
     final double headY = floorY - (normH * (floorY - 25));
@@ -5996,11 +6004,11 @@ class HumanMotionPlaybackPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(humanX, 5), Offset(humanX, headY), tofBeam);
 
-    // Vòng tròn cảm biến ToF trần nhà
+    // VÃÂÃÂ²ng trÃÂÃÂ²n cÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n ToF trÃÂ¡ÃÂºÃÂ§n nhÃÂÃÂ 
     final Paint ceilingSensor = Paint()..color = Colors.cyanAccent;
     canvas.drawCircle(Offset(humanX, 5), 4, ceilingSensor);
 
-    // Xung chấn động sàn khi va chạm (t từ -0.1s đến +0.3s)
+    // Xung chÃÂ¡ÃÂºÃÂ¥n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng sÃÂÃÂ n khi va chÃÂ¡ÃÂºÃÂ¡m (t tÃÂ¡ÃÂ»ÃÂ« -0.1s ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n +0.3s)
     if (currentTime >= -0.1 && currentTime <= 0.3) {
       final Paint shockwave = Paint()
         ..color = Colors.redAccent.withValues(alpha: 0.6)
@@ -6009,7 +6017,7 @@ class HumanMotionPlaybackPainter extends CustomPainter {
       canvas.drawCircle(Offset(humanX, floorY), 22 * (currentTime + 0.1) * 3, shockwave);
     }
 
-    // Vẽ mô hình người (Stick Figure với góc xoay ngã)
+    // VÃÂ¡ÃÂºÃÂ½ mÃÂÃÂ´ hÃÂÃÂ¬nh ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi (Stick Figure vÃÂ¡ÃÂ»ÃÂi gÃÂÃÂ³c xoay ngÃÂÃÂ£)
     canvas.save();
     canvas.translate(humanX, floorY);
     canvas.rotate(angleDeg * math.pi / 180.0);
@@ -6020,17 +6028,17 @@ class HumanMotionPlaybackPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final double bodyLen = 50.0;
-    // Thân
+    // ThÃÂÃÂ¢n
     canvas.drawLine(const Offset(0, 0), Offset(0, -bodyLen), bodyPaint);
 
-    // Đầu
+    // ÃÂÃÂÃÂ¡ÃÂºÃÂ§u
     canvas.drawCircle(Offset(0, -bodyLen - 9), 8, bodyPaint);
 
     // Tay
     canvas.drawLine(Offset(0, -bodyLen * 0.7), Offset(-12, -bodyLen * 0.4), bodyPaint);
     canvas.drawLine(Offset(0, -bodyLen * 0.7), Offset(12, -bodyLen * 0.4), bodyPaint);
 
-    // Chân
+    // ChÃÂÃÂ¢n
     canvas.drawLine(const Offset(0, 0), const Offset(-10, 16), bodyPaint);
     canvas.drawLine(const Offset(0, 0), const Offset(10, 16), bodyPaint);
 
@@ -6047,7 +6055,7 @@ class HumanMotionPlaybackPainter extends CustomPainter {
 }
 
 // =========================================================================
-// MÀN HÌNH CÀI ĐẶT CHUNG CỦA ỨNG DỤNG (GENERAL SETTINGS SCREEN)
+// MÃÂÃÂN HÃÂÃÂNH CÃÂÃÂI ÃÂÃÂÃÂ¡ÃÂºÃÂ¶T CHUNG CÃÂ¡ÃÂ»ÃÂ¦A ÃÂ¡ÃÂ»ÃÂ¨NG DÃÂ¡ÃÂ»ÃÂ¤NG (GENERAL SETTINGS SCREEN)
 // =========================================================================
 class GeneralSettingsScreen extends StatefulWidget {
   final bool alarmSound;
@@ -6112,7 +6120,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
     );
   }
 
-  // Hướng dẫn sơ cứu khi phát hiện người già té ngã
+  // HÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n sÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u khi phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi giÃÂÃÂ  tÃÂÃÂ© ngÃÂÃÂ£
   void _showFirstAidGuide() {
     showFirstAidGuideModal(context);
   }
@@ -6146,7 +6154,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
     );
   }
 
-  // Kích hoạt cập nhật OTA từ Cài đặt chung
+  // KÃÂÃÂ­ch hoÃÂ¡ÃÂºÃÂ¡t cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t OTA tÃÂ¡ÃÂ»ÃÂ« CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung
   void _triggerOtaUpdate() {
     showDialog(
       context: context,
@@ -6209,7 +6217,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   Icon(Icons.system_update, color: Colors.blueAccent, size: 28),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text("Cập nhật ứng dụng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    child: Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t ÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂ»ÃÂ¥ng OTA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   ),
                 ],
               ),
@@ -6235,7 +6243,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("GitHub Releases (Trực tiếp)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+                                  const Text("GitHub Releases (TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
                                   Text(
                                     Platform.isIOS ? "Apple In-House OTA (FallGuard_iOS_unsigned.ipa)" : "Android APK Release (app-release.apk)",
                                     style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -6259,7 +6267,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text("PhiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
                               ],
                             ),
@@ -6267,9 +6275,9 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Bản mới trên GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                const Text("BÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi trÃÂÃÂªn GitHub:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text(
-                                  releaseInfo?['name']?.toString() ?? (isLoading ? "Đang kết nối..." : "Fall Guard Latest Release"),
+                                  releaseInfo?['name']?.toString() ?? (isLoading ? "ÃÂÃÂang kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi..." : "Fall Guard Latest Release"),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueAccent),
                                 ),
                               ],
@@ -6279,7 +6287,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text("Dung lượng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const Text("Dung lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng file APK:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                   Text(
                                     "${(apkSize / (1024 * 1024)).toStringAsFixed(1)} MB",
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -6293,8 +6301,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                       const SizedBox(height: 12),
                       Text(
                         Platform.isIOS
-                            ? "Hệ thống sẽ mở đường dẫn cài đặt trực tiếp từ GitHub Releases. Nhấn [Cài đặt] để nâng cấp."
-                            : "Hệ thống kết nối trực tiếp tới bản APK mới nhất trên GitHub Releases và mở trình cài đặt Android để nâng cấp đè giữ nguyên dữ liệu.",
+                            ? "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng sÃÂ¡ÃÂºÃÂ½ mÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂ« GitHub Releases. NhÃÂ¡ÃÂºÃÂ¥n [CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t] ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ¢ng cÃÂ¡ÃÂºÃÂ¥p."
+                            : "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p tÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂºÃÂ£n APK mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t trÃÂÃÂªn GitHub Releases vÃÂÃÂ  mÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ¬nh cÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t Android ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ¢ng cÃÂ¡ÃÂºÃÂ¥p ÃÂÃÂÃÂÃÂ¨ giÃÂ¡ÃÂ»ÃÂ¯ nguyÃÂÃÂªn dÃÂ¡ÃÂ»ÃÂ¯ liÃÂ¡ÃÂ»ÃÂu.",
                         style: const TextStyle(fontSize: 12, height: 1.4),
                       ),
                     ],
@@ -6304,7 +6312,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Đóng"),
+                  child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -6337,14 +6345,14 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Lỗi mở liên kết APK: $e")),
+                            SnackBar(content: Text("LÃÂ¡ÃÂ»ÃÂi mÃÂ¡ÃÂ»ÃÂ liÃÂÃÂªn kÃÂ¡ÃÂºÃÂ¿t APK: $e")),
                           );
                         }
                       }
                     }
                   },
                   icon: const Icon(Icons.cloud_download),
-                  label: const Text("Cài đặt cập nhật ngay"),
+                  label: const Text("CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t cÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t ngay"),
                 ),
               ],
             );
@@ -6362,14 +6370,14 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
           children: [
             Icon(Icons.tune, color: Colors.blueAccent),
             SizedBox(width: 8),
-            Text("Cài đặt chung App", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("CÃÂÃÂ i ÃÂÃÂÃÂ¡ÃÂºÃÂ·t chung App", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // 1. CẢNH BÁO KHẨN CẤP & ÂM THANH
+          // 1. CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P & ÃÂÃÂM THANH
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -6381,14 +6389,14 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     children: [
                       Icon(Icons.notifications_active, color: Colors.redAccent),
                       SizedBox(width: 8),
-                      Text("Báo động trên điện thoại", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("BÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng trÃÂÃÂªn ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Còi hú báo động trên điện thoại", style: TextStyle(fontSize: 14)),
-                    subtitle: const Text("Phát âm thanh còi cứu hộ lớn trên máy khi phát hiện ngã", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("CÃÂÃÂ²i hÃÂÃÂº bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng trÃÂÃÂªn ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("PhÃÂÃÂ¡t ÃÂÃÂ¢m thanh cÃÂÃÂ²i cÃÂ¡ÃÂ»ÃÂ©u hÃÂ¡ÃÂ»ÃÂ lÃÂ¡ÃÂ»ÃÂn trÃÂÃÂªn mÃÂÃÂ¡y khi phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn ngÃÂÃÂ£", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     value: _alarmSound,
                     onChanged: (val) {
                       setState(() => _alarmSound = val);
@@ -6397,8 +6405,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Rung mạnh khẩn cấp (SOS)", style: TextStyle(fontSize: 14)),
-                    subtitle: const Text("Rung liên tục theo nhịp cứu nạn", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("Rung mÃÂ¡ÃÂºÃÂ¡nh khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p (SOS)", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("Rung liÃÂÃÂªn tÃÂ¡ÃÂ»ÃÂ¥c theo nhÃÂ¡ÃÂ»ÃÂp cÃÂ¡ÃÂ»ÃÂ©u nÃÂ¡ÃÂºÃÂ¡n", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     value: _alarmVibrate,
                     onChanged: (val) {
                       setState(() => _alarmVibrate = val);
@@ -6410,7 +6418,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Âm lượng còi hú trên điện thoại:", style: TextStyle(fontSize: 13)),
+                        const Text("ÃÂÃÂm lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng cÃÂÃÂ²i hÃÂÃÂº trÃÂÃÂªn ÃÂÃÂiÃÂ¡ÃÂ»ÃÂn thoÃÂ¡ÃÂºÃÂ¡i:", style: TextStyle(fontSize: 13)),
                         Text("${(_alarmVolume * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent)),
                       ],
                     ),
@@ -6428,8 +6436,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ],
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Phím tắt gọi cấp cứu 115", style: TextStyle(fontSize: 14)),
-                    subtitle: const Text("Gợi ý 1 chạm mở cuộc gọi 115 khi xảy ra chấn thương ngã", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("PhÃÂÃÂ­m tÃÂ¡ÃÂºÃÂ¯t gÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u 115", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("GÃÂ¡ÃÂ»ÃÂ£i ÃÂÃÂ½ 1 chÃÂ¡ÃÂºÃÂ¡m mÃÂ¡ÃÂ»ÃÂ cuÃÂ¡ÃÂ»ÃÂc gÃÂ¡ÃÂ»ÃÂi 115 khi xÃÂ¡ÃÂºÃÂ£y ra chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng ngÃÂÃÂ£", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     value: _autoEmergency115,
                     onChanged: (val) {
                       setState(() => _autoEmergency115 = val);
@@ -6442,7 +6450,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 2. KẾT NỐI & THIẾT BỊ GHÉP NỐI
+          // 2. KÃÂ¡ÃÂºÃÂ¾T NÃÂ¡ÃÂ»ÃÂI & THIÃÂ¡ÃÂºÃÂ¾T BÃÂ¡ÃÂ»ÃÂ GHÃÂÃÂP NÃÂ¡ÃÂ»ÃÂI
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -6454,14 +6462,14 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     children: [
                       Icon(Icons.bluetooth_connected, color: Colors.blueAccent),
                       SizedBox(width: 8),
-                      Text("Kết nối & Thiết bị", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("KÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi & ThiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text("Tự động kết nối lại thiết bị gần nhất", style: TextStyle(fontSize: 14)),
-                    subtitle: const Text("Tự động kết nối Bluetooth ngay khi mở app", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi lÃÂ¡ÃÂºÃÂ¡i thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t", style: TextStyle(fontSize: 14)),
+                    subtitle: const Text("TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi Bluetooth ngay khi mÃÂ¡ÃÂ»ÃÂ app", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     value: _autoReconnect,
                     onChanged: (val) {
                       setState(() => _autoReconnect = val);
@@ -6472,31 +6480,31 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.history, color: Colors.teal),
-                    title: Text("Lịch sử thiết bị đã lưu: ${widget.deviceHistoryCount} thiết bị", style: const TextStyle(fontSize: 14)),
-                    subtitle: const Text("Xem và quản lý các thiết bị từng ghép nối", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: Text("LÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ£ lÃÂÃÂ°u: ${widget.deviceHistoryCount} thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ", style: const TextStyle(fontSize: 14)),
+                    subtitle: const Text("Xem vÃÂÃÂ  quÃÂ¡ÃÂºÃÂ£n lÃÂÃÂ½ cÃÂÃÂ¡c thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng ghÃÂÃÂ©p nÃÂ¡ÃÂ»ÃÂi", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: widget.deviceHistoryCount > 0
                         ? TextButton(
                             onPressed: () {
                               showDialog(
                                 context: context,
                                 builder: (c) => AlertDialog(
-                                  title: const Text("Xóa toàn bộ lịch sử?"),
-                                  content: const Text("Bạn có chắc muốn xóa toàn bộ danh sách thiết bị từng kết nối không?"),
+                                  title: const Text("XÃÂÃÂ³a toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­?"),
+                                  content: const Text("BÃÂ¡ÃÂºÃÂ¡n cÃÂÃÂ³ chÃÂ¡ÃÂºÃÂ¯c muÃÂ¡ÃÂ»ÃÂn xÃÂÃÂ³a toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ danh sÃÂÃÂ¡ch thiÃÂ¡ÃÂºÃÂ¿t bÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂ»ÃÂ«ng kÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi khÃÂÃÂ´ng?"),
                                   actions: [
-                                    TextButton(onPressed: () => Navigator.pop(c), child: const Text("Hủy")),
+                                    TextButton(onPressed: () => Navigator.pop(c), child: const Text("HÃÂ¡ÃÂ»ÃÂ§y")),
                                     TextButton(
                                       onPressed: () {
                                         Navigator.pop(c);
                                         widget.onClearHistory();
                                         setState(() {});
                                       },
-                                      child: const Text("Xóa hết", style: TextStyle(color: Colors.redAccent)),
+                                      child: const Text("XÃÂÃÂ³a hÃÂ¡ÃÂºÃÂ¿t", style: TextStyle(color: Colors.redAccent)),
                                     ),
                                   ],
                                 ),
                               );
                             },
-                            child: const Text("Xóa hết", style: TextStyle(color: Colors.redAccent)),
+                            child: const Text("XÃÂÃÂ³a hÃÂ¡ÃÂºÃÂ¿t", style: TextStyle(color: Colors.redAccent)),
                           )
                         : null,
                   ),
@@ -6506,7 +6514,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 3. HIỂN THỊ & ĐƠN VỊ ĐO
+          // 3. HIÃÂ¡ÃÂ»ÃÂN THÃÂ¡ÃÂ»ÃÂ & ÃÂÃÂÃÂÃÂ N VÃÂ¡ÃÂ»ÃÂ ÃÂÃÂO
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -6518,14 +6526,14 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     children: [
                       Icon(Icons.straighten, color: Colors.orangeAccent),
                       SizedBox(width: 8),
-                      Text("Đơn vị đo lường", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ÃÂÃÂÃÂÃÂ¡n vÃÂ¡ÃÂ»ÃÂ ÃÂÃÂo lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Đơn vị khoảng cách:", style: TextStyle(fontSize: 14)),
+                      const Text("ÃÂÃÂÃÂÃÂ¡n vÃÂ¡ÃÂ»ÃÂ khoÃÂ¡ÃÂºÃÂ£ng cÃÂÃÂ¡ch:", style: TextStyle(fontSize: 14)),
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: "mm", label: Text("mm", style: TextStyle(fontSize: 12))),
@@ -6543,11 +6551,11 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Đơn vị năng lượng Radar:", style: TextStyle(fontSize: 14)),
+                      const Text("ÃÂÃÂÃÂÃÂ¡n vÃÂ¡ÃÂ»ÃÂ nÃÂÃÂng lÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng Radar:", style: TextStyle(fontSize: 14)),
                       SegmentedButton<String>(
                         segments: const [
-                          ButtonSegment(value: "%", label: Text("% (Tỉ lệ)", style: TextStyle(fontSize: 12))),
-                          ButtonSegment(value: "dB", label: Text("dB (Cường độ)", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "%", label: Text("% (TÃÂ¡ÃÂ»ÃÂ lÃÂ¡ÃÂ»ÃÂ)", style: TextStyle(fontSize: 12))),
+                          ButtonSegment(value: "dB", label: Text("dB (CÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ)", style: TextStyle(fontSize: 12))),
                         ],
                         selected: {_tempUnit == "dB" ? "dB" : "%"},
                         onSelectionChanged: (val) {
@@ -6563,7 +6571,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 4. AN TOÀN Y TẾ & CẬP NHẬT PHẦN MỀM
+          // 4. AN TOÃÂÃÂN Y TÃÂ¡ÃÂºÃÂ¾ & CÃÂ¡ÃÂºÃÂ¬P NHÃÂ¡ÃÂºÃÂ¬T PHÃÂ¡ÃÂºÃÂ¦N MÃÂ¡ÃÂ»ÃÂM
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -6575,15 +6583,15 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     children: [
                       Icon(Icons.health_and_safety, color: Colors.green),
                       SizedBox(width: 8),
-                      Text("An toàn & Cập nhật", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("An toÃÂÃÂ n & CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.badge, color: Colors.redAccent),
-                    title: const Text("Hồ sơ y tế khẩn cấp người cao tuổi", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Nhóm máu, thuốc chống đông máu, tiền sử bệnh lý, liên hệ 115", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("HÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡ y tÃÂ¡ÃÂºÃÂ¿ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cao tuÃÂ¡ÃÂ»ÃÂi", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("NhÃÂÃÂ³m mÃÂÃÂ¡u, thuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng mÃÂÃÂ¡u, tiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ bÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½, liÃÂÃÂªn hÃÂ¡ÃÂ»ÃÂ 115", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _openMedicalProfile,
                   ),
@@ -6591,8 +6599,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.quiz, color: Colors.blueAccent),
-                    title: const Text("Đánh giá nguy cơ té ngã CDC STEADI", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Bộ 12 câu hỏi lâm sàng theo chuẩn CDC Hoa Kỳ", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ nguy cÃÂÃÂ¡ tÃÂÃÂ© ngÃÂÃÂ£ CDC STEADI", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("BÃÂ¡ÃÂ»ÃÂ 12 cÃÂÃÂ¢u hÃÂ¡ÃÂ»ÃÂi lÃÂÃÂ¢m sÃÂÃÂ ng theo chuÃÂ¡ÃÂºÃÂ©n CDC Hoa KÃÂ¡ÃÂ»ÃÂ³", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _openCdcAssessment,
                   ),
@@ -6600,8 +6608,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.medical_information, color: Colors.orangeAccent),
-                    title: const Text("Hướng dẫn sơ cứu người già ngã", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Quy tắc cấp cứu an toàn chuẩn y tế", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("HÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n sÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi giÃÂÃÂ  ngÃÂÃÂ£", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Quy tÃÂ¡ÃÂºÃÂ¯c cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u an toÃÂÃÂ n chuÃÂ¡ÃÂºÃÂ©n y tÃÂ¡ÃÂºÃÂ¿", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _showFirstAidGuide,
                   ),
@@ -6609,8 +6617,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.cloud_download, color: Colors.blueAccent),
-                    title: const Text("Kiểm tra & Cập nhật OTA", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Tự động nâng cấp phiên bản mới nhất từ GitHub qua mạng", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("KiÃÂ¡ÃÂ»ÃÂm tra & CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t OTA", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    subtitle: const Text("TÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂ¢ng cÃÂ¡ÃÂºÃÂ¥p phiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t tÃÂ¡ÃÂ»ÃÂ« GitHub qua mÃÂ¡ÃÂºÃÂ¡ng", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _triggerOtaUpdate,
                   ),
@@ -6620,7 +6628,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 5. THÔNG TIN HỆ THỐNG
+          // 5. THÃÂÃÂNG TIN HÃÂ¡ÃÂ»ÃÂ THÃÂ¡ÃÂ»ÃÂNG
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -6632,16 +6640,16 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     children: [
                       Icon(Icons.info_outline, color: Colors.blueGrey),
                       SizedBox(width: 8),
-                      Text("Thông tin hệ thống", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ThÃÂÃÂ´ng tin hÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   SizedBox(height: 10),
-                  Text("Ứng dụng: Fall Guard S3R8", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text("Phiên bản: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Text("Vi điều khiển: ESP32-S3-WROOM-1-N16R8 (16MB Flash / 8MB PSRAM)", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Text("Cảm biến kết hợp: PIR AM312 (Hồng ngoại) + ToF Laser (Độ cao) + Radar 24GHz FMCW (Động năng & Cự ly)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("ÃÂ¡ÃÂ»ÃÂ¨ng dÃÂ¡ÃÂ»ÃÂ¥ng: Fall Guard S3R8", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text("PhiÃÂÃÂªn bÃÂ¡ÃÂºÃÂ£n: v1.2.0 (Wi-Fi Direct Telemetry & NVS BlackBox)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("Vi ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu khiÃÂ¡ÃÂ»ÃÂn: ESP32-S3-WROOM-1-N16R8 (16MB Flash / 8MB PSRAM)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text("CÃÂ¡ÃÂºÃÂ£m biÃÂ¡ÃÂºÃÂ¿n kÃÂ¡ÃÂºÃÂ¿t hÃÂ¡ÃÂ»ÃÂ£p: PIR AM312 (HÃÂ¡ÃÂ»ÃÂng ngoÃÂ¡ÃÂºÃÂ¡i) + ToF Laser (ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao) + Radar 24GHz FMCW (ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng & CÃÂ¡ÃÂ»ÃÂ± ly)", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   SizedBox(height: 8),
-                  Text("© 2026 Fall Detection System. Bảo vệ an toàn người cao tuổi 24/7.", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey)),
+                  Text("ÃÂÃÂ© 2026 Fall Detection System. BÃÂ¡ÃÂºÃÂ£o vÃÂ¡ÃÂ»ÃÂ an toÃÂÃÂ n ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cao tuÃÂ¡ÃÂ»ÃÂi 24/7.", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey)),
                 ],
               ),
             ),
@@ -6654,7 +6662,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
 }
 
 // =========================================================================
-// HÀM MỞ HỘP THOẠI CẨM NANG SƠ CỨU NGƯỜI GIÀ TÉ NGÃ
+// HÃÂÃÂM MÃÂ¡ÃÂ»ÃÂ HÃÂ¡ÃÂ»ÃÂP THOÃÂ¡ÃÂºÃÂ I CÃÂ¡ÃÂºÃÂ¨M NANG SÃÂÃÂ  CÃÂ¡ÃÂ»ÃÂ¨U NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂI GIÃÂÃÂ TÃÂÃÂ NGÃÂÃÂ
 // =========================================================================
 void showFirstAidGuideModal(BuildContext context) {
   showDialog(
@@ -6785,7 +6793,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("• ", style: TextStyle(color: Colors.white60, fontSize: 15)),
+          const Text("ÃÂ¢ÃÂÃÂ¢ ", style: TextStyle(color: Colors.white60, fontSize: 15)),
           Expanded(
             child: RichText(
               text: TextSpan(
@@ -6851,7 +6859,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    "Trước khi thực hiện sơ cấp cứu, bạn cần đảm bảo một số điều quan trọng để xử lý đúng cách và an toàn:",
+                    "TrÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi thÃÂ¡ÃÂ»ÃÂ±c hiÃÂ¡ÃÂ»ÃÂn sÃÂÃÂ¡ cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u, bÃÂ¡ÃÂºÃÂ¡n cÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂ¡ÃÂºÃÂ£m bÃÂ¡ÃÂºÃÂ£o mÃÂ¡ÃÂ»ÃÂt sÃÂ¡ÃÂ»ÃÂ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu quan trÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ xÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ ÃÂÃÂÃÂÃÂºng cÃÂÃÂ¡ch vÃÂÃÂ  an toÃÂÃÂ n:",
                     style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
                   ),
                 ),
@@ -6860,34 +6868,34 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
           ),
           _buildStepCard(
             number: "1",
-            title: "Đánh giá mức độ chấn thương",
+            title: "ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ mÃÂ¡ÃÂ»ÃÂ©c ÃÂÃÂÃÂ¡ÃÂ»ÃÂ chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng",
             icon: Icons.visibility,
             color: Colors.cyanAccent,
             bodyItems: [
-              _bulletText("Quan sát kỹ người bị nạn", "Họ có còn tỉnh táo không?"),
-              _bulletText("Kiểm tra nhanh tình trạng cơ thể", "Có vết thương hở, máu chảy hay không."),
+              _bulletText("Quan sÃÂÃÂ¡t kÃÂ¡ÃÂ»ÃÂ¹ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n", "HÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ³ cÃÂÃÂ²n tÃÂ¡ÃÂ»ÃÂnh tÃÂÃÂ¡o khÃÂÃÂ´ng?"),
+              _bulletText("KiÃÂ¡ÃÂ»ÃÂm tra nhanh tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng cÃÂÃÂ¡ thÃÂ¡ÃÂ»ÃÂ", "CÃÂÃÂ³ vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng hÃÂ¡ÃÂ»ÃÂ, mÃÂÃÂ¡u chÃÂ¡ÃÂºÃÂ£y hay khÃÂÃÂ´ng."),
             ],
           ),
           _buildStepCard(
             number: "2",
-            title: "Đảm bảo an toàn",
+            title: "ÃÂÃÂÃÂ¡ÃÂºÃÂ£m bÃÂ¡ÃÂºÃÂ£o an toÃÂÃÂ n",
             icon: Icons.health_and_safety,
             color: Colors.amberAccent,
             bodyItems: [
-              _bulletText("Khu vực an toàn", "Đưa người bị nạn ra khỏi khu vực nguy hiểm (nếu có thể)."),
-              _bulletText("Tránh di chuyển", "Tránh di chuyển người bị nạn nếu nghi ngờ chấn thương cột sống.", prefixColor: Colors.orangeAccent),
+              _bulletText("Khu vÃÂ¡ÃÂ»ÃÂ±c an toÃÂÃÂ n", "ÃÂÃÂÃÂÃÂ°a ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n ra khÃÂ¡ÃÂ»ÃÂi khu vÃÂ¡ÃÂ»ÃÂ±c nguy hiÃÂ¡ÃÂ»ÃÂm (nÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ)."),
+              _bulletText("TrÃÂÃÂ¡nh di chuyÃÂ¡ÃÂ»ÃÂn", "TrÃÂÃÂ¡nh di chuyÃÂ¡ÃÂ»ÃÂn ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n nÃÂ¡ÃÂºÃÂ¿u nghi ngÃÂ¡ÃÂ»ÃÂ chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng cÃÂ¡ÃÂ»ÃÂt sÃÂ¡ÃÂ»ÃÂng.", prefixColor: Colors.orangeAccent),
             ],
           ),
           _buildStepCard(
             number: "3",
-            title: "Gọi hỗ trợ y tế nếu cần thiết",
+            title: "GÃÂ¡ÃÂ»ÃÂi hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ y tÃÂ¡ÃÂºÃÂ¿ nÃÂ¡ÃÂºÃÂ¿u cÃÂ¡ÃÂºÃÂ§n thiÃÂ¡ÃÂºÃÂ¿t",
             icon: Icons.emergency,
             color: Colors.redAccent,
             bodyItems: [
-              _bulletText("Chấn thương nghiêm trọng", "Nếu nhận thấy chấn thương nghiêm trọng (ví dụ: mất ý thức, gãy xương hở, chảy máu nhiều), hãy gọi ngay 115 hoặc đưa họ đến bệnh viện."),
+              _bulletText("ChÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng nghiÃÂÃÂªm trÃÂ¡ÃÂ»ÃÂng", "NÃÂ¡ÃÂºÃÂ¿u nhÃÂ¡ÃÂºÃÂ­n thÃÂ¡ÃÂºÃÂ¥y chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng nghiÃÂÃÂªm trÃÂ¡ÃÂ»ÃÂng (vÃÂÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥: mÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂ½ thÃÂ¡ÃÂ»ÃÂ©c, gÃÂÃÂ£y xÃÂÃÂ°ÃÂÃÂ¡ng hÃÂ¡ÃÂ»ÃÂ, chÃÂ¡ÃÂºÃÂ£y mÃÂÃÂ¡u nhiÃÂ¡ÃÂ»ÃÂu), hÃÂÃÂ£y gÃÂ¡ÃÂ»ÃÂi ngay 115 hoÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂÃÂ°a hÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n bÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn."),
               _buildTipCard(
-                "Mẹo nhỏ khi gọi cấp cứu",
-                "Khi gọi cấp cứu 115, hãy cung cấp thông tin chi tiết về tình trạng nạn nhân và vị trí chính xác của bạn để giúp đội ngũ y tế phản ứng nhanh hơn.",
+                "MÃÂ¡ÃÂºÃÂ¹o nhÃÂ¡ÃÂ»ÃÂ khi gÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u",
+                "Khi gÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u 115, hÃÂÃÂ£y cung cÃÂ¡ÃÂºÃÂ¥p thÃÂÃÂ´ng tin chi tiÃÂ¡ÃÂºÃÂ¿t vÃÂ¡ÃÂ»ÃÂ tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng nÃÂ¡ÃÂºÃÂ¡n nhÃÂÃÂ¢n vÃÂÃÂ  vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ chÃÂÃÂ­nh xÃÂÃÂ¡c cÃÂ¡ÃÂ»ÃÂ§a bÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂÃÂ¡ÃÂ»ÃÂ giÃÂÃÂºp ÃÂÃÂÃÂ¡ÃÂ»ÃÂi ngÃÂÃÂ© y tÃÂ¡ÃÂºÃÂ¿ phÃÂ¡ÃÂºÃÂ£n ÃÂ¡ÃÂ»ÃÂ©ng nhanh hÃÂÃÂ¡n.",
                 color: Colors.amberAccent,
                 icon: Icons.lightbulb,
               ),
@@ -6920,7 +6928,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    "Khi đã đảm bảo an toàn, hãy thực hiện các bước sơ cấp cứu cơ bản dưới đây:",
+                    "Khi ÃÂÃÂÃÂÃÂ£ ÃÂÃÂÃÂ¡ÃÂºÃÂ£m bÃÂ¡ÃÂºÃÂ£o an toÃÂÃÂ n, hÃÂÃÂ£y thÃÂ¡ÃÂ»ÃÂ±c hiÃÂ¡ÃÂ»ÃÂn cÃÂÃÂ¡c bÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc sÃÂÃÂ¡ cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u cÃÂÃÂ¡ bÃÂ¡ÃÂºÃÂ£n dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂÃÂ¢y:",
                     style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
                   ),
                 ),
@@ -6929,42 +6937,42 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
           ),
           _buildStepCard(
             number: "1",
-            title: "Kiểm tra tình trạng ý thức",
+            title: "KiÃÂ¡ÃÂ»ÃÂm tra tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng ÃÂÃÂ½ thÃÂ¡ÃÂ»ÃÂ©c",
             icon: Icons.psychology,
             color: Colors.purpleAccent,
             bodyItems: [
-              _bulletText("Phản xạ", "Gọi to hoặc lay nhẹ người bị nạn để xem họ có phản ứng hay không."),
-              _bulletText("Nhịp thở & CPR", "Nếu họ không phản ứng, hãy kiểm tra nhịp thở và chuẩn bị thực hiện hồi sức tim phổi (CPR) nếu cần.", prefixColor: Colors.redAccent),
+              _bulletText("PhÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡", "GÃÂ¡ÃÂ»ÃÂi to hoÃÂ¡ÃÂºÃÂ·c lay nhÃÂ¡ÃÂºÃÂ¹ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂÃÂ¡ÃÂ»ÃÂ xem hÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ³ phÃÂ¡ÃÂºÃÂ£n ÃÂ¡ÃÂ»ÃÂ©ng hay khÃÂÃÂ´ng."),
+              _bulletText("NhÃÂ¡ÃÂ»ÃÂp thÃÂ¡ÃÂ»ÃÂ & CPR", "NÃÂ¡ÃÂºÃÂ¿u hÃÂ¡ÃÂ»ÃÂ khÃÂÃÂ´ng phÃÂ¡ÃÂºÃÂ£n ÃÂ¡ÃÂ»ÃÂ©ng, hÃÂÃÂ£y kiÃÂ¡ÃÂ»ÃÂm tra nhÃÂ¡ÃÂ»ÃÂp thÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  chuÃÂ¡ÃÂºÃÂ©n bÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂ±c hiÃÂ¡ÃÂ»ÃÂn hÃÂ¡ÃÂ»ÃÂi sÃÂ¡ÃÂ»ÃÂ©c tim phÃÂ¡ÃÂ»ÃÂi (CPR) nÃÂ¡ÃÂºÃÂ¿u cÃÂ¡ÃÂºÃÂ§n.", prefixColor: Colors.redAccent),
             ],
           ),
           _buildStepCard(
             number: "2",
-            title: "Xử lý vết thương hở (nếu có)",
+            title: "XÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng hÃÂ¡ÃÂ»ÃÂ (nÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ³)",
             icon: Icons.healing,
             color: Colors.tealAccent,
             bodyItems: [
-              _bulletText("Rửa vết thương", "Rửa sạch vết thương bằng nước sạch hoặc dung dịch sát khuẩn."),
-              _bulletText("Băng bó vô trùng", "Dùng băng gạc vô trùng băng lại để ngăn ngừa nhiễm trùng."),
+              _bulletText("RÃÂ¡ÃÂ»ÃÂ­a vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng", "RÃÂ¡ÃÂ»ÃÂ­a sÃÂ¡ÃÂºÃÂ¡ch vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng bÃÂ¡ÃÂºÃÂ±ng nÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc sÃÂ¡ÃÂºÃÂ¡ch hoÃÂ¡ÃÂºÃÂ·c dung dÃÂ¡ÃÂ»ÃÂch sÃÂÃÂ¡t khuÃÂ¡ÃÂºÃÂ©n."),
+              _bulletText("BÃÂÃÂng bÃÂÃÂ³ vÃÂÃÂ´ trÃÂÃÂ¹ng", "DÃÂÃÂ¹ng bÃÂÃÂng gÃÂ¡ÃÂºÃÂ¡c vÃÂÃÂ´ trÃÂÃÂ¹ng bÃÂÃÂng lÃÂ¡ÃÂºÃÂ¡i ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂn ngÃÂ¡ÃÂ»ÃÂ«a nhiÃÂ¡ÃÂ»ÃÂm trÃÂÃÂ¹ng."),
             ],
           ),
           _buildStepCard(
             number: "3",
-            title: "Xử lý chấn thương phần mềm",
+            title: "XÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng phÃÂ¡ÃÂºÃÂ§n mÃÂ¡ÃÂ»ÃÂm",
             icon: Icons.ac_unit,
             color: Colors.lightBlueAccent,
             bodyItems: [
-              _bulletText("Chườm lạnh", "Dùng túi đá hoặc khăn lạnh chườm vào vùng bị sưng trong 15-20 phút."),
-              _bulletText("Cảnh báo quan trọng", "Không massage hay ấn mạnh vào vùng tổn thương, điều này có thể làm tình trạng nặng thêm.", prefixColor: Colors.redAccent),
+              _bulletText("ChÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂm lÃÂ¡ÃÂºÃÂ¡nh", "DÃÂÃÂ¹ng tÃÂÃÂºi ÃÂÃÂÃÂÃÂ¡ hoÃÂ¡ÃÂºÃÂ·c khÃÂÃÂn lÃÂ¡ÃÂºÃÂ¡nh chÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂm vÃÂÃÂ o vÃÂÃÂ¹ng bÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ°ng trong 15-20 phÃÂÃÂºt."),
+              _bulletText("CÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o quan trÃÂ¡ÃÂ»ÃÂng", "KhÃÂÃÂ´ng massage hay ÃÂ¡ÃÂºÃÂ¥n mÃÂ¡ÃÂºÃÂ¡nh vÃÂÃÂ o vÃÂÃÂ¹ng tÃÂ¡ÃÂ»ÃÂn thÃÂÃÂ°ÃÂÃÂ¡ng, ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu nÃÂÃÂ y cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ m tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng nÃÂ¡ÃÂºÃÂ·ng thÃÂÃÂªm.", prefixColor: Colors.redAccent),
             ],
           ),
           _buildStepCard(
             number: "4",
-            title: "Hỗ trợ người bị nạn di chuyển",
+            title: "HÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n di chuyÃÂ¡ÃÂ»ÃÂn",
             icon: Icons.accessible_forward,
             color: Colors.orangeAccent,
             bodyItems: [
-              _bulletText("Hỗ trợ nhẹ nhàng", "Nếu cần di chuyển, hãy giúp đỡ nhẹ nhàng, tránh gây thêm tổn thương."),
-              _bulletText("Nghi ngờ gãy xương", "Trường hợp nghi ngờ gãy xương, hãy cố định phần bị chấn thương trước khi di chuyển.", prefixColor: Colors.amberAccent),
+              _bulletText("HÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ nhÃÂ¡ÃÂºÃÂ¹ nhÃÂÃÂ ng", "NÃÂ¡ÃÂºÃÂ¿u cÃÂ¡ÃÂºÃÂ§n di chuyÃÂ¡ÃÂ»ÃÂn, hÃÂÃÂ£y giÃÂÃÂºp ÃÂÃÂÃÂ¡ÃÂ»ÃÂ¡ nhÃÂ¡ÃÂºÃÂ¹ nhÃÂÃÂ ng, trÃÂÃÂ¡nh gÃÂÃÂ¢y thÃÂÃÂªm tÃÂ¡ÃÂ»ÃÂn thÃÂÃÂ°ÃÂÃÂ¡ng."),
+              _bulletText("Nghi ngÃÂ¡ÃÂ»ÃÂ gÃÂÃÂ£y xÃÂÃÂ°ÃÂÃÂ¡ng", "TrÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂ£p nghi ngÃÂ¡ÃÂ»ÃÂ gÃÂÃÂ£y xÃÂÃÂ°ÃÂÃÂ¡ng, hÃÂÃÂ£y cÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh phÃÂ¡ÃÂºÃÂ§n bÃÂ¡ÃÂ»ÃÂ chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc khi di chuyÃÂ¡ÃÂ»ÃÂn.", prefixColor: Colors.amberAccent),
             ],
           ),
         ],
@@ -6994,7 +7002,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    "Mỗi trường hợp té ngã sẽ cần cách xử lý khác nhau dựa trên mức độ nghiêm trọng của chấn thương:",
+                    "MÃÂ¡ÃÂ»ÃÂi trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂ£p tÃÂÃÂ© ngÃÂÃÂ£ sÃÂ¡ÃÂºÃÂ½ cÃÂ¡ÃÂºÃÂ§n cÃÂÃÂ¡ch xÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ khÃÂÃÂ¡c nhau dÃÂ¡ÃÂ»ÃÂ±a trÃÂÃÂªn mÃÂ¡ÃÂ»ÃÂ©c ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nghiÃÂÃÂªm trÃÂ¡ÃÂ»ÃÂng cÃÂ¡ÃÂ»ÃÂ§a chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng:",
                     style: TextStyle(fontSize: 13.5, color: Colors.white70, height: 1.45),
                   ),
                 ),
@@ -7003,25 +7011,25 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
           ),
           _buildStepCard(
             number: "1",
-            title: "Cách xử lý té ngã gây chấn thương nhẹ",
+            title: "CÃÂÃÂ¡ch xÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ tÃÂÃÂ© ngÃÂÃÂ£ gÃÂÃÂ¢y chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng nhÃÂ¡ÃÂºÃÂ¹",
             icon: Icons.healing_outlined,
             color: Colors.tealAccent,
             bodyItems: [
               _subItemCard(
-                "Trầy xước ngoài da",
+                "TrÃÂ¡ÃÂºÃÂ§y xÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc ngoÃÂÃÂ i da",
                 [
-                  _bulletText("Làm sạch vết thương", "Rửa bằng nước sạch hoặc dung dịch sát khuẩn."),
-                  _bulletText("Băng bó", "Sử dụng băng gạc vô trùng để che phủ vết thương, giúp ngăn ngừa nhiễm trùng."),
-                  _bulletText("Vệ sinh định kỳ", "Thay băng hàng ngày hoặc khi băng bị ướt/bẩn."),
+                  _bulletText("LÃÂÃÂ m sÃÂ¡ÃÂºÃÂ¡ch vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng", "RÃÂ¡ÃÂ»ÃÂ­a bÃÂ¡ÃÂºÃÂ±ng nÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc sÃÂ¡ÃÂºÃÂ¡ch hoÃÂ¡ÃÂºÃÂ·c dung dÃÂ¡ÃÂ»ÃÂch sÃÂÃÂ¡t khuÃÂ¡ÃÂºÃÂ©n."),
+                  _bulletText("BÃÂÃÂng bÃÂÃÂ³", "SÃÂ¡ÃÂ»ÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥ng bÃÂÃÂng gÃÂ¡ÃÂºÃÂ¡c vÃÂÃÂ´ trÃÂÃÂ¹ng ÃÂÃÂÃÂ¡ÃÂ»ÃÂ che phÃÂ¡ÃÂ»ÃÂ§ vÃÂ¡ÃÂºÃÂ¿t thÃÂÃÂ°ÃÂÃÂ¡ng, giÃÂÃÂºp ngÃÂÃÂn ngÃÂ¡ÃÂ»ÃÂ«a nhiÃÂ¡ÃÂ»ÃÂm trÃÂÃÂ¹ng."),
+                  _bulletText("VÃÂ¡ÃÂ»ÃÂ sinh ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh kÃÂ¡ÃÂ»ÃÂ³", "Thay bÃÂÃÂng hÃÂÃÂ ng ngÃÂÃÂ y hoÃÂ¡ÃÂºÃÂ·c khi bÃÂÃÂng bÃÂ¡ÃÂ»ÃÂ ÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂt/bÃÂ¡ÃÂºÃÂ©n."),
                 ],
                 color: Colors.tealAccent,
               ),
               _subItemCard(
-                "Sưng bầm tím",
+                "SÃÂÃÂ°ng bÃÂ¡ÃÂºÃÂ§m tÃÂÃÂ­m",
                 [
-                  _bulletText("Chườm lạnh", "Dùng túi đá hoặc khăn lạnh chườm lên vùng bầm trong 15-20 phút để giảm sưng."),
-                  _bulletText("Nâng cao vùng thương", "Nếu có thể, giữ vùng tổn thương cao hơn tim để giảm sưng."),
-                  _bulletText("Lưu ý y tế", "Nếu tình trạng đau hoặc bầm tím kéo dài hơn 48 giờ mà không giảm, hãy tham khảo ý kiến bác sĩ.", prefixColor: Colors.amberAccent),
+                  _bulletText("ChÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂm lÃÂ¡ÃÂºÃÂ¡nh", "DÃÂÃÂ¹ng tÃÂÃÂºi ÃÂÃÂÃÂÃÂ¡ hoÃÂ¡ÃÂºÃÂ·c khÃÂÃÂn lÃÂ¡ÃÂºÃÂ¡nh chÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂm lÃÂÃÂªn vÃÂÃÂ¹ng bÃÂ¡ÃÂºÃÂ§m trong 15-20 phÃÂÃÂºt ÃÂÃÂÃÂ¡ÃÂ»ÃÂ giÃÂ¡ÃÂºÃÂ£m sÃÂÃÂ°ng."),
+                  _bulletText("NÃÂÃÂ¢ng cao vÃÂÃÂ¹ng thÃÂÃÂ°ÃÂÃÂ¡ng", "NÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ, giÃÂ¡ÃÂ»ÃÂ¯ vÃÂÃÂ¹ng tÃÂ¡ÃÂ»ÃÂn thÃÂÃÂ°ÃÂÃÂ¡ng cao hÃÂÃÂ¡n tim ÃÂÃÂÃÂ¡ÃÂ»ÃÂ giÃÂ¡ÃÂºÃÂ£m sÃÂÃÂ°ng."),
+                  _bulletText("LÃÂÃÂ°u ÃÂÃÂ½ y tÃÂ¡ÃÂºÃÂ¿", "NÃÂ¡ÃÂºÃÂ¿u tÃÂÃÂ¬nh trÃÂ¡ÃÂºÃÂ¡ng ÃÂÃÂau hoÃÂ¡ÃÂºÃÂ·c bÃÂ¡ÃÂºÃÂ§m tÃÂÃÂ­m kÃÂÃÂ©o dÃÂÃÂ i hÃÂÃÂ¡n 48 giÃÂ¡ÃÂ»ÃÂ mÃÂÃÂ  khÃÂÃÂ´ng giÃÂ¡ÃÂºÃÂ£m, hÃÂÃÂ£y tham khÃÂ¡ÃÂºÃÂ£o ÃÂÃÂ½ kiÃÂ¡ÃÂºÃÂ¿n bÃÂÃÂ¡c sÃÂÃÂ©.", prefixColor: Colors.amberAccent),
                 ],
                 color: Colors.cyanAccent,
               ),
@@ -7029,26 +7037,26 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
           ),
           _buildStepCard(
             number: "2",
-            title: "Cách xử lý té ngã gây chấn thương nặng",
+            title: "CÃÂÃÂ¡ch xÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ tÃÂÃÂ© ngÃÂÃÂ£ gÃÂÃÂ¢y chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng nÃÂ¡ÃÂºÃÂ·ng",
             icon: Icons.warning_amber_rounded,
             color: Colors.redAccent,
             bodyItems: [
               _subItemCard(
-                "Gãy xương",
+                "GÃÂÃÂ£y xÃÂÃÂ°ÃÂÃÂ¡ng",
                 [
-                  _bulletText("Cố định xương gãy", "Sử dụng nẹp hoặc vật cứng (ví dụ: thanh gỗ hoặc bìa cứng) để cố định vùng bị gãy, tránh di lệch xương."),
-                  _bulletText("Không tự ý nắn chỉnh", "Tuyệt đối không cố gắng nắn xương về vị trí ban đầu vì có thể làm tổn thương thêm mạch máu, dây thần kinh hoặc mô xung quanh.", prefixColor: Colors.redAccent),
-                  _bulletText("Đến bệnh viện ngay", "Nhanh chóng đưa nạn nhân đến cơ sở y tế gần nhất hoặc gọi cấp cứu 115.", prefixColor: Colors.amberAccent),
+                  _bulletText("CÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh xÃÂÃÂ°ÃÂÃÂ¡ng gÃÂÃÂ£y", "SÃÂ¡ÃÂ»ÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥ng nÃÂ¡ÃÂºÃÂ¹p hoÃÂ¡ÃÂºÃÂ·c vÃÂ¡ÃÂºÃÂ­t cÃÂ¡ÃÂ»ÃÂ©ng (vÃÂÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥: thanh gÃÂ¡ÃÂ»ÃÂ hoÃÂ¡ÃÂºÃÂ·c bÃÂÃÂ¬a cÃÂ¡ÃÂ»ÃÂ©ng) ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh vÃÂÃÂ¹ng bÃÂ¡ÃÂ»ÃÂ gÃÂÃÂ£y, trÃÂÃÂ¡nh di lÃÂ¡ÃÂ»ÃÂch xÃÂÃÂ°ÃÂÃÂ¡ng."),
+                  _bulletText("KhÃÂÃÂ´ng tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂ½ nÃÂ¡ÃÂºÃÂ¯n chÃÂ¡ÃÂ»ÃÂnh", "TuyÃÂ¡ÃÂ»ÃÂt ÃÂÃÂÃÂ¡ÃÂ»ÃÂi khÃÂÃÂ´ng cÃÂ¡ÃÂ»ÃÂ gÃÂ¡ÃÂºÃÂ¯ng nÃÂ¡ÃÂºÃÂ¯n xÃÂÃÂ°ÃÂÃÂ¡ng vÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ ban ÃÂÃÂÃÂ¡ÃÂºÃÂ§u vÃÂÃÂ¬ cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ m tÃÂ¡ÃÂ»ÃÂn thÃÂÃÂ°ÃÂÃÂ¡ng thÃÂÃÂªm mÃÂ¡ÃÂºÃÂ¡ch mÃÂÃÂ¡u, dÃÂÃÂ¢y thÃÂ¡ÃÂºÃÂ§n kinh hoÃÂ¡ÃÂºÃÂ·c mÃÂÃÂ´ xung quanh.", prefixColor: Colors.redAccent),
+                  _bulletText("ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n bÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn ngay", "Nhanh chÃÂÃÂ³ng ÃÂÃÂÃÂÃÂ°a nÃÂ¡ÃÂºÃÂ¡n nhÃÂÃÂ¢n ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n cÃÂÃÂ¡ sÃÂ¡ÃÂ»ÃÂ y tÃÂ¡ÃÂºÃÂ¿ gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t hoÃÂ¡ÃÂºÃÂ·c gÃÂ¡ÃÂ»ÃÂi cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u 115.", prefixColor: Colors.amberAccent),
                 ],
                 color: Colors.orangeAccent,
               ),
               _subItemCard(
-                "Chấn thương đầu",
+                "ChÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng ÃÂÃÂÃÂ¡ÃÂºÃÂ§u",
                 [
-                  _bulletText("Theo dõi dấu hiệu", "Chú ý các biểu hiện nguy hiểm như buồn nôn, chóng mặt dữ dội, mất trí nhớ tạm thời, co giật hoặc chảy máu từ tai, mũi.", prefixColor: Colors.redAccent),
-                  _bulletText("Giữ đầu cố định", "Hạn chế tối đa việc di chuyển đầu hoặc cổ của người bị nạn. Nếu cần nằm, hãy giữ đầu ngang bằng với thân mình."),
-                  _bulletText("Xử lý nôn ói (Tư thế nghiêng)", "Nếu người bị nạn nôn, hãy nhẹ nhàng nghiêng cả người họ sang một bên (tư thế nằm nghiêng an toàn) để tránh chất nôn tràn vào đường thở gây ngạt thở.", prefixColor: Colors.amberAccent),
-                  _bulletText("Đến bệnh viện cấp cứu", "Chấn thương đầu có thể tiềm ẩn xuất huyết não nguy hiểm, cần đưa người bị nạn đến bệnh viện ngay cả khi họ cảm thấy bình thường sau cú ngã.", prefixColor: Colors.redAccent),
+                  _bulletText("Theo dÃÂÃÂµi dÃÂ¡ÃÂºÃÂ¥u hiÃÂ¡ÃÂ»ÃÂu", "ChÃÂÃÂº ÃÂÃÂ½ cÃÂÃÂ¡c biÃÂ¡ÃÂ»ÃÂu hiÃÂ¡ÃÂ»ÃÂn nguy hiÃÂ¡ÃÂ»ÃÂm nhÃÂÃÂ° buÃÂ¡ÃÂ»ÃÂn nÃÂÃÂ´n, chÃÂÃÂ³ng mÃÂ¡ÃÂºÃÂ·t dÃÂ¡ÃÂ»ÃÂ¯ dÃÂ¡ÃÂ»ÃÂi, mÃÂ¡ÃÂºÃÂ¥t trÃÂÃÂ­ nhÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ¡m thÃÂ¡ÃÂ»ÃÂi, co giÃÂ¡ÃÂºÃÂ­t hoÃÂ¡ÃÂºÃÂ·c chÃÂ¡ÃÂºÃÂ£y mÃÂÃÂ¡u tÃÂ¡ÃÂ»ÃÂ« tai, mÃÂÃÂ©i.", prefixColor: Colors.redAccent),
+                  _bulletText("GiÃÂ¡ÃÂ»ÃÂ¯ ÃÂÃÂÃÂ¡ÃÂºÃÂ§u cÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh", "HÃÂ¡ÃÂºÃÂ¡n chÃÂ¡ÃÂºÃÂ¿ tÃÂ¡ÃÂ»ÃÂi ÃÂÃÂa viÃÂ¡ÃÂ»ÃÂc di chuyÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂ¡ÃÂºÃÂ§u hoÃÂ¡ÃÂºÃÂ·c cÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂ»ÃÂ§a ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n. NÃÂ¡ÃÂºÃÂ¿u cÃÂ¡ÃÂºÃÂ§n nÃÂ¡ÃÂºÃÂ±m, hÃÂÃÂ£y giÃÂ¡ÃÂ»ÃÂ¯ ÃÂÃÂÃÂ¡ÃÂºÃÂ§u ngang bÃÂ¡ÃÂºÃÂ±ng vÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n mÃÂÃÂ¬nh."),
+                  _bulletText("XÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ nÃÂÃÂ´n ÃÂÃÂ³i (TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ nghiÃÂÃÂªng)", "NÃÂ¡ÃÂºÃÂ¿u ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n nÃÂÃÂ´n, hÃÂÃÂ£y nhÃÂ¡ÃÂºÃÂ¹ nhÃÂÃÂ ng nghiÃÂÃÂªng cÃÂ¡ÃÂºÃÂ£ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi hÃÂ¡ÃÂ»ÃÂ sang mÃÂ¡ÃÂ»ÃÂt bÃÂÃÂªn (tÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ nÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng an toÃÂÃÂ n) ÃÂÃÂÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ¡nh chÃÂ¡ÃÂºÃÂ¥t nÃÂÃÂ´n trÃÂÃÂ n vÃÂÃÂ o ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng thÃÂ¡ÃÂ»ÃÂ gÃÂÃÂ¢y ngÃÂ¡ÃÂºÃÂ¡t thÃÂ¡ÃÂ»ÃÂ.", prefixColor: Colors.amberAccent),
+                  _bulletText("ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n bÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u", "ChÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng ÃÂÃÂÃÂ¡ÃÂºÃÂ§u cÃÂÃÂ³ thÃÂ¡ÃÂ»ÃÂ tiÃÂ¡ÃÂ»ÃÂm ÃÂ¡ÃÂºÃÂ©n xuÃÂ¡ÃÂºÃÂ¥t huyÃÂ¡ÃÂºÃÂ¿t nÃÂÃÂ£o nguy hiÃÂ¡ÃÂ»ÃÂm, cÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂÃÂ°a ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ nÃÂ¡ÃÂºÃÂ¡n ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n bÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn ngay cÃÂ¡ÃÂºÃÂ£ khi hÃÂ¡ÃÂ»ÃÂ cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂºÃÂ¥y bÃÂÃÂ¬nh thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng sau cÃÂÃÂº ngÃÂÃÂ£.", prefixColor: Colors.redAccent),
                 ],
                 color: Colors.redAccent,
               ),
@@ -7091,12 +7099,12 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Cẩm nang Sơ cứu Người bị Té ngã",
+                          "CÃÂ¡ÃÂºÃÂ©m nang SÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂ TÃÂÃÂ© ngÃÂÃÂ£",
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17.5, color: Colors.white),
                         ),
                         SizedBox(height: 3),
                         Text(
-                          "Hướng dẫn xử lý chấn thương và sơ cấp cứu an toàn",
+                          "HÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n xÃÂ¡ÃÂ»ÃÂ­ lÃÂÃÂ½ chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng vÃÂÃÂ  sÃÂÃÂ¡ cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u an toÃÂÃÂ n",
                           style: TextStyle(fontSize: 12.5, color: Colors.grey),
                         ),
                       ],
@@ -7127,9 +7135,9 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                   unselectedLabelStyle: const TextStyle(fontSize: 13),
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   tabs: const [
-                    Tab(text: "1. Lưu ý trước sơ cứu"),
-                    Tab(text: "2. Các bước cơ bản"),
-                    Tab(text: "3. Theo trường hợp cụ thể"),
+                    Tab(text: "1. LÃÂÃÂ°u ÃÂÃÂ½ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc sÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u"),
+                    Tab(text: "2. CÃÂÃÂ¡c bÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc cÃÂÃÂ¡ bÃÂ¡ÃÂºÃÂ£n"),
+                    Tab(text: "3. Theo trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng hÃÂ¡ÃÂ»ÃÂ£p cÃÂ¡ÃÂ»ÃÂ¥ thÃÂ¡ÃÂ»ÃÂ"),
                   ],
                 ),
               ),
@@ -7159,7 +7167,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: const Icon(Icons.phone_in_talk, size: 20),
-                      label: const Text("Gọi Cấp Cứu 115", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      label: const Text("GÃÂ¡ÃÂ»ÃÂi CÃÂ¡ÃÂºÃÂ¥p CÃÂ¡ÃÂ»ÃÂ©u 115", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       onPressed: _call115,
                     ),
                   ),
@@ -7171,7 +7179,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Đóng", style: TextStyle(fontSize: 14)),
+                    child: const Text("ÃÂÃÂÃÂÃÂ³ng", style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
@@ -7184,7 +7192,7 @@ class _FirstAidGuideDialogState extends State<FirstAidGuideDialog> with SingleTi
 }
 
 
-// 1. Hình vẽ minh họa Bước 1: Cấm kéo đứng dậy ngay
+// 1. HÃÂÃÂ¬nh vÃÂ¡ÃÂºÃÂ½ minh hÃÂ¡ÃÂ»ÃÂa BÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc 1: CÃÂ¡ÃÂºÃÂ¥m kÃÂÃÂ©o ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂºÃÂ­y ngay
 class DoNotPullIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -7192,56 +7200,56 @@ class DoNotPullIllustrationPainter extends CustomPainter {
     final double h = size.height;
     final double floorY = h - 25;
 
-    // Mặt sàn
+    // MÃÂ¡ÃÂºÃÂ·t sÃÂÃÂ n
     final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
     canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
 
-    // Người nằm trên sàn
+    // NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi nÃÂ¡ÃÂºÃÂ±m trÃÂÃÂªn sÃÂÃÂ n
     final double bodyX = w * 0.40;
     final Paint bodyPaint = Paint()
       ..color = Colors.blueGrey.shade300
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round;
 
-    // Đầu gối trên sàn
+    // ÃÂÃÂÃÂ¡ÃÂºÃÂ§u gÃÂ¡ÃÂ»ÃÂi trÃÂÃÂªn sÃÂÃÂ n
     canvas.drawCircle(Offset(bodyX - 50, floorY - 10), 9, bodyPaint);
-    // Thân
+    // ThÃÂÃÂ¢n
     canvas.drawLine(Offset(bodyX - 40, floorY - 8), Offset(bodyX + 25, floorY - 8), bodyPaint);
-    // Chân
+    // ChÃÂÃÂ¢n
     canvas.drawLine(Offset(bodyX + 25, floorY - 8), Offset(bodyX + 80, floorY - 8), bodyPaint);
 
-    // Vòng cảnh báo đỏ ở Cổ và Hông
+    // VÃÂÃÂ²ng cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ CÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  HÃÂÃÂ´ng
     final Paint alertRing = Paint()
       ..color = Colors.redAccent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8;
-    canvas.drawCircle(Offset(bodyX - 35, floorY - 8), 16, alertRing); // Cổ
-    canvas.drawCircle(Offset(bodyX + 25, floorY - 8), 18, alertRing); // Hông
+    canvas.drawCircle(Offset(bodyX - 35, floorY - 8), 16, alertRing); // CÃÂ¡ÃÂ»ÃÂ
+    canvas.drawCircle(Offset(bodyX + 25, floorY - 8), 18, alertRing); // HÃÂÃÂ´ng
 
-    // Bàn tay kéo giật từ trên xuống (Dashed vector)
+    // BÃÂÃÂ n tay kÃÂÃÂ©o giÃÂ¡ÃÂºÃÂ­t tÃÂ¡ÃÂ»ÃÂ« trÃÂÃÂªn xuÃÂ¡ÃÂ»ÃÂng (Dashed vector)
     final Paint pullArrow = Paint()
       ..color = Colors.red
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(bodyX - 10, floorY - 60), Offset(bodyX - 10, floorY - 18), pullArrow);
 
-    // Biển cấm kéo đứng dậy
+    // BiÃÂ¡ÃÂ»ÃÂn cÃÂ¡ÃÂºÃÂ¥m kÃÂÃÂ©o ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂºÃÂ­y
     final Paint signPaint = Paint()..color = Colors.redAccent..style = PaintingStyle.stroke..strokeWidth = 2.5;
     canvas.drawCircle(Offset(w * 0.78, h * 0.45), 26, signPaint);
     canvas.drawLine(Offset(w * 0.78 - 18, h * 0.45 - 18), Offset(w * 0.78 + 18, h * 0.45 + 18), signPaint);
 
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = const TextSpan(
-      text: "CẤM KÉO DẬY!",
+      text: "CÃÂ¡ÃÂºÃÂ¤M KÃÂÃÂO DÃÂ¡ÃÂºÃÂ¬Y!",
       style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 10),
     );
     tp.layout();
     tp.paint(canvas, Offset(w * 0.78 - tp.width / 2, h * 0.45 + 32));
 
-    // Nhãn vùng nguy hiểm
+    // NhÃÂÃÂ£n vÃÂÃÂ¹ng nguy hiÃÂ¡ÃÂ»ÃÂm
     final TextPainter tpLabel = TextPainter(textDirection: TextDirection.ltr);
     tpLabel.text = const TextSpan(
-      text: "Nguy cơ gãy cổ xương đùi & tổn thương tủy sống",
+      text: "Nguy cÃÂÃÂ¡ gÃÂÃÂ£y cÃÂ¡ÃÂ»ÃÂ xÃÂÃÂ°ÃÂÃÂ¡ng ÃÂÃÂÃÂÃÂ¹i & tÃÂ¡ÃÂ»ÃÂn thÃÂÃÂ°ÃÂÃÂ¡ng tÃÂ¡ÃÂ»ÃÂ§y sÃÂ¡ÃÂ»ÃÂng",
       style: TextStyle(color: Colors.white60, fontSize: 9.5),
     );
     tpLabel.layout();
@@ -7252,7 +7260,7 @@ class DoNotPullIllustrationPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// 2. Hình vẽ minh họa Bước 2: Kiểm tra tri giác & Gọi 115
+// 2. HÃÂÃÂ¬nh vÃÂ¡ÃÂºÃÂ½ minh hÃÂ¡ÃÂ»ÃÂa BÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc 2: KiÃÂ¡ÃÂ»ÃÂm tra tri giÃÂÃÂ¡c & GÃÂ¡ÃÂ»ÃÂi 115
 class VitalsCheckIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -7260,26 +7268,26 @@ class VitalsCheckIllustrationPainter extends CustomPainter {
     final double h = size.height;
     final double floorY = h - 25;
 
-    // Mặt sàn
+    // MÃÂ¡ÃÂºÃÂ·t sÃÂÃÂ n
     final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
     canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
 
-    // Nạn nhân nằm
+    // NÃÂ¡ÃÂºÃÂ¡n nhÃÂÃÂ¢n nÃÂ¡ÃÂºÃÂ±m
     final double vicX = w * 0.32;
     final Paint vicPaint = Paint()..color = Colors.blueGrey.shade400..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(vicX - 45, floorY - 9), 8, vicPaint);
     canvas.drawLine(Offset(vicX - 35, floorY - 7), Offset(vicX + 35, floorY - 7), vicPaint);
     canvas.drawLine(Offset(vicX + 35, floorY - 7), Offset(vicX + 85, floorY - 7), vicPaint);
 
-    // Người sơ cứu quỳ một bên kiểm tra
+    // NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi sÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u quÃÂ¡ÃÂ»ÃÂ³ mÃÂ¡ÃÂ»ÃÂt bÃÂÃÂªn kiÃÂ¡ÃÂ»ÃÂm tra
     final double rescX = vicX - 5;
     final Paint rescPaint = Paint()..color = Colors.tealAccent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
-    canvas.drawCircle(Offset(rescX - 10, floorY - 55), 8, rescPaint); // Đầu người sơ cứu
-    canvas.drawLine(Offset(rescX - 10, floorY - 47), Offset(rescX, floorY - 25), rescPaint); // Thân
-    canvas.drawLine(Offset(rescX, floorY - 25), Offset(rescX - 15, floorY), rescPaint); // Chân quỳ
-    canvas.drawLine(Offset(rescX - 10, floorY - 40), Offset(vicX, floorY - 10), rescPaint); // Tay bắt mạch / kiểm tra
+    canvas.drawCircle(Offset(rescX - 10, floorY - 55), 8, rescPaint); // ÃÂÃÂÃÂ¡ÃÂºÃÂ§u ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi sÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u
+    canvas.drawLine(Offset(rescX - 10, floorY - 47), Offset(rescX, floorY - 25), rescPaint); // ThÃÂÃÂ¢n
+    canvas.drawLine(Offset(rescX, floorY - 25), Offset(rescX - 15, floorY), rescPaint); // ChÃÂÃÂ¢n quÃÂ¡ÃÂ»ÃÂ³
+    canvas.drawLine(Offset(rescX - 10, floorY - 40), Offset(vicX, floorY - 10), rescPaint); // Tay bÃÂ¡ÃÂºÃÂ¯t mÃÂ¡ÃÂºÃÂ¡ch / kiÃÂ¡ÃÂ»ÃÂm tra
 
-    // Hộp thoại hỏi thăm
+    // HÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i hÃÂ¡ÃÂ»ÃÂi thÃÂÃÂm
     final Paint bubblePaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
@@ -7288,13 +7296,13 @@ class VitalsCheckIllustrationPainter extends CustomPainter {
 
     final TextPainter tpMsg = TextPainter(textDirection: TextDirection.ltr);
     tpMsg.text = const TextSpan(
-      text: "Bác tỉnh không? Có đau ở đâu không?",
+      text: "BÃÂÃÂ¡c tÃÂ¡ÃÂ»ÃÂnh khÃÂÃÂ´ng? CÃÂÃÂ³ ÃÂÃÂau ÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂ¢u khÃÂÃÂ´ng?",
       style: TextStyle(color: Colors.amberAccent, fontSize: 9, fontWeight: FontWeight.bold),
     );
     tpMsg.layout();
     tpMsg.paint(canvas, Offset(vicX - 55, 16));
 
-    // Huy hiệu cấp cứu 115
+    // Huy hiÃÂ¡ÃÂ»ÃÂu cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u 115
     final Paint sosBox = Paint()..color = Colors.red.withValues(alpha: 0.2)..style = PaintingStyle.fill;
     final RRect sosRRect = RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.72, 25, 95, 60), const Radius.circular(10));
     canvas.drawRRect(sosRRect, sosBox);
@@ -7302,7 +7310,7 @@ class VitalsCheckIllustrationPainter extends CustomPainter {
 
     final TextPainter tp115 = TextPainter(textDirection: TextDirection.ltr);
     tp115.text = const TextSpan(
-      text: "CẤP CỨU 115\nKhi bất tỉnh hoặc\nnghi gãy xương",
+      text: "CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U 115\nKhi bÃÂ¡ÃÂºÃÂ¥t tÃÂ¡ÃÂ»ÃÂnh hoÃÂ¡ÃÂºÃÂ·c\nnghi gÃÂÃÂ£y xÃÂÃÂ°ÃÂÃÂ¡ng",
       style: TextStyle(color: Colors.redAccent, fontSize: 9.5, fontWeight: FontWeight.bold, height: 1.3),
     );
     tp115.layout();
@@ -7313,7 +7321,7 @@ class VitalsCheckIllustrationPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// 3. Hình vẽ minh họa Bước 3: Tư thế hồi sức nằm nghiêng
+// 3. HÃÂÃÂ¬nh vÃÂ¡ÃÂºÃÂ½ minh hÃÂ¡ÃÂ»ÃÂa BÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc 3: TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ hÃÂ¡ÃÂ»ÃÂi sÃÂ¡ÃÂ»ÃÂ©c nÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng
 class RecoveryPositionIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -7321,38 +7329,38 @@ class RecoveryPositionIllustrationPainter extends CustomPainter {
     final double h = size.height;
     final double floorY = h - 25;
 
-    // Mặt sàn
+    // MÃÂ¡ÃÂºÃÂ·t sÃÂÃÂ n
     final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
     canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
 
-    // Người nằm nghiêng an toàn
+    // NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi nÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng an toÃÂÃÂ n
     final double cx = w * 0.38;
     final Paint p = Paint()
       ..color = Colors.tealAccent
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round;
 
-    // Đầu kê lên mu bàn tay
+    // ÃÂÃÂÃÂ¡ÃÂºÃÂ§u kÃÂÃÂª lÃÂÃÂªn mu bÃÂÃÂ n tay
     canvas.drawCircle(Offset(cx - 55, floorY - 18), 9, p);
-    // Tay đỡ đầu
+    // Tay ÃÂÃÂÃÂ¡ÃÂ»ÃÂ¡ ÃÂÃÂÃÂ¡ÃÂºÃÂ§u
     canvas.drawLine(Offset(cx - 35, floorY - 14), Offset(cx - 55, floorY - 10), p);
-    // Thân nằm nghiêng
+    // ThÃÂÃÂ¢n nÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng
     canvas.drawLine(Offset(cx - 45, floorY - 14), Offset(cx + 25, floorY - 14), p);
-    // Chân dưới duỗi thẳng
+    // ChÃÂÃÂ¢n dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi duÃÂ¡ÃÂ»ÃÂi thÃÂ¡ÃÂºÃÂ³ng
     canvas.drawLine(Offset(cx + 25, floorY - 14), Offset(cx + 85, floorY - 14), p..color = Colors.teal.shade700);
-    // Chân trên co vuông góc 90 độ chạm sàn để giữ thăng bằng
+    // ChÃÂÃÂ¢n trÃÂÃÂªn co vuÃÂÃÂ´ng gÃÂÃÂ³c 90 ÃÂÃÂÃÂ¡ÃÂ»ÃÂ chÃÂ¡ÃÂºÃÂ¡m sÃÂÃÂ n ÃÂÃÂÃÂ¡ÃÂ»ÃÂ giÃÂ¡ÃÂ»ÃÂ¯ thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng
     final Paint pLeg = Paint()..color = Colors.tealAccent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + 25, floorY - 14), Offset(cx + 35, floorY - 3), pLeg);
     canvas.drawLine(Offset(cx + 35, floorY - 3), Offset(cx + 65, floorY - 3), pLeg);
 
-    // Mũi tên luồng thở thông thoáng
+    // MÃÂÃÂ©i tÃÂÃÂªn luÃÂ¡ÃÂ»ÃÂng thÃÂ¡ÃÂ»ÃÂ thÃÂÃÂ´ng thoÃÂÃÂ¡ng
     final Paint airwayPaint = Paint()..color = Colors.cyanAccent..strokeWidth = 2.0..style = PaintingStyle.stroke;
     canvas.drawArc(Rect.fromCircle(center: Offset(cx - 68, floorY - 18), radius: 12), 0.5, 2.0, false, airwayPaint);
 
-    // Nhãn chú thích
+    // NhÃÂÃÂ£n chÃÂÃÂº thÃÂÃÂ­ch
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = const TextSpan(
-      text: "Tư thế nằm nghiêng an toàn (IFRC/AHA):\n• Cằm ngửa nhẹ -> Đường thở mở rộng\n• Chân co 90° giữ thăng bằng vững\n• Chống sặc dịch nôn/nước bọt vào phổi",
+      text: "TÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ nÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng an toÃÂÃÂ n (IFRC/AHA):\nÃÂ¢ÃÂÃÂ¢ CÃÂ¡ÃÂºÃÂ±m ngÃÂ¡ÃÂ»ÃÂ­a nhÃÂ¡ÃÂºÃÂ¹ -> ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng thÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂ»ÃÂ rÃÂ¡ÃÂ»ÃÂng\nÃÂ¢ÃÂÃÂ¢ ChÃÂÃÂ¢n co 90ÃÂÃÂ° giÃÂ¡ÃÂ»ÃÂ¯ thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng vÃÂ¡ÃÂ»ÃÂ¯ng\nÃÂ¢ÃÂÃÂ¢ ChÃÂ¡ÃÂ»ÃÂng sÃÂ¡ÃÂºÃÂ·c dÃÂ¡ÃÂ»ÃÂch nÃÂÃÂ´n/nÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc bÃÂ¡ÃÂ»ÃÂt vÃÂÃÂ o phÃÂ¡ÃÂ»ÃÂi",
       style: TextStyle(color: Colors.white70, fontSize: 9.5, height: 1.4),
     );
     tp.layout();
@@ -7363,7 +7371,7 @@ class RecoveryPositionIllustrationPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// 4. Hình vẽ minh họa Bước 4: Quy tắc dùng ghế đứng dậy (NHS UK)
+// 4. HÃÂÃÂ¬nh vÃÂ¡ÃÂºÃÂ½ minh hÃÂ¡ÃÂ»ÃÂa BÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc 4: Quy tÃÂ¡ÃÂºÃÂ¯c dÃÂÃÂ¹ng ghÃÂ¡ÃÂºÃÂ¿ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂºÃÂ­y (NHS UK)
 class ChairMethodIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -7371,51 +7379,51 @@ class ChairMethodIllustrationPainter extends CustomPainter {
     final double h = size.height;
     final double floorY = h - 22;
 
-    // Mặt sàn
+    // MÃÂ¡ÃÂºÃÂ·t sÃÂÃÂ n
     final Paint floorPaint = Paint()..color = Colors.grey.shade800..strokeWidth = 2.0;
     canvas.drawLine(Offset(10, floorY), Offset(w - 10, floorY), floorPaint);
 
-    // Ghế tựa ở bên phải
+    // GhÃÂ¡ÃÂºÃÂ¿ tÃÂ¡ÃÂ»ÃÂ±a ÃÂ¡ÃÂ»ÃÂ bÃÂÃÂªn phÃÂ¡ÃÂºÃÂ£i
     final double chairX = w * 0.82;
     final Paint chairPaint = Paint()..color = Colors.cyanAccent..strokeWidth = 2.5..style = PaintingStyle.stroke;
-    // Chân ghế
+    // ChÃÂÃÂ¢n ghÃÂ¡ÃÂºÃÂ¿
     canvas.drawLine(Offset(chairX, floorY), Offset(chairX, floorY - 45), chairPaint);
     canvas.drawLine(Offset(chairX + 30, floorY), Offset(chairX + 30, floorY - 45), chairPaint);
-    // Mặt ghế
+    // MÃÂ¡ÃÂºÃÂ·t ghÃÂ¡ÃÂºÃÂ¿
     canvas.drawLine(Offset(chairX - 5, floorY - 45), Offset(chairX + 35, floorY - 45), chairPaint);
-    // Lưng tựa ghế
+    // LÃÂÃÂ°ng tÃÂ¡ÃÂ»ÃÂ±a ghÃÂ¡ÃÂºÃÂ¿
     canvas.drawLine(Offset(chairX + 30, floorY - 45), Offset(chairX + 30, floorY - 80), chairPaint);
 
-    // 3 giai đoạn tiến triển
+    // 3 giai ÃÂÃÂoÃÂ¡ÃÂºÃÂ¡n tiÃÂ¡ÃÂºÃÂ¿n triÃÂ¡ÃÂ»ÃÂn
     final Paint stepPaint = Paint()..color = Colors.white70..strokeWidth = 2.5..strokeCap = StrokeCap.round;
 
-    // A. Nằm nghiêng
+    // A. NÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng
     canvas.drawCircle(Offset(35, floorY - 8), 6, stepPaint);
     canvas.drawLine(Offset(41, floorY - 6), Offset(65, floorY - 6), stepPaint);
 
-    // Mũi tên sang B
+    // MÃÂÃÂ©i tÃÂÃÂªn sang B
     canvas.drawLine(Offset(75, floorY - 15), Offset(95, floorY - 15), floorPaint);
 
-    // B. Quỳ 4 điểm (bò)
+    // B. QuÃÂ¡ÃÂ»ÃÂ³ 4 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm (bÃÂÃÂ²)
     canvas.drawCircle(Offset(125, floorY - 24), 6, stepPaint);
     canvas.drawLine(Offset(125, floorY - 18), Offset(145, floorY - 18), stepPaint);
     canvas.drawLine(Offset(125, floorY - 18), Offset(125, floorY), stepPaint);
     canvas.drawLine(Offset(145, floorY - 18), Offset(145, floorY), stepPaint);
 
-    // Mũi tên sang C
+    // MÃÂÃÂ©i tÃÂÃÂªn sang C
     canvas.drawLine(Offset(160, floorY - 25), Offset(180, floorY - 25), floorPaint);
 
-    // C. Vịn 2 tay lên ghế
+    // C. VÃÂ¡ÃÂ»ÃÂn 2 tay lÃÂÃÂªn ghÃÂ¡ÃÂºÃÂ¿
     canvas.drawCircle(Offset(225, floorY - 42), 6, stepPaint);
     canvas.drawLine(Offset(225, floorY - 36), Offset(225, floorY - 15), stepPaint);
     canvas.drawLine(Offset(225, floorY - 15), Offset(215, floorY), stepPaint);
     canvas.drawLine(Offset(225, floorY - 15), Offset(235, floorY), stepPaint);
-    canvas.drawLine(Offset(225, floorY - 30), Offset(chairX - 5, floorY - 45), Paint()..color = Colors.amberAccent..strokeWidth = 2.5); // Tay vịn ghế
+    canvas.drawLine(Offset(225, floorY - 30), Offset(chairX - 5, floorY - 45), Paint()..color = Colors.amberAccent..strokeWidth = 2.5); // Tay vÃÂ¡ÃÂ»ÃÂn ghÃÂ¡ÃÂºÃÂ¿
 
-    // Nhãn 4 bước
+    // NhÃÂÃÂ£n 4 bÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc
     final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
     tp.text = const TextSpan(
-      text: "1. Nằm nghiêng ➔ 2. Quỳ 4 điểm ➔ 3. Vịn ghế vững ➔ 4. Đẩy chân ngồi lên ghế",
+      text: "1. NÃÂ¡ÃÂºÃÂ±m nghiÃÂÃÂªng ÃÂ¢ÃÂÃÂ 2. QuÃÂ¡ÃÂ»ÃÂ³ 4 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm ÃÂ¢ÃÂÃÂ 3. VÃÂ¡ÃÂ»ÃÂn ghÃÂ¡ÃÂºÃÂ¿ vÃÂ¡ÃÂ»ÃÂ¯ng ÃÂ¢ÃÂÃÂ 4. ÃÂÃÂÃÂ¡ÃÂºÃÂ©y chÃÂÃÂ¢n ngÃÂ¡ÃÂ»ÃÂi lÃÂÃÂªn ghÃÂ¡ÃÂºÃÂ¿",
       style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 10),
     );
     tp.layout();
@@ -7428,7 +7436,7 @@ class ChairMethodIllustrationPainter extends CustomPainter {
 
 
 // =========================================================================
-// TÍNH NĂNG 2: HỒ SƠ Y TẾ KHẨN CẤP NGƯỜI CAO TUỔI (MEDICAL EMERGENCY PROFILE)
+// TÃÂÃÂNH NÃÂÃÂNG 2: HÃÂ¡ÃÂ»ÃÂ SÃÂÃÂ  Y TÃÂ¡ÃÂºÃÂ¾ KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂI CAO TUÃÂ¡ÃÂ»ÃÂI (MEDICAL EMERGENCY PROFILE)
 // =========================================================================
 class ElderlyMedicalProfile {
   String fullName;
@@ -7448,21 +7456,21 @@ class ElderlyMedicalProfile {
   String notes;
 
   ElderlyMedicalProfile({
-    this.fullName = "Nguyễn Văn An",
+    this.fullName = "NguyÃÂ¡ÃÂ»ÃÂn VÃÂÃÂn An",
     this.birthYear = 1948,
     this.gender = "Nam",
     this.bloodType = "O+",
-    this.chronicConditions = const ["Tăng huyết áp", "Loãng xương", "Bệnh mạch vành"],
-    this.highRiskMedications = const ["Thuốc chống đông máu (Aspirin / Warfarin)", "Thuốc hạ áp Amlodipine"],
-    this.allergies = "Chưa ghi nhận",
-    this.emergencyContact1Name = "Con trai (Nguyễn Tuấn)",
+    this.chronicConditions = const ["TÃÂÃÂng huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p", "LoÃÂÃÂ£ng xÃÂÃÂ°ÃÂÃÂ¡ng", "BÃÂ¡ÃÂ»ÃÂnh mÃÂ¡ÃÂºÃÂ¡ch vÃÂÃÂ nh"],
+    this.highRiskMedications = const ["ThuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng mÃÂÃÂ¡u (Aspirin / Warfarin)", "ThuÃÂ¡ÃÂ»ÃÂc hÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂ¡p Amlodipine"],
+    this.allergies = "ChÃÂÃÂ°a ghi nhÃÂ¡ÃÂºÃÂ­n",
+    this.emergencyContact1Name = "Con trai (NguyÃÂ¡ÃÂ»ÃÂn TuÃÂ¡ÃÂºÃÂ¥n)",
     this.emergencyContact1Phone = "0987654321",
-    this.emergencyContact2Name = "Con gái (Nguyễn Mai)",
+    this.emergencyContact2Name = "Con gÃÂÃÂ¡i (NguyÃÂ¡ÃÂ»ÃÂn Mai)",
     this.emergencyContact2Phone = "0912345678",
-    this.attendingDoctorName = "BS. CKII Lê Hoàng",
+    this.attendingDoctorName = "BS. CKII LÃÂÃÂª HoÃÂÃÂ ng",
     this.attendingDoctorPhone = "0903115115",
-    this.hospital = "BV Lão Khoa TW / BV Đa Khoa Tỉnh",
-    this.notes = "Người bệnh có tiền sử thay khớp háng nhân tạo năm 2022. Chìa khóa nhà dự phòng gửi tại căn hộ 402.",
+    this.hospital = "BV LÃÂÃÂ£o Khoa TW / BV ÃÂÃÂa Khoa TÃÂ¡ÃÂ»ÃÂnh",
+    this.notes = "NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂnh cÃÂÃÂ³ tiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ thay khÃÂ¡ÃÂ»ÃÂp hÃÂÃÂ¡ng nhÃÂÃÂ¢n tÃÂ¡ÃÂºÃÂ¡o nÃÂÃÂm 2022. ChÃÂÃÂ¬a khÃÂÃÂ³a nhÃÂÃÂ  dÃÂ¡ÃÂ»ÃÂ± phÃÂÃÂ²ng gÃÂ¡ÃÂ»ÃÂ­i tÃÂ¡ÃÂºÃÂ¡i cÃÂÃÂn hÃÂ¡ÃÂ»ÃÂ 402.",
   });
 
   Map<String, dynamic> toJson() => {
@@ -7485,24 +7493,24 @@ class ElderlyMedicalProfile {
 
   factory ElderlyMedicalProfile.fromJson(Map<String, dynamic> json) {
     return ElderlyMedicalProfile(
-      fullName: json['fullName'] ?? "Nguyễn Văn An",
+      fullName: json['fullName'] ?? "NguyÃÂ¡ÃÂ»ÃÂn VÃÂÃÂn An",
       birthYear: json['birthYear'] ?? 1948,
       gender: json['gender'] ?? "Nam",
       bloodType: json['bloodType'] ?? "O+",
       chronicConditions: json['chronicConditions'] != null
           ? List<String>.from(json['chronicConditions'])
-          : ["Tăng huyết áp", "Loãng xương"],
+          : ["TÃÂÃÂng huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p", "LoÃÂÃÂ£ng xÃÂÃÂ°ÃÂÃÂ¡ng"],
       highRiskMedications: json['highRiskMedications'] != null
           ? List<String>.from(json['highRiskMedications'])
-          : ["Thuốc chống đông máu (Aspirin / Warfarin)"],
-      allergies: json['allergies'] ?? "Chưa ghi nhận",
-      emergencyContact1Name: json['emergencyContact1Name'] ?? "Con trai (Nguyễn Tuấn)",
+          : ["ThuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng mÃÂÃÂ¡u (Aspirin / Warfarin)"],
+      allergies: json['allergies'] ?? "ChÃÂÃÂ°a ghi nhÃÂ¡ÃÂºÃÂ­n",
+      emergencyContact1Name: json['emergencyContact1Name'] ?? "Con trai (NguyÃÂ¡ÃÂ»ÃÂn TuÃÂ¡ÃÂºÃÂ¥n)",
       emergencyContact1Phone: json['emergencyContact1Phone'] ?? "0987654321",
-      emergencyContact2Name: json['emergencyContact2Name'] ?? "Con gái (Nguyễn Mai)",
+      emergencyContact2Name: json['emergencyContact2Name'] ?? "Con gÃÂÃÂ¡i (NguyÃÂ¡ÃÂ»ÃÂn Mai)",
       emergencyContact2Phone: json['emergencyContact2Phone'] ?? "0912345678",
-      attendingDoctorName: json['attendingDoctorName'] ?? "BS. CKII Lê Hoàng",
+      attendingDoctorName: json['attendingDoctorName'] ?? "BS. CKII LÃÂÃÂª HoÃÂÃÂ ng",
       attendingDoctorPhone: json['attendingDoctorPhone'] ?? "0903115115",
-      hospital: json['hospital'] ?? "BV Lão Khoa TW",
+      hospital: json['hospital'] ?? "BV LÃÂÃÂ£o Khoa TW",
       notes: json['notes'] ?? "",
     );
   }
@@ -7524,7 +7532,7 @@ class ElderlyMedicalProfile {
   }
 
   bool get isTakingAnticoagulants => highRiskMedications.any((m) =>
-      m.toLowerCase().contains("chống đông") ||
+      m.toLowerCase().contains("chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng") ||
       m.toLowerCase().contains("aspirin") ||
       m.toLowerCase().contains("warfarin") ||
       m.toLowerCase().contains("clopidogrel") ||
@@ -7533,7 +7541,7 @@ class ElderlyMedicalProfile {
 }
 
 // =========================================================================
-// THẺ Y TẾ CẤP CỨU KHẨN CẤP (EMERGENCY MEDICAL ID CARD DIALOG)
+// THÃÂ¡ÃÂºÃÂº Y TÃÂ¡ÃÂºÃÂ¾ CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P (EMERGENCY MEDICAL ID CARD DIALOG)
 // =========================================================================
 class EmergencyMedicalIdCardDialog extends StatelessWidget {
   final ElderlyMedicalProfile profile;
@@ -7559,22 +7567,22 @@ class EmergencyMedicalIdCardDialog extends StatelessWidget {
 
   void _copySummary(BuildContext context) {
     final text = """
-[THẺ Y TẾ CẤP CỨU KHẨN CẤP - FALLGUARD]
-Họ tên: ${profile.fullName} ($age tuổi - Sinh năm ${profile.birthYear} - ${profile.gender})
-Nhóm máu: ${profile.bloodType}
-CẢNH BÁO THUỐC CHỐNG ĐÔNG: ${profile.isTakingAnticoagulants ? 'CÓ (NGUY CƠ XUẤT HUYẾT NỘI SỌ CAO)' : 'Không'}
-Bệnh lý nền: ${profile.chronicConditions.join(', ')}
-Thuốc đang dùng: ${profile.highRiskMedications.join(', ')}
-Dị ứng: ${profile.allergies}
-Bác sĩ điều trị: ${profile.attendingDoctorName} (${profile.attendingDoctorPhone})
-Bệnh viện chỉ định: ${profile.hospital}
-Người thân 1: ${profile.emergencyContact1Name} (${profile.emergencyContact1Phone})
-Người thân 2: ${profile.emergencyContact2Name} (${profile.emergencyContact2Phone})
-Ghi chú: ${profile.notes}
+[THÃÂ¡ÃÂºÃÂº Y TÃÂ¡ÃÂºÃÂ¾ CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P - FALLGUARD]
+HÃÂ¡ÃÂ»ÃÂ tÃÂÃÂªn: ${profile.fullName} ($age tuÃÂ¡ÃÂ»ÃÂi - Sinh nÃÂÃÂm ${profile.birthYear} - ${profile.gender})
+NhÃÂÃÂ³m mÃÂÃÂ¡u: ${profile.bloodType}
+CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO THUÃÂ¡ÃÂ»ÃÂC CHÃÂ¡ÃÂ»ÃÂNG ÃÂÃÂÃÂÃÂNG: ${profile.isTakingAnticoagulants ? 'CÃÂÃÂ (NGUY CÃÂÃÂ  XUÃÂ¡ÃÂºÃÂ¤T HUYÃÂ¡ÃÂºÃÂ¾T NÃÂ¡ÃÂ»ÃÂI SÃÂ¡ÃÂ»ÃÂ CAO)' : 'KhÃÂÃÂ´ng'}
+BÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½ nÃÂ¡ÃÂ»ÃÂn: ${profile.chronicConditions.join(', ')}
+ThuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂang dÃÂÃÂ¹ng: ${profile.highRiskMedications.join(', ')}
+DÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ©ng: ${profile.allergies}
+BÃÂÃÂ¡c sÃÂÃÂ© ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu trÃÂ¡ÃÂ»ÃÂ: ${profile.attendingDoctorName} (${profile.attendingDoctorPhone})
+BÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn chÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh: ${profile.hospital}
+NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 1: ${profile.emergencyContact1Name} (${profile.emergencyContact1Phone})
+NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 2: ${profile.emergencyContact2Name} (${profile.emergencyContact2Phone})
+Ghi chÃÂÃÂº: ${profile.notes}
 """;
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Đã sao chép tóm tắt y tế vào bộ nhớ tạm!"), backgroundColor: Colors.teal),
+      const SnackBar(content: Text("ÃÂÃÂÃÂÃÂ£ sao chÃÂÃÂ©p tÃÂÃÂ³m tÃÂ¡ÃÂºÃÂ¯t y tÃÂ¡ÃÂºÃÂ¿ vÃÂÃÂ o bÃÂ¡ÃÂ»ÃÂ nhÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ¡m!"), backgroundColor: Colors.teal),
     );
   }
 
@@ -7590,7 +7598,7 @@ Ghi chú: ${profile.notes}
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Tiêu đề & Biểu tượng Cấp Cứu
+              // TiÃÂÃÂªu ÃÂÃÂÃÂ¡ÃÂ»ÃÂ & BiÃÂ¡ÃÂ»ÃÂu tÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng CÃÂ¡ÃÂºÃÂ¥p CÃÂ¡ÃÂ»ÃÂ©u
               Row(
                 children: [
                   Container(
@@ -7606,14 +7614,14 @@ Ghi chú: ${profile.notes}
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("THẺ Y TẾ CẤP CỨU", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.redAccent)),
-                        Text("Dành cho Nhân viên Y tế 115 & Cứu hộ", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text("THÃÂ¡ÃÂºÃÂº Y TÃÂ¡ÃÂºÃÂ¾ CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.redAccent)),
+                        Text("DÃÂÃÂ nh cho NhÃÂÃÂ¢n viÃÂÃÂªn Y tÃÂ¡ÃÂºÃÂ¿ 115 & CÃÂ¡ÃÂ»ÃÂ©u hÃÂ¡ÃÂ»ÃÂ", style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.cyanAccent),
-                    tooltip: "Chỉnh sửa hồ sơ",
+                    tooltip: "ChÃÂ¡ÃÂ»ÃÂnh sÃÂ¡ÃÂ»ÃÂ­a hÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡",
                     onPressed: () {
                       Navigator.pop(context);
                       onEdit();
@@ -7623,7 +7631,7 @@ Ghi chú: ${profile.notes}
               ),
               const Divider(height: 24),
 
-              // Bảng tóm tắt bệnh nhân & nhóm máu
+              // BÃÂ¡ÃÂºÃÂ£ng tÃÂÃÂ³m tÃÂ¡ÃÂºÃÂ¯t bÃÂ¡ÃÂ»ÃÂnh nhÃÂÃÂ¢n & nhÃÂÃÂ³m mÃÂÃÂ¡u
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -7639,7 +7647,7 @@ Ghi chú: ${profile.notes}
                         children: [
                           Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
                           const SizedBox(height: 4),
-                          Text("$age tuổi (${profile.birthYear}) • Giới tính: ${profile.gender}", style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                          Text("$age tuÃÂ¡ÃÂ»ÃÂi (${profile.birthYear}) ÃÂ¢ÃÂÃÂ¢ GiÃÂ¡ÃÂ»ÃÂi tÃÂÃÂ­nh: ${profile.gender}", style: const TextStyle(fontSize: 13, color: Colors.grey)),
                         ],
                       ),
                     ),
@@ -7652,7 +7660,7 @@ Ghi chú: ${profile.notes}
                       ),
                       child: Column(
                         children: [
-                          const Text("NHÓM MÁU", style: TextStyle(fontSize: 9, color: Colors.white70, fontWeight: FontWeight.bold)),
+                          const Text("NHÃÂÃÂM MÃÂÃÂU", style: TextStyle(fontSize: 9, color: Colors.white70, fontWeight: FontWeight.bold)),
                           Text(profile.bloodType, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
                         ],
                       ),
@@ -7662,7 +7670,7 @@ Ghi chú: ${profile.notes}
               ),
               const SizedBox(height: 12),
 
-              // CẢNH BÁO ĐẶC BIỆT NẾU DÙNG THUỐC CHỐNG ĐÔNG MÁU
+              // CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO ÃÂÃÂÃÂ¡ÃÂºÃÂ¶C BIÃÂ¡ÃÂ»ÃÂT NÃÂ¡ÃÂºÃÂ¾U DÃÂÃÂNG THUÃÂ¡ÃÂ»ÃÂC CHÃÂ¡ÃÂ»ÃÂNG ÃÂÃÂÃÂÃÂNG MÃÂÃÂU
               if (profile.isTakingAnticoagulants)
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -7677,7 +7685,7 @@ Ghi chú: ${profile.notes}
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          "CẢNH BÁO LÂM SÀNG: Người bệnh đang dùng THUỐC CHỐNG ĐÔNG MÁU (Aspirin/Warfarin...). Nguy cơ xuất huyết nội sọ cao khi chấn thương té ngã!",
+                          "CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO LÃÂÃÂM SÃÂÃÂNG: NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂnh ÃÂÃÂang dÃÂÃÂ¹ng THUÃÂ¡ÃÂ»ÃÂC CHÃÂ¡ÃÂ»ÃÂNG ÃÂÃÂÃÂÃÂNG MÃÂÃÂU (Aspirin/Warfarin...). Nguy cÃÂÃÂ¡ xuÃÂ¡ÃÂºÃÂ¥t huyÃÂ¡ÃÂºÃÂ¿t nÃÂ¡ÃÂ»ÃÂi sÃÂ¡ÃÂ»ÃÂ cao khi chÃÂ¡ÃÂºÃÂ¥n thÃÂÃÂ°ÃÂÃÂ¡ng tÃÂÃÂ© ngÃÂÃÂ£!",
                           style: TextStyle(color: Colors.amberAccent, fontSize: 11.5, fontWeight: FontWeight.bold, height: 1.3),
                         ),
                       ),
@@ -7686,8 +7694,8 @@ Ghi chú: ${profile.notes}
                 ),
               const SizedBox(height: 12),
 
-              // Bệnh lý nền
-              const Text("Tiền sử bệnh lý nền:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              // BÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½ nÃÂ¡ÃÂ»ÃÂn
+              const Text("TiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ bÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½ nÃÂ¡ÃÂ»ÃÂn:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
@@ -7701,8 +7709,8 @@ Ghi chú: ${profile.notes}
               ),
               const SizedBox(height: 12),
 
-              // Thuốc đang sử dụng
-              const Text("Thuốc đặc biệt cần lưu ý:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              // ThuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂang sÃÂ¡ÃÂ»ÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥ng
+              const Text("ThuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂÃÂ¡ÃÂºÃÂ·c biÃÂ¡ÃÂ»ÃÂt cÃÂ¡ÃÂºÃÂ§n lÃÂÃÂ°u ÃÂÃÂ½:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
@@ -7717,22 +7725,22 @@ Ghi chú: ${profile.notes}
               ),
               const SizedBox(height: 12),
 
-              // Dị ứng & Bệnh viện
+              // DÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ©ng & BÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn
               Row(
                 children: [
                   Expanded(
-                    child: _buildInfoBlock("Dị ứng:", profile.allergies, Icons.no_food),
+                    child: _buildInfoBlock("DÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ©ng:", profile.allergies, Icons.no_food),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _buildInfoBlock("BV chỉ định:", profile.hospital, Icons.local_hospital),
+                    child: _buildInfoBlock("BV chÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh:", profile.hospital, Icons.local_hospital),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
 
-              // Danh bạ cấp cứu gọi nhanh 1 chạm
-              const Text("Liên hệ khẩn cấp 1 chạm:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              // Danh bÃÂ¡ÃÂºÃÂ¡ cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u gÃÂ¡ÃÂ»ÃÂi nhanh 1 chÃÂ¡ÃÂºÃÂ¡m
+              const Text("LiÃÂÃÂªn hÃÂ¡ÃÂ»ÃÂ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p 1 chÃÂ¡ÃÂºÃÂ¡m:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -7744,7 +7752,7 @@ Ghi chú: ${profile.notes}
                       ),
                       onPressed: () => _callNumber("115"),
                       icon: const Icon(Icons.phone_in_talk, size: 16),
-                      label: const Text("Cấp cứu 115", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      label: const Text("CÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u 115", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -7766,25 +7774,25 @@ Ghi chú: ${profile.notes}
                 OutlinedButton.icon(
                   onPressed: () => _callNumber(profile.emergencyContact2Phone),
                   icon: const Icon(Icons.call, size: 16),
-                  label: Text("Người thân 2: ${profile.emergencyContact2Name} (${profile.emergencyContact2Phone})", style: const TextStyle(fontSize: 12)),
+                  label: Text("NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 2: ${profile.emergencyContact2Name} (${profile.emergencyContact2Phone})", style: const TextStyle(fontSize: 12)),
                 ),
               const SizedBox(height: 12),
 
-              // Nút sao chép & Đóng
+              // NÃÂÃÂºt sao chÃÂÃÂ©p & ÃÂÃÂÃÂÃÂ³ng
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _copySummary(context),
                       icon: const Icon(Icons.copy, size: 16),
-                      label: const Text("Sao chép tóm tắt"),
+                      label: const Text("Sao chÃÂÃÂ©p tÃÂÃÂ³m tÃÂ¡ÃÂºÃÂ¯t"),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("Đóng"),
+                      child: const Text("ÃÂÃÂÃÂÃÂ³ng"),
                     ),
                   ),
                 ],
@@ -7823,7 +7831,7 @@ Ghi chú: ${profile.notes}
 }
 
 // =========================================================================
-// MÀN HÌNH CHỈNH SỬA HỒ SƠ Y TẾ NGƯỜI CAO TUỔI (MEDICAL PROFILE EDIT DIALOG)
+// MÃÂÃÂN HÃÂÃÂNH CHÃÂ¡ÃÂ»ÃÂNH SÃÂ¡ÃÂ»ÃÂ¬A HÃÂ¡ÃÂ»ÃÂ SÃÂÃÂ  Y TÃÂ¡ÃÂºÃÂ¾ NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂI CAO TUÃÂ¡ÃÂ»ÃÂI (MEDICAL PROFILE EDIT DIALOG)
 // =========================================================================
 class MedicalProfileEditDialog extends StatefulWidget {
   final ElderlyMedicalProfile profile;
@@ -7854,23 +7862,23 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
   late List<String> _selectedMeds;
 
   final List<String> _availableConditions = [
-    "Tăng huyết áp",
-    "Đái tháo đường Type 2",
-    "Bệnh mạch vành / Tim mạch",
-    "Loãng xương nặng",
-    "Tiền sử đột quỵ / Tai biến",
+    "TÃÂÃÂng huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p",
+    "ÃÂÃÂÃÂÃÂ¡i thÃÂÃÂ¡o ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng Type 2",
+    "BÃÂ¡ÃÂ»ÃÂnh mÃÂ¡ÃÂºÃÂ¡ch vÃÂÃÂ nh / Tim mÃÂ¡ÃÂºÃÂ¡ch",
+    "LoÃÂÃÂ£ng xÃÂÃÂ°ÃÂÃÂ¡ng nÃÂ¡ÃÂºÃÂ·ng",
+    "TiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ ÃÂÃÂÃÂ¡ÃÂ»ÃÂt quÃÂ¡ÃÂ»ÃÂµ / Tai biÃÂ¡ÃÂºÃÂ¿n",
     "Parkinson",
-    "Rối loạn tiền đình",
-    "Suy giảm trí nhớ / Sa sút trí tuệ",
+    "RÃÂ¡ÃÂ»ÃÂi loÃÂ¡ÃÂºÃÂ¡n tiÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂÃÂ¬nh",
+    "Suy giÃÂ¡ÃÂºÃÂ£m trÃÂÃÂ­ nhÃÂ¡ÃÂ»ÃÂ / Sa sÃÂÃÂºt trÃÂÃÂ­ tuÃÂ¡ÃÂ»ÃÂ",
   ];
 
   final List<String> _availableMeds = [
-    "Thuốc chống đông máu (Aspirin / Warfarin)",
-    "Thuốc kháng tiểu cầu (Clopidogrel / Plavix)",
-    "Thuốc chống đông thế hệ mới (Xarelto / Eliquis)",
-    "Thuốc hạ áp (Amlodipine / Losartan...)",
-    "Insulin / Thuốc tiểu đường",
-    "Thuốc an thần / Thuốc ngủ",
+    "ThuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng mÃÂÃÂ¡u (Aspirin / Warfarin)",
+    "ThuÃÂ¡ÃÂ»ÃÂc khÃÂÃÂ¡ng tiÃÂ¡ÃÂ»ÃÂu cÃÂ¡ÃÂºÃÂ§u (Clopidogrel / Plavix)",
+    "ThuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng thÃÂ¡ÃÂºÃÂ¿ hÃÂ¡ÃÂ»ÃÂ mÃÂ¡ÃÂ»ÃÂi (Xarelto / Eliquis)",
+    "ThuÃÂ¡ÃÂ»ÃÂc hÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂ¡p (Amlodipine / Losartan...)",
+    "Insulin / ThuÃÂ¡ÃÂ»ÃÂc tiÃÂ¡ÃÂ»ÃÂu ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng",
+    "ThuÃÂ¡ÃÂ»ÃÂc an thÃÂ¡ÃÂºÃÂ§n / ThuÃÂ¡ÃÂ»ÃÂc ngÃÂ¡ÃÂ»ÃÂ§",
   ];
 
   @override
@@ -7912,13 +7920,13 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
 
   void _save() {
     final updated = ElderlyMedicalProfile(
-      fullName: _nameCtrl.text.trim().isEmpty ? "Nguyễn Văn An" : _nameCtrl.text.trim(),
+      fullName: _nameCtrl.text.trim().isEmpty ? "NguyÃÂ¡ÃÂ»ÃÂn VÃÂÃÂn An" : _nameCtrl.text.trim(),
       birthYear: int.tryParse(_yearCtrl.text.trim()) ?? 1948,
       gender: _gender,
       bloodType: _bloodType,
       chronicConditions: _selectedConditions,
       highRiskMedications: _selectedMeds,
-      allergies: _allergiesCtrl.text.trim().isEmpty ? "Chưa ghi nhận" : _allergiesCtrl.text.trim(),
+      allergies: _allergiesCtrl.text.trim().isEmpty ? "ChÃÂÃÂ°a ghi nhÃÂ¡ÃÂºÃÂ­n" : _allergiesCtrl.text.trim(),
       emergencyContact1Name: _c1NameCtrl.text.trim(),
       emergencyContact1Phone: _c1PhoneCtrl.text.trim(),
       emergencyContact2Name: _c2NameCtrl.text.trim(),
@@ -7932,7 +7940,7 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
     widget.onSaved(updated);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Hồ sơ y tế khẩn cấp đã được lưu thành công!"), backgroundColor: Colors.green),
+      const SnackBar(content: Text("HÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡ y tÃÂ¡ÃÂºÃÂ¿ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p ÃÂÃÂÃÂÃÂ£ ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c lÃÂÃÂ°u thÃÂÃÂ nh cÃÂÃÂ´ng!"), backgroundColor: Colors.green),
     );
   }
 
@@ -7951,7 +7959,7 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
                 const Icon(Icons.badge, color: Colors.cyanAccent),
                 const SizedBox(width: 8),
                 const Expanded(
-                  child: Text("Cập nhật hồ sơ y tế khẩn cấp", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                  child: Text("CÃÂ¡ÃÂºÃÂ­p nhÃÂ¡ÃÂºÃÂ­t hÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡ y tÃÂ¡ÃÂºÃÂ¿ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                 ),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
@@ -7960,11 +7968,11 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
             Expanded(
               child: ListView(
                 children: [
-                  const Text("1. Thông tin bệnh nhân", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                  const Text("1. ThÃÂÃÂ´ng tin bÃÂ¡ÃÂ»ÃÂnh nhÃÂÃÂ¢n", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _nameCtrl,
-                    decoration: const InputDecoration(labelText: "Họ và tên người cao tuổi", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
+                    decoration: const InputDecoration(labelText: "HÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  tÃÂÃÂªn ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi cao tuÃÂ¡ÃÂ»ÃÂi", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -7973,15 +7981,15 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
                         child: TextField(
                           controller: _yearCtrl,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: "Năm sinh (VD: 1948)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.cake)),
+                          decoration: const InputDecoration(labelText: "NÃÂÃÂm sinh (VD: 1948)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.cake)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: _bloodType,
-                          decoration: const InputDecoration(labelText: "Nhóm máu", border: OutlineInputBorder(), prefixIcon: Icon(Icons.bloodtype)),
-                          items: ["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-", "Chưa rõ"].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                          decoration: const InputDecoration(labelText: "NhÃÂÃÂ³m mÃÂÃÂ¡u", border: OutlineInputBorder(), prefixIcon: Icon(Icons.bloodtype)),
+                          items: ["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-", "ChÃÂÃÂ°a rÃÂÃÂµ"].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
                           onChanged: (val) => setState(() => _bloodType = val ?? "O+"),
                         ),
                       ),
@@ -7989,7 +7997,7 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  const Text("2. Tiền sử bệnh lý nền (Chọn các bệnh áp dụng)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                  const Text("2. TiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ bÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½ nÃÂ¡ÃÂ»ÃÂn (ChÃÂ¡ÃÂ»ÃÂn cÃÂÃÂ¡c bÃÂ¡ÃÂ»ÃÂnh ÃÂÃÂ¡p dÃÂ¡ÃÂ»ÃÂ¥ng)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                   const SizedBox(height: 6),
                   ..._availableConditions.map((cond) => CheckboxListTile(
                     dense: true,
@@ -8008,12 +8016,12 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
                   )),
                   const SizedBox(height: 16),
 
-                  const Text("3. Thuốc đặc biệt (Cực kỳ quan trọng khi cấp cứu)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                  const Text("3. ThuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂÃÂ¡ÃÂºÃÂ·c biÃÂ¡ÃÂ»ÃÂt (CÃÂ¡ÃÂ»ÃÂ±c kÃÂ¡ÃÂ»ÃÂ³ quan trÃÂ¡ÃÂ»ÃÂng khi cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
                   const SizedBox(height: 6),
                   ..._availableMeds.map((med) => CheckboxListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: Text(med, style: TextStyle(fontSize: 13, color: med.contains("chống đông") ? Colors.redAccent : null)),
+                    title: Text(med, style: TextStyle(fontSize: 13, color: med.contains("chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng") ? Colors.redAccent : null)),
                     value: _selectedMeds.contains(med),
                     onChanged: (chk) {
                       setState(() {
@@ -8027,37 +8035,37 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
                   )),
                   const SizedBox(height: 16),
 
-                  const Text("4. Danh bạ khẩn cấp & Bác sĩ điều trị", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                  const Text("4. Danh bÃÂ¡ÃÂºÃÂ¡ khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p & BÃÂÃÂ¡c sÃÂÃÂ© ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu trÃÂ¡ÃÂ»ÃÂ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: _c1NameCtrl, decoration: const InputDecoration(labelText: "Người thân 1 (Tên/Quan hệ)", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _c1NameCtrl, decoration: const InputDecoration(labelText: "NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 1 (TÃÂÃÂªn/Quan hÃÂ¡ÃÂ»ÃÂ)", border: OutlineInputBorder()))),
                       const SizedBox(width: 8),
-                      Expanded(child: TextField(controller: _c1PhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SĐT Người thân 1", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _c1PhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SÃÂÃÂT NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 1", border: OutlineInputBorder()))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: _c2NameCtrl, decoration: const InputDecoration(labelText: "Người thân 2 (Tên/Quan hệ)", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _c2NameCtrl, decoration: const InputDecoration(labelText: "NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 2 (TÃÂÃÂªn/Quan hÃÂ¡ÃÂ»ÃÂ)", border: OutlineInputBorder()))),
                       const SizedBox(width: 8),
-                      Expanded(child: TextField(controller: _c2PhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SĐT Người thân 2", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _c2PhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SÃÂÃÂT NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n 2", border: OutlineInputBorder()))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: _doctorNameCtrl, decoration: const InputDecoration(labelText: "Bác sĩ riêng", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _doctorNameCtrl, decoration: const InputDecoration(labelText: "BÃÂÃÂ¡c sÃÂÃÂ© riÃÂÃÂªng", border: OutlineInputBorder()))),
                       const SizedBox(width: 8),
-                      Expanded(child: TextField(controller: _doctorPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SĐT Bác sĩ", border: OutlineInputBorder()))),
+                      Expanded(child: TextField(controller: _doctorPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "SÃÂÃÂT BÃÂÃÂ¡c sÃÂÃÂ©", border: OutlineInputBorder()))),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(controller: _hospitalCtrl, decoration: const InputDecoration(labelText: "Bệnh viện ưu tiên chỉ định chuyển viện", border: OutlineInputBorder(), prefixIcon: Icon(Icons.local_hospital))),
+                  TextField(controller: _hospitalCtrl, decoration: const InputDecoration(labelText: "BÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn ÃÂÃÂ°u tiÃÂÃÂªn chÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh chuyÃÂ¡ÃÂ»ÃÂn viÃÂ¡ÃÂ»ÃÂn", border: OutlineInputBorder(), prefixIcon: Icon(Icons.local_hospital))),
                   const SizedBox(height: 10),
-                  TextField(controller: _allergiesCtrl, decoration: const InputDecoration(labelText: "Dị ứng thuốc / thức ăn", border: OutlineInputBorder(), prefixIcon: Icon(Icons.warning))),
+                  TextField(controller: _allergiesCtrl, decoration: const InputDecoration(labelText: "DÃÂ¡ÃÂ»ÃÂ ÃÂ¡ÃÂ»ÃÂ©ng thuÃÂ¡ÃÂ»ÃÂc / thÃÂ¡ÃÂ»ÃÂ©c ÃÂÃÂn", border: OutlineInputBorder(), prefixIcon: Icon(Icons.warning))),
                   const SizedBox(height: 10),
-                  TextField(controller: _notesCtrl, maxLines: 2, decoration: const InputDecoration(labelText: "Ghi chú cấp cứu khác (Vị trí chìa khóa dự phòng, tiền sử mổ...)", border: OutlineInputBorder())),
+                  TextField(controller: _notesCtrl, maxLines: 2, decoration: const InputDecoration(labelText: "Ghi chÃÂÃÂº cÃÂ¡ÃÂºÃÂ¥p cÃÂ¡ÃÂ»ÃÂ©u khÃÂÃÂ¡c (VÃÂ¡ÃÂ»ÃÂ trÃÂÃÂ­ chÃÂÃÂ¬a khÃÂÃÂ³a dÃÂ¡ÃÂ»ÃÂ± phÃÂÃÂ²ng, tiÃÂ¡ÃÂ»ÃÂn sÃÂ¡ÃÂ»ÃÂ­ mÃÂ¡ÃÂ»ÃÂ...)", border: OutlineInputBorder())),
                 ],
               ),
             ),
@@ -8066,7 +8074,7 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
               style: FilledButton.styleFrom(backgroundColor: Colors.teal, padding: const EdgeInsets.symmetric(vertical: 14)),
               onPressed: _save,
               icon: const Icon(Icons.save),
-              label: const Text("Lưu hồ sơ y tế", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              label: const Text("LÃÂÃÂ°u hÃÂ¡ÃÂ»ÃÂ sÃÂÃÂ¡ y tÃÂ¡ÃÂºÃÂ¿", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ],
         ),
@@ -8076,7 +8084,7 @@ class _MedicalProfileEditDialogState extends State<MedicalProfileEditDialog> {
 }
 
 // =========================================================================
-// TÍNH NĂNG 7: ĐÁNH GIÁ NGUY CƠ TÉ NGÃ THEO CHUẨN CDC STEADI (12 CÂU HỎI)
+// TÃÂÃÂNH NÃÂÃÂNG 7: ÃÂÃÂÃÂÃÂNH GIÃÂÃÂ NGUY CÃÂÃÂ  TÃÂÃÂ NGÃÂÃÂ THEO CHUÃÂ¡ÃÂºÃÂ¨N CDC STEADI (12 CÃÂÃÂU HÃÂ¡ÃÂ»ÃÂI)
 // =========================================================================
 class CdcSteadiAssessmentDialog extends StatefulWidget {
   final Function(int score, String riskLevel) onCompleted;
@@ -8088,78 +8096,78 @@ class CdcSteadiAssessmentDialog extends StatefulWidget {
 }
 
 class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
-  // 12 câu hỏi chuẩn CDC STEADI (Stay Independent Brochure)
+  // 12 cÃÂÃÂ¢u hÃÂ¡ÃÂ»ÃÂi chuÃÂ¡ÃÂºÃÂ©n CDC STEADI (Stay Independent Brochure)
   final List<Map<String, dynamic>> _questions = [
     {
-      "text": "1. Tôi từng bị ngã trong vòng 1 năm qua.",
+      "text": "1. TÃÂÃÂ´i tÃÂ¡ÃÂ»ÃÂ«ng bÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ£ trong vÃÂÃÂ²ng 1 nÃÂÃÂm qua.",
       "pts": 2,
-      "why": "Người từng ngã có nguy cơ tái ngã cao gấp 3 lần.",
+      "why": "NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi tÃÂ¡ÃÂ»ÃÂ«ng ngÃÂÃÂ£ cÃÂÃÂ³ nguy cÃÂÃÂ¡ tÃÂÃÂ¡i ngÃÂÃÂ£ cao gÃÂ¡ÃÂºÃÂ¥p 3 lÃÂ¡ÃÂºÃÂ§n.",
       "ans": false,
     },
     {
-      "text": "2. Tôi cần dùng gậy chống hoặc khung tập đi, hoặc bác sĩ khuyên tôi nên dùng.",
+      "text": "2. TÃÂÃÂ´i cÃÂ¡ÃÂºÃÂ§n dÃÂÃÂ¹ng gÃÂ¡ÃÂºÃÂ­y chÃÂ¡ÃÂ»ÃÂng hoÃÂ¡ÃÂºÃÂ·c khung tÃÂ¡ÃÂºÃÂ­p ÃÂÃÂi, hoÃÂ¡ÃÂºÃÂ·c bÃÂÃÂ¡c sÃÂÃÂ© khuyÃÂÃÂªn tÃÂÃÂ´i nÃÂÃÂªn dÃÂÃÂ¹ng.",
       "pts": 2,
-      "why": "Dấu hiệu suy giảm sức cơ chân và thăng bằng dáng đi.",
+      "why": "DÃÂ¡ÃÂºÃÂ¥u hiÃÂ¡ÃÂ»ÃÂu suy giÃÂ¡ÃÂºÃÂ£m sÃÂ¡ÃÂ»ÃÂ©c cÃÂÃÂ¡ chÃÂÃÂ¢n vÃÂÃÂ  thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng dÃÂÃÂ¡ng ÃÂÃÂi.",
       "ans": false,
     },
     {
-      "text": "3. Đôi khi tôi cảm thấy loạng choạng hoặc mất thăng bằng khi đi lại.",
+      "text": "3. ÃÂÃÂÃÂÃÂ´i khi tÃÂÃÂ´i cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂºÃÂ¥y loÃÂ¡ÃÂºÃÂ¡ng choÃÂ¡ÃÂºÃÂ¡ng hoÃÂ¡ÃÂºÃÂ·c mÃÂ¡ÃÂºÃÂ¥t thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng khi ÃÂÃÂi lÃÂ¡ÃÂºÃÂ¡i.",
       "pts": 1,
-      "why": "Rối loạn chức năng tiền đình hoặc yếu cơ chi dưới.",
+      "why": "RÃÂ¡ÃÂ»ÃÂi loÃÂ¡ÃÂºÃÂ¡n chÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng tiÃÂ¡ÃÂ»ÃÂn ÃÂÃÂÃÂÃÂ¬nh hoÃÂ¡ÃÂºÃÂ·c yÃÂ¡ÃÂºÃÂ¿u cÃÂÃÂ¡ chi dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi.",
       "ans": false,
     },
     {
-      "text": "4. Tôi hay phải vịn vào đồ đạc, tường khi đi lại trong nhà.",
+      "text": "4. TÃÂÃÂ´i hay phÃÂ¡ÃÂºÃÂ£i vÃÂ¡ÃÂ»ÃÂn vÃÂÃÂ o ÃÂÃÂÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂºÃÂ¡c, tÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng khi ÃÂÃÂi lÃÂ¡ÃÂºÃÂ¡i trong nhÃÂÃÂ .",
       "pts": 1,
-      "why": "Biểu hiện thiếu tự tin vào khả năng giữ thăng bằng tự thân.",
+      "why": "BiÃÂ¡ÃÂ»ÃÂu hiÃÂ¡ÃÂ»ÃÂn thiÃÂ¡ÃÂºÃÂ¿u tÃÂ¡ÃÂ»ÃÂ± tin vÃÂÃÂ o khÃÂ¡ÃÂºÃÂ£ nÃÂÃÂng giÃÂ¡ÃÂ»ÃÂ¯ thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng tÃÂ¡ÃÂ»ÃÂ± thÃÂÃÂ¢n.",
       "ans": false,
     },
     {
-      "text": "5. Tôi thường lo lắng hoặc sợ hãi mình sẽ bị ngã.",
+      "text": "5. TÃÂÃÂ´i thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng lo lÃÂ¡ÃÂºÃÂ¯ng hoÃÂ¡ÃÂºÃÂ·c sÃÂ¡ÃÂ»ÃÂ£ hÃÂÃÂ£i mÃÂÃÂ¬nh sÃÂ¡ÃÂºÃÂ½ bÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ£.",
       "pts": 1,
-      "why": "Hội chứng sợ ngã (Fear of Falling) dẫn đến hạn chế vận động và teo cơ.",
+      "why": "HÃÂ¡ÃÂ»ÃÂi chÃÂ¡ÃÂ»ÃÂ©ng sÃÂ¡ÃÂ»ÃÂ£ ngÃÂÃÂ£ (Fear of Falling) dÃÂ¡ÃÂºÃÂ«n ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n hÃÂ¡ÃÂºÃÂ¡n chÃÂ¡ÃÂºÃÂ¿ vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng vÃÂÃÂ  teo cÃÂÃÂ¡.",
       "ans": false,
     },
     {
-      "text": "6. Tôi cần dùng tay đẩy mạnh vào đùi hoặc ghế mới đứng dậy được.",
+      "text": "6. TÃÂÃÂ´i cÃÂ¡ÃÂºÃÂ§n dÃÂÃÂ¹ng tay ÃÂÃÂÃÂ¡ÃÂºÃÂ©y mÃÂ¡ÃÂºÃÂ¡nh vÃÂÃÂ o ÃÂÃÂÃÂÃÂ¹i hoÃÂ¡ÃÂºÃÂ·c ghÃÂ¡ÃÂºÃÂ¿ mÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng dÃÂ¡ÃÂºÃÂ­y ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£c.",
       "pts": 1,
-      "why": "Suy giảm sức mạnh cơ tứ đầu đùi (quadriceps weakness).",
+      "why": "Suy giÃÂ¡ÃÂºÃÂ£m sÃÂ¡ÃÂ»ÃÂ©c mÃÂ¡ÃÂºÃÂ¡nh cÃÂÃÂ¡ tÃÂ¡ÃÂ»ÃÂ© ÃÂÃÂÃÂ¡ÃÂºÃÂ§u ÃÂÃÂÃÂÃÂ¹i (quadriceps weakness).",
       "ans": false,
     },
     {
-      "text": "7. Tôi cảm thấy khó khăn khi bước lên vỉa hè hoặc bậc thềm cao.",
+      "text": "7. TÃÂÃÂ´i cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂºÃÂ¥y khÃÂÃÂ³ khÃÂÃÂn khi bÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂc lÃÂÃÂªn vÃÂ¡ÃÂ»ÃÂa hÃÂÃÂ¨ hoÃÂ¡ÃÂºÃÂ·c bÃÂ¡ÃÂºÃÂ­c thÃÂ¡ÃÂ»ÃÂm cao.",
       "pts": 1,
-      "why": "Hạn chế linh hoạt khớp cổ chân và khả năng nâng chân.",
+      "why": "HÃÂ¡ÃÂºÃÂ¡n chÃÂ¡ÃÂºÃÂ¿ linh hoÃÂ¡ÃÂºÃÂ¡t khÃÂ¡ÃÂ»ÃÂp cÃÂ¡ÃÂ»ÃÂ chÃÂÃÂ¢n vÃÂÃÂ  khÃÂ¡ÃÂºÃÂ£ nÃÂÃÂng nÃÂÃÂ¢ng chÃÂÃÂ¢n.",
       "ans": false,
     },
     {
-      "text": "8. Tôi thường phải vội vã đi gấp vào nhà vệ sinh.",
+      "text": "8. TÃÂÃÂ´i thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng phÃÂ¡ÃÂºÃÂ£i vÃÂ¡ÃÂ»ÃÂi vÃÂÃÂ£ ÃÂÃÂi gÃÂ¡ÃÂºÃÂ¥p vÃÂÃÂ o nhÃÂÃÂ  vÃÂ¡ÃÂ»ÃÂ sinh.",
       "pts": 1,
-      "why": "Hội chứng tiểu gấp làm tăng nguy cơ vấp ngã ban đêm.",
+      "why": "HÃÂ¡ÃÂ»ÃÂi chÃÂ¡ÃÂ»ÃÂ©ng tiÃÂ¡ÃÂ»ÃÂu gÃÂ¡ÃÂºÃÂ¥p lÃÂÃÂ m tÃÂÃÂng nguy cÃÂÃÂ¡ vÃÂ¡ÃÂºÃÂ¥p ngÃÂÃÂ£ ban ÃÂÃÂÃÂÃÂªm.",
       "ans": false,
     },
     {
-      "text": "9. Tôi bị tê bì hoặc mất cảm giác ở lòng bàn chân.",
+      "text": "9. TÃÂÃÂ´i bÃÂ¡ÃÂ»ÃÂ tÃÂÃÂª bÃÂÃÂ¬ hoÃÂ¡ÃÂºÃÂ·c mÃÂ¡ÃÂºÃÂ¥t cÃÂ¡ÃÂºÃÂ£m giÃÂÃÂ¡c ÃÂ¡ÃÂ»ÃÂ lÃÂÃÂ²ng bÃÂÃÂ n chÃÂÃÂ¢n.",
       "pts": 1,
-      "why": "Mất cảm thụ bản thể (neuropathy) hay gặp ở người đái tháo đường.",
+      "why": "MÃÂ¡ÃÂºÃÂ¥t cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂ»ÃÂ¥ bÃÂ¡ÃÂºÃÂ£n thÃÂ¡ÃÂ»ÃÂ (neuropathy) hay gÃÂ¡ÃÂºÃÂ·p ÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi ÃÂÃÂÃÂÃÂ¡i thÃÂÃÂ¡o ÃÂÃÂÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng.",
       "ans": false,
     },
     {
-      "text": "10. Tôi đang uống thuốc làm tôi cảm thấy choáng váng hoặc buồn ngủ.",
+      "text": "10. TÃÂÃÂ´i ÃÂÃÂang uÃÂ¡ÃÂ»ÃÂng thuÃÂ¡ÃÂ»ÃÂc lÃÂÃÂ m tÃÂÃÂ´i cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂºÃÂ¥y choÃÂÃÂ¡ng vÃÂÃÂ¡ng hoÃÂ¡ÃÂºÃÂ·c buÃÂ¡ÃÂ»ÃÂn ngÃÂ¡ÃÂ»ÃÂ§.",
       "pts": 1,
-      "why": "Tác dụng phụ của thuốc hạ huyết áp, an thần hoặc kháng histamine.",
+      "why": "TÃÂÃÂ¡c dÃÂ¡ÃÂ»ÃÂ¥ng phÃÂ¡ÃÂ»ÃÂ¥ cÃÂ¡ÃÂ»ÃÂ§a thuÃÂ¡ÃÂ»ÃÂc hÃÂ¡ÃÂºÃÂ¡ huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p, an thÃÂ¡ÃÂºÃÂ§n hoÃÂ¡ÃÂºÃÂ·c khÃÂÃÂ¡ng histamine.",
       "ans": false,
     },
     {
-      "text": "11. Tôi đang uống thuốc điều trị rối loạn tâm trạng hoặc thuốc hỗ trợ giấc ngủ.",
+      "text": "11. TÃÂÃÂ´i ÃÂÃÂang uÃÂ¡ÃÂ»ÃÂng thuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu trÃÂ¡ÃÂ»ÃÂ rÃÂ¡ÃÂ»ÃÂi loÃÂ¡ÃÂºÃÂ¡n tÃÂÃÂ¢m trÃÂ¡ÃÂºÃÂ¡ng hoÃÂ¡ÃÂºÃÂ·c thuÃÂ¡ÃÂ»ÃÂc hÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ£ giÃÂ¡ÃÂºÃÂ¥c ngÃÂ¡ÃÂ»ÃÂ§.",
       "pts": 1,
-      "why": "Thuốc ngủ làm giảm phản xạ thăng bằng khi thức dậy giữa đêm.",
+      "why": "ThuÃÂ¡ÃÂ»ÃÂc ngÃÂ¡ÃÂ»ÃÂ§ lÃÂÃÂ m giÃÂ¡ÃÂºÃÂ£m phÃÂ¡ÃÂºÃÂ£n xÃÂ¡ÃÂºÃÂ¡ thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng khi thÃÂ¡ÃÂ»ÃÂ©c dÃÂ¡ÃÂºÃÂ­y giÃÂ¡ÃÂ»ÃÂ¯a ÃÂÃÂÃÂÃÂªm.",
       "ans": false,
     },
     {
-      "text": "12. Gần đây tôi thường xuyên cảm thấy buồn bã, chán nản hoặc suy giảm tinh thần.",
+      "text": "12. GÃÂ¡ÃÂºÃÂ§n ÃÂÃÂÃÂÃÂ¢y tÃÂÃÂ´i thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng xuyÃÂÃÂªn cÃÂ¡ÃÂºÃÂ£m thÃÂ¡ÃÂºÃÂ¥y buÃÂ¡ÃÂ»ÃÂn bÃÂÃÂ£, chÃÂÃÂ¡n nÃÂ¡ÃÂºÃÂ£n hoÃÂ¡ÃÂºÃÂ·c suy giÃÂ¡ÃÂºÃÂ£m tinh thÃÂ¡ÃÂºÃÂ§n.",
       "pts": 1,
-      "why": "Trầm cảm tuổi già liên quan mật thiết đến suy giảm phối hợp vận động.",
+      "why": "TrÃÂ¡ÃÂºÃÂ§m cÃÂ¡ÃÂºÃÂ£m tuÃÂ¡ÃÂ»ÃÂi giÃÂÃÂ  liÃÂÃÂªn quan mÃÂ¡ÃÂºÃÂ­t thiÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂÃÂ¡ÃÂºÃÂ¿n suy giÃÂ¡ÃÂºÃÂ£m phÃÂ¡ÃÂ»ÃÂi hÃÂ¡ÃÂ»ÃÂ£p vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng.",
       "ans": false,
     },
   ];
@@ -8172,7 +8180,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
     return s;
   }
 
-  String get riskLevel => currentScore >= 4 ? "NGUY CƠ CAO (High Risk)" : "NGUY CƠ THẤP / VỪA (Low/Mod Risk)";
+  String get riskLevel => currentScore >= 4 ? "NGUY CÃÂÃÂ  CAO (High Risk)" : "NGUY CÃÂÃÂ  THÃÂ¡ÃÂºÃÂ¤P / VÃÂ¡ÃÂ»ÃÂªA (Low/Mod Risk)";
 
   void _finish() async {
     final score = currentScore;
@@ -8181,7 +8189,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
     await prefs.setInt('cdc_steadi_last_score', score);
     await prefs.setString('cdc_steadi_last_date', DateTime.now().toIso8601String());
 
-    // Lưu vào danh sách lịch sử đánh giá
+    // LÃÂÃÂ°u vÃÂÃÂ o danh sÃÂÃÂ¡ch lÃÂ¡ÃÂ»ÃÂch sÃÂ¡ÃÂ»ÃÂ­ ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡
     final List<String> history = prefs.getStringList('cdc_steadi_history') ?? [];
     history.insert(0, jsonEncode({
       'date': DateTime.now().toIso8601String(),
@@ -8194,7 +8202,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
     if (!mounted) return;
     Navigator.pop(context);
 
-    // Mở hộp thoại thông báo kết quả & lời khuyên y tế
+    // MÃÂ¡ÃÂ»ÃÂ hÃÂ¡ÃÂ»ÃÂp thoÃÂ¡ÃÂºÃÂ¡i thÃÂÃÂ´ng bÃÂÃÂ¡o kÃÂ¡ÃÂºÃÂ¿t quÃÂ¡ÃÂºÃÂ£ & lÃÂ¡ÃÂ»ÃÂi khuyÃÂÃÂªn y tÃÂ¡ÃÂºÃÂ¿
     _showResultDialog(score, level);
   }
 
@@ -8206,7 +8214,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
           children: [
             Icon(score >= 4 ? Icons.warning : Icons.check_circle, color: score >= 4 ? Colors.redAccent : Colors.green),
             const SizedBox(width: 8),
-            const Text("Kết quả đánh giá CDC", style: TextStyle(fontSize: 16)),
+            const Text("KÃÂ¡ÃÂºÃÂ¿t quÃÂ¡ÃÂºÃÂ£ ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ CDC", style: TextStyle(fontSize: 16)),
           ],
         ),
         content: Column(
@@ -8222,7 +8230,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
               ),
               child: Row(
                 children: [
-                  Text("$score / 14 điểm", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: score >= 4 ? Colors.redAccent : Colors.green)),
+                  Text("$score / 14 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: score >= 4 ? Colors.redAccent : Colors.green)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(level, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -8231,22 +8239,22 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text("Khuyến nghị y tế lâm sàng theo CDC STEADI:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const Text("KhuyÃÂ¡ÃÂºÃÂ¿n nghÃÂ¡ÃÂ»ÃÂ y tÃÂ¡ÃÂºÃÂ¿ lÃÂÃÂ¢m sÃÂÃÂ ng theo CDC STEADI:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             const SizedBox(height: 6),
             if (score >= 4) ...[
-              const Text("• Cần đo huyết áp tư thế (ngồi và đứng sau 1-3 phút) để tầm soát tụt huyết áp tư thế.", style: TextStyle(fontSize: 12)),
-              const Text("• Đề nghị bác sĩ điều trị rà soát đơn thuốc, đặc biệt thuốc an thần và hạ áp.", style: TextStyle(fontSize: 12)),
-              const Text("• Lắp đặt thanh vịn tay trong nhà tắm và thảm chống trượt ngay lập tức.", style: TextStyle(fontSize: 12)),
-              const Text("• Tập vật lý trị liệu phục hồi chức năng thăng bằng (bài tập Otago / Thái Cực Quyền).", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ CÃÂ¡ÃÂºÃÂ§n ÃÂÃÂo huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p tÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ (ngÃÂ¡ÃÂ»ÃÂi vÃÂÃÂ  ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng sau 1-3 phÃÂÃÂºt) ÃÂÃÂÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ§m soÃÂÃÂ¡t tÃÂ¡ÃÂ»ÃÂ¥t huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p tÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿.", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ nghÃÂ¡ÃÂ»ÃÂ bÃÂÃÂ¡c sÃÂÃÂ© ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu trÃÂ¡ÃÂ»ÃÂ rÃÂÃÂ  soÃÂÃÂ¡t ÃÂÃÂÃÂÃÂ¡n thuÃÂ¡ÃÂ»ÃÂc, ÃÂÃÂÃÂ¡ÃÂºÃÂ·c biÃÂ¡ÃÂ»ÃÂt thuÃÂ¡ÃÂ»ÃÂc an thÃÂ¡ÃÂºÃÂ§n vÃÂÃÂ  hÃÂ¡ÃÂºÃÂ¡ ÃÂÃÂ¡p.", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ LÃÂ¡ÃÂºÃÂ¯p ÃÂÃÂÃÂ¡ÃÂºÃÂ·t thanh vÃÂ¡ÃÂ»ÃÂn tay trong nhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m vÃÂÃÂ  thÃÂ¡ÃÂºÃÂ£m chÃÂ¡ÃÂ»ÃÂng trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£t ngay lÃÂ¡ÃÂºÃÂ­p tÃÂ¡ÃÂ»ÃÂ©c.", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ TÃÂ¡ÃÂºÃÂ­p vÃÂ¡ÃÂºÃÂ­t lÃÂÃÂ½ trÃÂ¡ÃÂ»ÃÂ liÃÂ¡ÃÂ»ÃÂu phÃÂ¡ÃÂ»ÃÂ¥c hÃÂ¡ÃÂ»ÃÂi chÃÂ¡ÃÂ»ÃÂ©c nÃÂÃÂng thÃÂÃÂng bÃÂ¡ÃÂºÃÂ±ng (bÃÂÃÂ i tÃÂ¡ÃÂºÃÂ­p Otago / ThÃÂÃÂ¡i CÃÂ¡ÃÂ»ÃÂ±c QuyÃÂ¡ÃÂ»ÃÂn).", style: TextStyle(fontSize: 12)),
             ] else ...[
-              const Text("• Duy trì thói quen tập luyện thể lực hàng ngày (đi bộ, Thái Cực Quyền 30 phút/ngày).", style: TextStyle(fontSize: 12)),
-              const Text("• Bổ sung đủ Canxi và Vitamin D theo hướng dẫn của bác sĩ.", style: TextStyle(fontSize: 12)),
-              const Text("• Đánh giá lại nguy cơ định kỳ 6 tháng một lần.", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ Duy trÃÂÃÂ¬ thÃÂÃÂ³i quen tÃÂ¡ÃÂºÃÂ­p luyÃÂ¡ÃÂ»ÃÂn thÃÂ¡ÃÂ»ÃÂ lÃÂ¡ÃÂ»ÃÂ±c hÃÂÃÂ ng ngÃÂÃÂ y (ÃÂÃÂi bÃÂ¡ÃÂ»ÃÂ, ThÃÂÃÂ¡i CÃÂ¡ÃÂ»ÃÂ±c QuyÃÂ¡ÃÂ»ÃÂn 30 phÃÂÃÂºt/ngÃÂÃÂ y).", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ BÃÂ¡ÃÂ»ÃÂ sung ÃÂÃÂÃÂ¡ÃÂ»ÃÂ§ Canxi vÃÂÃÂ  Vitamin D theo hÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng dÃÂ¡ÃÂºÃÂ«n cÃÂ¡ÃÂ»ÃÂ§a bÃÂÃÂ¡c sÃÂÃÂ©.", style: TextStyle(fontSize: 12)),
+              const Text("ÃÂ¢ÃÂÃÂ¢ ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ lÃÂ¡ÃÂºÃÂ¡i nguy cÃÂÃÂ¡ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh kÃÂ¡ÃÂ»ÃÂ³ 6 thÃÂÃÂ¡ng mÃÂ¡ÃÂ»ÃÂt lÃÂ¡ÃÂºÃÂ§n.", style: TextStyle(fontSize: 12)),
             ],
           ],
         ),
         actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text("Tôi đã hiểu")),
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text("TÃÂÃÂ´i ÃÂÃÂÃÂÃÂ£ hiÃÂ¡ÃÂ»ÃÂu")),
         ],
       ),
     );
@@ -8270,8 +8278,8 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Đánh giá nguy cơ ngã CDC STEADI", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text("Chuẩn y khoa Trung tâm Kiểm soát Bệnh tật Hoa Kỳ (CDC)", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text("ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ nguy cÃÂÃÂ¡ ngÃÂÃÂ£ CDC STEADI", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text("ChuÃÂ¡ÃÂºÃÂ©n y khoa Trung tÃÂÃÂ¢m KiÃÂ¡ÃÂ»ÃÂm soÃÂÃÂ¡t BÃÂ¡ÃÂ»ÃÂnh tÃÂ¡ÃÂºÃÂ­t Hoa KÃÂ¡ÃÂ»ÃÂ³ (CDC)", style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -8280,7 +8288,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
             ),
             const Divider(),
 
-            // Điểm số trực tiếp
+            // ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm sÃÂ¡ÃÂ»ÃÂ trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
@@ -8291,8 +8299,8 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Điểm số hiện tại: $currentScore / 14 điểm", style: TextStyle(fontWeight: FontWeight.bold, color: currentScore >= 4 ? Colors.redAccent : Colors.green)),
-                  Text(currentScore >= 4 ? "Nguy cơ cao (>= 4)" : "Nguy cơ thấp (< 4)", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text("ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm sÃÂ¡ÃÂ»ÃÂ hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i: $currentScore / 14 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm", style: TextStyle(fontWeight: FontWeight.bold, color: currentScore >= 4 ? Colors.redAccent : Colors.green)),
+                  Text(currentScore >= 4 ? "Nguy cÃÂÃÂ¡ cao (>= 4)" : "Nguy cÃÂÃÂ¡ thÃÂ¡ÃÂºÃÂ¥p (< 4)", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -8327,7 +8335,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
                                   color: Colors.white12,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text("+${q['pts']}đ", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                child: Text("+${q['pts']}ÃÂÃÂ", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
@@ -8338,7 +8346,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               ChoiceChip(
-                                label: const Text("Không"),
+                                label: const Text("KhÃÂÃÂ´ng"),
                                 selected: q['ans'] == false,
                                 onSelected: (sel) {
                                   if (sel) setState(() => q['ans'] = false);
@@ -8346,7 +8354,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
                               ),
                               const SizedBox(width: 8),
                               ChoiceChip(
-                                label: const Text("Có / Đúng"),
+                                label: const Text("CÃÂÃÂ³ / ÃÂÃÂÃÂÃÂºng"),
                                 selectedColor: Colors.redAccent.withValues(alpha: 0.3),
                                 selected: q['ans'] == true,
                                 onSelected: (sel) {
@@ -8370,7 +8378,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
               ),
               onPressed: _finish,
               icon: const Icon(Icons.check_circle_outline),
-              label: Text("Hoàn thành đánh giá ($currentScore điểm)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              label: Text("HoÃÂÃÂ n thÃÂÃÂ nh ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ ($currentScore ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ],
         ),
@@ -8380,7 +8388,7 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
 }
 
 // =========================================================================
-// TÍNH NĂNG 3: BÁO CÁO Y KHOA XUẤT ĐỊNH KỲ (MEDICAL AUDIT REPORT DIALOG)
+// TÃÂÃÂNH NÃÂÃÂNG 3: BÃÂÃÂO CÃÂÃÂO Y KHOA XUÃÂ¡ÃÂºÃÂ¤T ÃÂÃÂÃÂ¡ÃÂ»ÃÂNH KÃÂ¡ÃÂ»ÃÂ² (MEDICAL AUDIT REPORT DIALOG)
 // =========================================================================
 class MedicalAuditReportDialog extends StatelessWidget {
   final ElderlyMedicalProfile profile;
@@ -8409,36 +8417,36 @@ class MedicalAuditReportDialog extends StatelessWidget {
 
     return """
 ======================================================================
-BÁO CÁO LÂM SÀNG GIÁM SÁT TÉ NGÃ & VẬN ĐỘNG (FALLGUARD CLINICAL REPORT)
-Hệ thống giám sát vi ba Radar FMCW 24GHz & Laser ToF AI ESP32-S3R8
-Thời điểm xuất báo cáo: $dateStr
+BÃÂÃÂO CÃÂÃÂO LÃÂÃÂM SÃÂÃÂNG GIÃÂÃÂM SÃÂÃÂT TÃÂÃÂ NGÃÂÃÂ & VÃÂ¡ÃÂºÃÂ¬N ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG (FALLGUARD CLINICAL REPORT)
+HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng giÃÂÃÂ¡m sÃÂÃÂ¡t vi ba Radar FMCW 24GHz & Laser ToF AI ESP32-S3R8
+ThÃÂ¡ÃÂ»ÃÂi ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm xuÃÂ¡ÃÂºÃÂ¥t bÃÂÃÂ¡o cÃÂÃÂ¡o: $dateStr
 ======================================================================
 
-I. THÔNG TIN BỆNH NHÂN & HỒ SƠ Y TẾ
-• Họ và tên: ${profile.fullName}
-• Tuổi: $age tuổi (Sinh năm ${profile.birthYear} - Giới tính: ${profile.gender})
-• Nhóm máu: ${profile.bloodType}
-• Cảnh báo thuốc chống đông máu: ${profile.isTakingAnticoagulants ? 'CÓ (Aspirin/Warfarin/Xarelto - CỰC KỲ LƯU Ý)' : 'Không ghi nhận'}
-• Bệnh lý nền: ${profile.chronicConditions.join(', ')}
-• Đơn thuốc đang sử dụng: ${profile.highRiskMedications.join(', ')}
-• Bác sĩ phụ trách: ${profile.attendingDoctorName} (SĐT: ${profile.attendingDoctorPhone})
-• Bệnh viện chỉ định: ${profile.hospital}
+I. THÃÂÃÂNG TIN BÃÂ¡ÃÂ»ÃÂNH NHÃÂÃÂN & HÃÂ¡ÃÂ»ÃÂ SÃÂÃÂ  Y TÃÂ¡ÃÂºÃÂ¾
+ÃÂ¢ÃÂÃÂ¢ HÃÂ¡ÃÂ»ÃÂ vÃÂÃÂ  tÃÂÃÂªn: ${profile.fullName}
+ÃÂ¢ÃÂÃÂ¢ TuÃÂ¡ÃÂ»ÃÂi: $age tuÃÂ¡ÃÂ»ÃÂi (Sinh nÃÂÃÂm ${profile.birthYear} - GiÃÂ¡ÃÂ»ÃÂi tÃÂÃÂ­nh: ${profile.gender})
+ÃÂ¢ÃÂÃÂ¢ NhÃÂÃÂ³m mÃÂÃÂ¡u: ${profile.bloodType}
+ÃÂ¢ÃÂÃÂ¢ CÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o thuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng mÃÂÃÂ¡u: ${profile.isTakingAnticoagulants ? 'CÃÂÃÂ (Aspirin/Warfarin/Xarelto - CÃÂ¡ÃÂ»ÃÂ°C KÃÂ¡ÃÂ»ÃÂ² LÃÂÃÂ¯U ÃÂÃÂ)' : 'KhÃÂÃÂ´ng ghi nhÃÂ¡ÃÂºÃÂ­n'}
+ÃÂ¢ÃÂÃÂ¢ BÃÂ¡ÃÂ»ÃÂnh lÃÂÃÂ½ nÃÂ¡ÃÂ»ÃÂn: ${profile.chronicConditions.join(', ')}
+ÃÂ¢ÃÂÃÂ¢ ÃÂÃÂÃÂÃÂ¡n thuÃÂ¡ÃÂ»ÃÂc ÃÂÃÂang sÃÂ¡ÃÂ»ÃÂ­ dÃÂ¡ÃÂ»ÃÂ¥ng: ${profile.highRiskMedications.join(', ')}
+ÃÂ¢ÃÂÃÂ¢ BÃÂÃÂ¡c sÃÂÃÂ© phÃÂ¡ÃÂ»ÃÂ¥ trÃÂÃÂ¡ch: ${profile.attendingDoctorName} (SÃÂÃÂT: ${profile.attendingDoctorPhone})
+ÃÂ¢ÃÂÃÂ¢ BÃÂ¡ÃÂ»ÃÂnh viÃÂ¡ÃÂ»ÃÂn chÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh: ${profile.hospital}
 
-II. CHỈ SỐ ĐÁNH GIÁ NGUY CƠ TÉ NGÃ (CDC STEADI USA)
-• Điểm đánh giá: $cdcScore / 14 điểm
-• Phân tầng nguy cơ: ${cdcScore >= 4 ? 'NGUY CƠ CAO (High Fall Risk >= 4)' : 'NGUY CƠ THẤP / TRUNG BÌNH (< 4)'}
-• Ngày đánh giá gần nhất: ${cdcDate != null ? '${cdcDate!.day}/${cdcDate!.month}/${cdcDate!.year}' : 'Chưa thực hiện'}
+II. CHÃÂ¡ÃÂ»ÃÂ SÃÂ¡ÃÂ»ÃÂ ÃÂÃÂÃÂÃÂNH GIÃÂÃÂ NGUY CÃÂÃÂ  TÃÂÃÂ NGÃÂÃÂ (CDC STEADI USA)
+ÃÂ¢ÃÂÃÂ¢ ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡: $cdcScore / 14 ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm
+ÃÂ¢ÃÂÃÂ¢ PhÃÂÃÂ¢n tÃÂ¡ÃÂºÃÂ§ng nguy cÃÂÃÂ¡: ${cdcScore >= 4 ? 'NGUY CÃÂÃÂ  CAO (High Fall Risk >= 4)' : 'NGUY CÃÂÃÂ  THÃÂ¡ÃÂºÃÂ¤P / TRUNG BÃÂÃÂNH (< 4)'}
+ÃÂ¢ÃÂÃÂ¢ NgÃÂÃÂ y ÃÂÃÂÃÂÃÂ¡nh giÃÂÃÂ¡ gÃÂ¡ÃÂºÃÂ§n nhÃÂ¡ÃÂºÃÂ¥t: ${cdcDate != null ? '${cdcDate!.day}/${cdcDate!.month}/${cdcDate!.year}' : 'ChÃÂÃÂ°a thÃÂ¡ÃÂ»ÃÂ±c hiÃÂ¡ÃÂ»ÃÂn'}
 
-III. THỐNG KÊ SỰ CỐ & HỘP ĐEN NVS (BLACKBOX AUDIT)
-• Tổng số vụ té ngã va chạm mạnh ghi nhận: ${eventHistory.where((e) => e['type'] == 1).length} sự cố
-• Tổng số sự cố ngã chậm / nằm sàn bất động: ${eventHistory.where((e) => e['type'] == 2).length} sự cố
-• Số lần cảnh báo lưu trú bất động trong nhà tắm (>30p): $inactivityEventsCount lần
-• Trạng thái hiện tại: Chiều cao ToF $tofHeight mm | Động năng Radar $radarMotion/100
+III. THÃÂ¡ÃÂ»ÃÂNG KÃÂÃÂ SÃÂ¡ÃÂ»ÃÂ° CÃÂ¡ÃÂ»ÃÂ & HÃÂ¡ÃÂ»ÃÂP ÃÂÃÂEN NVS (BLACKBOX AUDIT)
+ÃÂ¢ÃÂÃÂ¢ TÃÂ¡ÃÂ»ÃÂng sÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂ»ÃÂ¥ tÃÂÃÂ© ngÃÂÃÂ£ va chÃÂ¡ÃÂºÃÂ¡m mÃÂ¡ÃÂºÃÂ¡nh ghi nhÃÂ¡ÃÂºÃÂ­n: ${eventHistory.where((e) => e['type'] == 1).length} sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ
+ÃÂ¢ÃÂÃÂ¢ TÃÂ¡ÃÂ»ÃÂng sÃÂ¡ÃÂ»ÃÂ sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ ngÃÂÃÂ£ chÃÂ¡ÃÂºÃÂ­m / nÃÂ¡ÃÂºÃÂ±m sÃÂÃÂ n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng: ${eventHistory.where((e) => e['type'] == 2).length} sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ
+ÃÂ¢ÃÂÃÂ¢ SÃÂ¡ÃÂ»ÃÂ lÃÂ¡ÃÂºÃÂ§n cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o lÃÂÃÂ°u trÃÂÃÂº bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng trong nhÃÂÃÂ  tÃÂ¡ÃÂºÃÂ¯m (>30p): $inactivityEventsCount lÃÂ¡ÃÂºÃÂ§n
+ÃÂ¢ÃÂÃÂ¢ TrÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i hiÃÂ¡ÃÂ»ÃÂn tÃÂ¡ÃÂºÃÂ¡i: ChiÃÂ¡ÃÂ»ÃÂu cao ToF $tofHeight mm | ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar $radarMotion/100
 
-IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
-1. Người bệnh có phân tầng nguy cơ ngã ${cdcScore >= 4 ? 'CAO' : 'TRUNG BÌNH'}. Cần kiểm tra huyết áp tư thế nằm và đứng (Orthostatic Hypotension) tại phòng khám.
-2. ${profile.isTakingAnticoagulants ? 'ĐẶC BIỆT LƯU Ý: Do bệnh nhân đang điều trị thuốc chống đông, mọi cú ngã va chạm vùng đầu dù chưa xuất hiện triệu chứng ngoài da vẫn bắt buộc chụp CT sọ não trong 24h để loại trừ tụ máu dưới màng cứng muộn.' : 'Duy trì chế độ vận động nhẹ nhàng.'}
-3. Kiểm tra môi trường nhà ở: Lắp đặt tay vịn nhà vệ sinh, giữ sàn khô ráo, đảm bảo ánh sáng đèn ngủ tự động bật khi người bệnh thức dậy ban đêm.
+IV. KHUYÃÂ¡ÃÂºÃÂ¾N CÃÂÃÂO LÃÂÃÂM SÃÂÃÂNG DÃÂÃÂNH CHO BÃÂÃÂC SÃÂÃÂ¨ & GIA ÃÂÃÂÃÂÃÂNH
+1. NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂnh cÃÂÃÂ³ phÃÂÃÂ¢n tÃÂ¡ÃÂºÃÂ§ng nguy cÃÂÃÂ¡ ngÃÂÃÂ£ ${cdcScore >= 4 ? 'CAO' : 'TRUNG BÃÂÃÂNH'}. CÃÂ¡ÃÂºÃÂ§n kiÃÂ¡ÃÂ»ÃÂm tra huyÃÂ¡ÃÂºÃÂ¿t ÃÂÃÂ¡p tÃÂÃÂ° thÃÂ¡ÃÂºÃÂ¿ nÃÂ¡ÃÂºÃÂ±m vÃÂÃÂ  ÃÂÃÂÃÂ¡ÃÂ»ÃÂ©ng (Orthostatic Hypotension) tÃÂ¡ÃÂºÃÂ¡i phÃÂÃÂ²ng khÃÂÃÂ¡m.
+2. ${profile.isTakingAnticoagulants ? 'ÃÂÃÂÃÂ¡ÃÂºÃÂ¶C BIÃÂ¡ÃÂ»ÃÂT LÃÂÃÂ¯U ÃÂÃÂ: Do bÃÂ¡ÃÂ»ÃÂnh nhÃÂÃÂ¢n ÃÂÃÂang ÃÂÃÂiÃÂ¡ÃÂ»ÃÂu trÃÂ¡ÃÂ»ÃÂ thuÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂng ÃÂÃÂÃÂÃÂ´ng, mÃÂ¡ÃÂ»ÃÂi cÃÂÃÂº ngÃÂÃÂ£ va chÃÂ¡ÃÂºÃÂ¡m vÃÂÃÂ¹ng ÃÂÃÂÃÂ¡ÃÂºÃÂ§u dÃÂÃÂ¹ chÃÂÃÂ°a xuÃÂ¡ÃÂºÃÂ¥t hiÃÂ¡ÃÂ»ÃÂn triÃÂ¡ÃÂ»ÃÂu chÃÂ¡ÃÂ»ÃÂ©ng ngoÃÂÃÂ i da vÃÂ¡ÃÂºÃÂ«n bÃÂ¡ÃÂºÃÂ¯t buÃÂ¡ÃÂ»ÃÂc chÃÂ¡ÃÂ»ÃÂ¥p CT sÃÂ¡ÃÂ»ÃÂ nÃÂÃÂ£o trong 24h ÃÂÃÂÃÂ¡ÃÂ»ÃÂ loÃÂ¡ÃÂºÃÂ¡i trÃÂ¡ÃÂ»ÃÂ« tÃÂ¡ÃÂ»ÃÂ¥ mÃÂÃÂ¡u dÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi mÃÂÃÂ ng cÃÂ¡ÃÂ»ÃÂ©ng muÃÂ¡ÃÂ»ÃÂn.' : 'Duy trÃÂÃÂ¬ chÃÂ¡ÃÂºÃÂ¿ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ vÃÂ¡ÃÂºÃÂ­n ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nhÃÂ¡ÃÂºÃÂ¹ nhÃÂÃÂ ng.'}
+3. KiÃÂ¡ÃÂ»ÃÂm tra mÃÂÃÂ´i trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng nhÃÂÃÂ  ÃÂ¡ÃÂ»ÃÂ: LÃÂ¡ÃÂºÃÂ¯p ÃÂÃÂÃÂ¡ÃÂºÃÂ·t tay vÃÂ¡ÃÂ»ÃÂn nhÃÂÃÂ  vÃÂ¡ÃÂ»ÃÂ sinh, giÃÂ¡ÃÂ»ÃÂ¯ sÃÂÃÂ n khÃÂÃÂ´ rÃÂÃÂ¡o, ÃÂÃÂÃÂ¡ÃÂºÃÂ£m bÃÂ¡ÃÂºÃÂ£o ÃÂÃÂ¡nh sÃÂÃÂ¡ng ÃÂÃÂÃÂÃÂ¨n ngÃÂ¡ÃÂ»ÃÂ§ tÃÂ¡ÃÂ»ÃÂ± ÃÂÃÂÃÂ¡ÃÂ»ÃÂng bÃÂ¡ÃÂºÃÂ­t khi ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi bÃÂ¡ÃÂ»ÃÂnh thÃÂ¡ÃÂ»ÃÂ©c dÃÂ¡ÃÂºÃÂ­y ban ÃÂÃÂÃÂÃÂªm.
 ======================================================================
 """;
   }
@@ -8446,7 +8454,7 @@ IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
   void _copyToClipboard(BuildContext context) {
     Clipboard.setData(ClipboardData(text: _generateReportText()));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Đã sao chép toàn bộ báo cáo y khoa vào clipboard!"), backgroundColor: Colors.teal),
+      const SnackBar(content: Text("ÃÂÃÂÃÂÃÂ£ sao chÃÂÃÂ©p toÃÂÃÂ n bÃÂ¡ÃÂ»ÃÂ bÃÂÃÂ¡o cÃÂÃÂ¡o y khoa vÃÂÃÂ o clipboard!"), backgroundColor: Colors.teal),
     );
   }
 
@@ -8469,8 +8477,8 @@ IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Báo cáo y tế xuất định kỳ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                      Text("Tóm tắt lâm sàng phục vụ thăm khám Bác sĩ", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text("BÃÂÃÂ¡o cÃÂÃÂ¡o y tÃÂ¡ÃÂºÃÂ¿ xuÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂnh kÃÂ¡ÃÂ»ÃÂ³", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                      Text("TÃÂÃÂ³m tÃÂ¡ÃÂºÃÂ¯t lÃÂÃÂ¢m sÃÂÃÂ ng phÃÂ¡ÃÂ»ÃÂ¥c vÃÂ¡ÃÂ»ÃÂ¥ thÃÂÃÂm khÃÂÃÂ¡m BÃÂÃÂ¡c sÃÂÃÂ©", style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -8501,7 +8509,7 @@ IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
                   child: OutlinedButton.icon(
                     onPressed: () => _copyToClipboard(context),
                     icon: const Icon(Icons.copy, size: 16),
-                    label: const Text("Sao chép Báo cáo"),
+                    label: const Text("Sao chÃÂÃÂ©p BÃÂÃÂ¡o cÃÂÃÂ¡o"),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -8513,7 +8521,7 @@ IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.share, size: 16),
-                    label: const Text("Sao chép & Gửi Bác sĩ"),
+                    label: const Text("Sao chÃÂÃÂ©p & GÃÂ¡ÃÂ»ÃÂ­i BÃÂÃÂ¡c sÃÂÃÂ©"),
                   ),
                 ),
               ],
@@ -8526,7 +8534,7 @@ IV. KHUYẾN CÁO LÂM SÀNG DÀNH CHO BÁC SĨ & GIA ĐÌNH
 }
 
 // =========================================================================
-// TÍNH NĂNG 4: CẢNH BÁO KHẨN CẤP VƯỢT CHẾ ĐỘ IM LẶNG (CRITICAL ALARM MODAL)
+// TÃÂÃÂNH NÃÂÃÂNG 4: CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P VÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂ¢T CHÃÂ¡ÃÂºÃÂ¾ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ IM LÃÂ¡ÃÂºÃÂ¶NG (CRITICAL ALARM MODAL)
 // =========================================================================
 class CriticalEmergencyAlarmDialog extends StatefulWidget {
   final bool isFall;
@@ -8572,7 +8580,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
       upperBound: 1.0,
     )..repeat(reverse: true);
 
-    // Vòng lặp rung chấn mạnh & âm thanh cảnh báo vượt chế độ im lặng
+    // VÃÂÃÂ²ng lÃÂ¡ÃÂºÃÂ·p rung chÃÂ¡ÃÂºÃÂ¥n mÃÂ¡ÃÂºÃÂ¡nh & ÃÂÃÂ¢m thanh cÃÂ¡ÃÂºÃÂ£nh bÃÂÃÂ¡o vÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£t chÃÂ¡ÃÂºÃÂ¿ ÃÂÃÂÃÂ¡ÃÂ»ÃÂ im lÃÂ¡ÃÂºÃÂ·ng
     _hapticLoopTimer = Timer.periodic(const Duration(milliseconds: 600), (t) {
       HapticFeedback.heavyImpact();
       SystemSound.play(SystemSoundType.alert);
@@ -8623,7 +8631,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Biểu tượng & Nhấp nháy báo động
+                  // BiÃÂ¡ÃÂ»ÃÂu tÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£ng & NhÃÂ¡ÃÂºÃÂ¥p nhÃÂÃÂ¡y bÃÂÃÂ¡o ÃÂÃÂÃÂ¡ÃÂ»ÃÂng
                   Center(
                     child: Container(
                       width: 80,
@@ -8640,7 +8648,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
 
                   Center(
                     child: Text(
-                      widget.isFall ? "🚨 CẢNH BÁO TÉ NGÃ KHẨN CẤP!" : "⚠️ CẢNH BÁO BẤT ĐỘNG KÉO DÀI!",
+                      widget.isFall ? "ÃÂ°ÃÂÃÂÃÂ¨ CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO TÃÂÃÂ NGÃÂÃÂ KHÃÂ¡ÃÂºÃÂ¨N CÃÂ¡ÃÂºÃÂ¤P!" : "ÃÂ¢ÃÂÃÂ ÃÂ¯ÃÂ¸ÃÂ CÃÂ¡ÃÂºÃÂ¢NH BÃÂÃÂO BÃÂ¡ÃÂºÃÂ¤T ÃÂÃÂÃÂ¡ÃÂ»ÃÂNG KÃÂÃÂO DÃÂÃÂI!",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.redAccent),
                       textAlign: TextAlign.center,
                     ),
@@ -8648,14 +8656,14 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                   const SizedBox(height: 6),
                   Text(
                     widget.customReason ?? (widget.isFall
-                        ? "Hệ thống AI vừa phát hiện cú ngã va chạm mạnh tại khu vực [${widget.roomName}]!"
-                        : "Phát hiện người thân bất động quá lâu trong [${widget.roomName}]. Nghi ngờ ngất xỉu hoặc đột quỵ!"),
+                        ? "HÃÂ¡ÃÂ»ÃÂ thÃÂ¡ÃÂ»ÃÂng AI vÃÂ¡ÃÂ»ÃÂ«a phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn cÃÂÃÂº ngÃÂÃÂ£ va chÃÂ¡ÃÂºÃÂ¡m mÃÂ¡ÃÂºÃÂ¡nh tÃÂ¡ÃÂºÃÂ¡i khu vÃÂ¡ÃÂ»ÃÂ±c [${widget.roomName}]!"
+                        : "PhÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n bÃÂ¡ÃÂºÃÂ¥t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng quÃÂÃÂ¡ lÃÂÃÂ¢u trong [${widget.roomName}]. Nghi ngÃÂ¡ÃÂ»ÃÂ ngÃÂ¡ÃÂºÃÂ¥t xÃÂ¡ÃÂ»ÃÂu hoÃÂ¡ÃÂºÃÂ·c ÃÂÃÂÃÂ¡ÃÂ»ÃÂt quÃÂ¡ÃÂ»ÃÂµ!"),
                     style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.35),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 14),
 
-                  // Bảng thông số tại thời điểm sự cố
+                  // BÃÂ¡ÃÂºÃÂ£ng thÃÂÃÂ´ng sÃÂ¡ÃÂ»ÃÂ tÃÂ¡ÃÂºÃÂ¡i thÃÂ¡ÃÂ»ÃÂi ÃÂÃÂiÃÂ¡ÃÂ»ÃÂm sÃÂ¡ÃÂ»ÃÂ± cÃÂ¡ÃÂ»ÃÂ
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -8666,15 +8674,15 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildMetric("V_rơi", "${widget.dropRate.toStringAsFixed(0)} mm/s"),
-                        _buildMetric("Độ cao ToF", "${widget.tofHeight} mm"),
-                        _buildMetric("Động năng Radar", "${widget.radarMotion}%"),
+                        _buildMetric("V_rÃÂÃÂ¡i", "${widget.dropRate.toStringAsFixed(0)} mm/s"),
+                        _buildMetric("ÃÂÃÂÃÂ¡ÃÂ»ÃÂ cao ToF", "${widget.tofHeight} mm"),
+                        _buildMetric("ÃÂÃÂÃÂ¡ÃÂ»ÃÂng nÃÂÃÂng Radar", "${widget.radarMotion}%"),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Nút gọi 115 khẩn cấp
+                  // NÃÂÃÂºt gÃÂ¡ÃÂ»ÃÂi 115 khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.red.shade700,
@@ -8683,11 +8691,11 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                     ),
                     onPressed: _call115,
                     icon: const Icon(Icons.phone_in_talk, size: 22),
-                    label: const Text("GỌI CẤP CỨU 115 NGAY", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    label: const Text("GÃÂ¡ÃÂ»ÃÂI CÃÂ¡ÃÂºÃÂ¤P CÃÂ¡ÃÂ»ÃÂ¨U 115 NGAY", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                   const SizedBox(height: 8),
 
-                  // Nút gọi người thân khẩn cấp
+                  // NÃÂÃÂºt gÃÂ¡ÃÂ»ÃÂi ngÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n khÃÂ¡ÃÂºÃÂ©n cÃÂ¡ÃÂºÃÂ¥p
                   if (widget.profile.emergencyContact1Phone.isNotEmpty)
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
@@ -8697,7 +8705,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                       ),
                       onPressed: _callFamily,
                       icon: const Icon(Icons.call, size: 20),
-                      label: Text("GỌI NGƯỜI THÂN (${widget.profile.emergencyContact1Name})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      label: Text("GÃÂ¡ÃÂ»ÃÂI NGÃÂÃÂ¯ÃÂ¡ÃÂ»ÃÂI THÃÂÃÂN (${widget.profile.emergencyContact1Name})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   const SizedBox(height: 8),
 
@@ -8710,7 +8718,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                             widget.onOpenMedicalId();
                           },
                           icon: const Icon(Icons.badge, size: 16),
-                          label: const Text("Thẻ Y Tế", style: TextStyle(fontSize: 12)),
+                          label: const Text("ThÃÂ¡ÃÂºÃÂ» Y TÃÂ¡ÃÂºÃÂ¿", style: TextStyle(fontSize: 12)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -8721,14 +8729,14 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                             widget.onOpenFirstAid();
                           },
                           icon: const Icon(Icons.medical_services, size: 16),
-                          label: const Text("Sơ cứu", style: TextStyle(fontSize: 12)),
+                          label: const Text("SÃÂÃÂ¡ cÃÂ¡ÃÂ»ÃÂ©u", style: TextStyle(fontSize: 12)),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Nút xác nhận an toàn & Hủy còi hú
+                  // NÃÂÃÂºt xÃÂÃÂ¡c nhÃÂ¡ÃÂºÃÂ­n an toÃÂÃÂ n & HÃÂ¡ÃÂ»ÃÂ§y cÃÂÃÂ²i hÃÂÃÂº
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -8742,7 +8750,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.check_circle),
-                    label: const Text("XÁC NHẬN AN TOÀN / TẮT CÒI HÚ", style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text("XÃÂÃÂC NHÃÂ¡ÃÂºÃÂ¬N AN TOÃÂÃÂN / TÃÂ¡ÃÂºÃÂ®T CÃÂÃÂI HÃÂÃÂ", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -8765,7 +8773,7 @@ class _CriticalEmergencyAlarmDialogState extends State<CriticalEmergencyAlarmDia
 }
 
 // =========================================================================
-// TÍNH NĂNG 6: WIDGET TIỆN ÍCH MÀN HÌNH KHÓA & MÀN HÌNH CHÍNH (PREVIEW MODAL)
+// TÃÂÃÂNH NÃÂÃÂNG 6: WIDGET TIÃÂ¡ÃÂ»ÃÂN ÃÂÃÂCH MÃÂÃÂN HÃÂÃÂNH KHÃÂÃÂA & MÃÂÃÂN HÃÂÃÂNH CHÃÂÃÂNH (PREVIEW MODAL)
 // =========================================================================
 class LockscreenWidgetPreviewDialog extends StatelessWidget {
   final String posture;
@@ -8803,7 +8811,7 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Mô phỏng Widget Màn hình khóa", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text("MÃÂÃÂ´ phÃÂ¡ÃÂ»ÃÂng Widget MÃÂÃÂ n hÃÂÃÂ¬nh khÃÂÃÂ³a", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         Text("iOS Dynamic Island & Android Glance Widget", style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
@@ -8813,8 +8821,8 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
               ),
               const Divider(),
 
-              // 1. MÔ PHỎNG DYNAMIC ISLAND (iOS 16.1+)
-              const Text("1. iOS Dynamic Island & Hoạt động trực tiếp (Live Activity):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
+              // 1. MÃÂÃÂ PHÃÂ¡ÃÂ»ÃÂNG DYNAMIC ISLAND (iOS 16.1+)
+              const Text("1. iOS Dynamic Island & HoÃÂ¡ÃÂºÃÂ¡t ÃÂÃÂÃÂ¡ÃÂ»ÃÂng trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p (Live Activity):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -8838,7 +8846,7 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "FallGuard: $roomName • An toàn",
+                        "FallGuard: $roomName ÃÂ¢ÃÂÃÂ¢ An toÃÂÃÂ n",
                         style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -8849,8 +8857,8 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 2. MÔ PHỎNG WIDGET MÀN HÌNH KHÓA iOS (2x1)
-              const Text("2. Tiện ích màn hình khóa iOS Lock Screen (Widget 2x1):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
+              // 2. MÃÂÃÂ PHÃÂ¡ÃÂ»ÃÂNG WIDGET MÃÂÃÂN HÃÂÃÂNH KHÃÂÃÂA iOS (2x1)
+              const Text("2. TiÃÂ¡ÃÂ»ÃÂn ÃÂÃÂ­ch mÃÂÃÂ n hÃÂÃÂ¬nh khÃÂÃÂ³a iOS Lock Screen (Widget 2x1):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -8872,16 +8880,16 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text("Người thân đang an toàn tại $roomName", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text("NgÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂi thÃÂÃÂ¢n ÃÂÃÂang an toÃÂÃÂ n tÃÂ¡ÃÂºÃÂ¡i $roomName", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
                     const SizedBox(height: 4),
-                    Text("Radar: $radarMotion% • Chiều cao: ${tofHeight}mm • Trực tiếp", style: const TextStyle(fontSize: 10, color: Colors.white60)),
+                    Text("Radar: $radarMotion% ÃÂ¢ÃÂÃÂ¢ ChiÃÂ¡ÃÂ»ÃÂu cao: ${tofHeight}mm ÃÂ¢ÃÂÃÂ¢ TrÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p", style: const TextStyle(fontSize: 10, color: Colors.white60)),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
 
-              // 3. MÔ PHỎNG WIDGET MÀN HÌNH CHÍNH ANDROID (Glance 4x2)
-              const Text("3. Tiện ích màn hình chính Android Home Widget (Material You):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
+              // 3. MÃÂÃÂ PHÃÂ¡ÃÂ»ÃÂNG WIDGET MÃÂÃÂN HÃÂÃÂNH CHÃÂÃÂNH ANDROID (Glance 4x2)
+              const Text("3. TiÃÂ¡ÃÂ»ÃÂn ÃÂÃÂ­ch mÃÂÃÂ n hÃÂÃÂ¬nh chÃÂÃÂ­nh Android Home Widget (Material You):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.cyanAccent)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(14),
@@ -8906,8 +8914,8 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Ông An: Trạng thái bình thường", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text("Không phát hiện nguy cơ trượt ngã", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              Text("ÃÂÃÂng An: TrÃÂ¡ÃÂºÃÂ¡ng thÃÂÃÂ¡i bÃÂÃÂ¬nh thÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂng", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("KhÃÂÃÂ´ng phÃÂÃÂ¡t hiÃÂ¡ÃÂ»ÃÂn nguy cÃÂÃÂ¡ trÃÂÃÂ°ÃÂ¡ÃÂ»ÃÂ£t ngÃÂÃÂ£", style: TextStyle(fontSize: 11, color: Colors.grey)),
                             ],
                           ),
                         ),
@@ -8923,7 +8931,7 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)),
-                            child: const Center(child: Text("📞 Gọi 115", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent))),
+                            child: const Center(child: Text("ÃÂ°ÃÂÃÂÃÂ GÃÂ¡ÃÂ»ÃÂi 115", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent))),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -8931,7 +8939,7 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)),
-                            child: const Center(child: Text("🪪 Thẻ Y Tế", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.tealAccent))),
+                            child: const Center(child: Text("ÃÂ°ÃÂÃÂªÃÂª ThÃÂ¡ÃÂºÃÂ» Y TÃÂ¡ÃÂºÃÂ¿", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.tealAccent))),
                           ),
                         ),
                       ],
@@ -8942,7 +8950,7 @@ class LockscreenWidgetPreviewDialog extends StatelessWidget {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Tôi đã hiểu"),
+                child: const Text("TÃÂÃÂ´i ÃÂÃÂÃÂÃÂ£ hiÃÂ¡ÃÂ»ÃÂu"),
               ),
             ],
           ),
