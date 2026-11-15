@@ -11,6 +11,7 @@
 #include <nvs_flash.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <Preferences.h>
 
 SensorManager sensorMgr;
 EdgeAIEngine  aiEngine;
@@ -76,21 +77,22 @@ float recordedImpactVelocity = 0.0f;
 uint8_t recordedImpactMotion = 0;
 uint16_t recordedTargetDist = 0;
 
-// Quản lý nút bấm vật lý GPIO 0 (BOOT): Nhấn nhả (Hủy) vs Nhấn giữ 3s (SOS thủ công)
+// Quản lý module touch: chạm ngắn (Hủy) vs chạm giữ 3s (SOS thủ công)
 static unsigned long btnPressStartTime = 0;
 static bool btnIsHeld = false;
 static bool sosTriggeredByHold = false;
 
 void handleButtonInput() {
   int btnState = digitalRead(PIN_CANCEL_BTN);
+  const bool touched = TOUCH_ACTIVE_HIGH ? (btnState == HIGH) : (btnState == LOW);
 
-  if (btnState == LOW) {
+  if (touched) {
     if (!btnIsHeld) {
       btnIsHeld = true;
       btnPressStartTime = millis();
       sosTriggeredByHold = false;
     } else {
-      // Nhấn giữ nút BOOT trong 3 giây -> Kích hoạt SOS khẩn cấp bằng tay (Panic Button)
+      // Chạm giữ trong 3 giây -> Kích hoạt SOS khẩn cấp bằng tay (Panic Touch)
       if (!sosTriggeredByHold && (millis() - btnPressStartTime >= MANUAL_SOS_HOLD_TIME_MS)) {
         sosTriggeredByHold = true;
         Serial.println("[PANIC] Nguoi dung nhan giu nut 3 giay -> KICH HOAT SOS THU CONG KHAN CAP!");
@@ -109,7 +111,7 @@ void handleButtonInput() {
       // Nhấn nhả thông thường (< 2.5s) để giải tỏa / hủy báo động
       if (!sosTriggeredByHold && holdDuration > 50 && holdDuration < MANUAL_SOS_HOLD_TIME_MS) {
         if (currentState == STATE_PRE_ALARM || currentState == STATE_ALERT || currentState == STATE_ACKNOWLEDGED) {
-          Serial.println("[USER] Da bam nut vat ly GPIO 0 -> Giai toa su co!");
+          Serial.printf("[USER] Touch GPIO%d -> Giai toa su co!\n", PIN_CANCEL_BTN);
           currentState = STATE_RESOLVED;
           alertSys.setIndicator(0x00FF00, false);
           alertSys.setBuzzerPattern(BUZZER_CONFIRM_BEEP);
@@ -171,6 +173,24 @@ void executeSystemCommand(const String& cmd) {
     bleProvision.updateStatus("HISTORY_CLEARED_OK");
   } else if (cmd == "GET_VERSION") {
     bleProvision.updateStatus(String("FIRMWARE_VERSION:") + FIRMWARE_VERSION);
+  } else if (cmd == "RESET_NETWORK") {
+    Serial.println("[CMD] Xoa cau hinh Wi-Fi theo yeu cau nguoi dung");
+    Preferences resetPrefs;
+    resetPrefs.begin("sys_cfg", false);
+    resetPrefs.remove("wifi_ssid");
+    resetPrefs.remove("wifi_pass");
+    resetPrefs.end();
+    WiFi.disconnect(true, true);
+    bleProvision.updateStatus("NETWORK_RESET_REBOOTING");
+    delay(500);
+    ESP.restart();
+  } else if (cmd == "FACTORY_RESET") {
+    Serial.println("[CMD] Xoa toan bo cau hinh NVS theo yeu cau nguoi dung");
+    bleProvision.updateStatus("FACTORY_RESET_REBOOTING");
+    delay(500);
+    nvs_flash_erase();
+    nvs_flash_init();
+    ESP.restart();
   } else if (cmd == "BUZZER_ACTIVE_LOW" || cmd == "SET_BUZZER_LOW") {
     alertSys.setBuzzerActiveHigh(false);
     bleProvision.updateStatus("BUZZER_MODE:ACTIVE_LOW");
@@ -268,7 +288,7 @@ void setup() {
     Serial.println("[CANH BAO] KHONG TIM THAY PSRAM! Kiem tra menu OPI PSRAM trong IDE.");
   }
 
-  pinMode(PIN_CANCEL_BTN, INPUT_PULLUP);
+  pinMode(PIN_CANCEL_BTN, TOUCH_ACTIVE_HIGH ? INPUT_PULLDOWN : INPUT_PULLUP);
   alertSys.init();
   delay(1000); // Giữ màu khởi động đủ lâu để kiểm tra trực tiếp
   delay(150); // Khoảng đệm ổn định nguồn điện LED trước khi khởi động sóng vô tuyến BLE

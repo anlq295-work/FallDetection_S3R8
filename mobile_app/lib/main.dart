@@ -41,8 +41,19 @@ class FallGuardApp extends StatelessWidget {
         cardTheme: CardThemeData(
           elevation: 0,
           margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.72),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(width: 1.5, color: Color(0xFF236B63))),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), minimumSize: const Size(0, 46))),
+        elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), minimumSize: const Size(0, 46))),
         scaffoldBackgroundColor: const Color(0xFFF5F7F6),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFFF5F7F6),
@@ -60,8 +71,19 @@ class FallGuardApp extends StatelessWidget {
         cardTheme: CardThemeData(
           elevation: 0,
           margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.05),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(width: 1.5, color: Color(0xFF69A89E))),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), minimumSize: const Size(0, 46))),
+        elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), minimumSize: const Size(0, 46))),
         scaffoldBackgroundColor: const Color(0xFF101817),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF101817),
@@ -468,6 +490,7 @@ class MainDashboardScreen extends StatefulWidget {
 }
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
+  final ValueNotifier<int> _telemetryRevision = ValueNotifier<int>(0);
   // Trạng thái kết nối BLE
   BluetoothDevice? _connectedDevice;
   bool _isScanning = false;
@@ -488,6 +511,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   StreamSubscription? _scanSub;
   StreamSubscription? _statusSub;
   StreamSubscription? _telemetrySub;
+  Timer? _telemetryPollTimer;
+  String _telemetryBuffer = '';
 
   // Controllers cho form cấu hình
   final TextEditingController _ssidController = TextEditingController();
@@ -517,6 +542,52 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   String _deviceFirmwareVersion = "v1.2.0";
   List<dynamic> _eventHistory = [];
   bool _isLoadingHistory = false;
+
+  void _consumeTelemetryBytes(List<int> value, {String source = 'BLE'}) {
+    final chunk = utf8.decode(value, allowMalformed: true);
+    if (chunk.isEmpty) return;
+    // Android có thể chia notify thành nhiều mảnh khi MTU chưa được nâng đủ.
+    // Chỉ parse khi đã ghép đủ một JSON hoàn chỉnh.
+    _telemetryBuffer += chunk;
+    if (_telemetryBuffer.length > 4096) {
+      final start = _telemetryBuffer.lastIndexOf('{');
+      _telemetryBuffer = start >= 0 ? _telemetryBuffer.substring(start) : '';
+    }
+    try {
+      final parsed = jsonDecode(_telemetryBuffer);
+      if (parsed is! Map<String, dynamic>) return;
+      final complete = _telemetryBuffer;
+      _telemetryBuffer = '';
+      _applyTelemetryData(parsed, complete.length, source);
+    } catch (_) {
+      // Chưa đủ mảnh JSON, chờ notify tiếp theo.
+    }
+  }
+
+  void _applyTelemetryData(Map<String, dynamic> data, int byteCount, String source) {
+    try {
+      debugPrint('[$source] Telemetry $byteCount bytes: ${jsonEncode(data)}');
+      if (!mounted) return;
+      setState(() {
+        if (data.containsKey('events')) {
+          _eventHistory = data['events'] as List<dynamic>? ?? [];
+          _isLoadingHistory = false;
+        } else if (data.containsKey('st')) {
+          _sysState = data['st']?.toString() ?? 'NORMAL';
+          _aiPosture = data['cls']?.toString() ?? 'STAND';
+          _aiConfidence = (data['cf'] as num?)?.toDouble() ?? 0.0;
+          _tofHeight = (data['h'] as num?)?.toInt() ?? 0;
+          _radarMotion = (data['m'] as num?)?.toInt() ?? 0;
+          _radarStatic = (data['s'] as num?)?.toInt() ?? 0;
+          _dropRate = (data['dr'] as num?)?.toDouble() ?? 0.0;
+          if (data['ver'] != null) _deviceFirmwareVersion = data['ver'].toString();
+        }
+      });
+      _telemetryRevision.value++;
+    } catch (e) {
+      debugPrint('[$source] Invalid telemetry payload ($byteCount bytes): $e');
+    }
+  }
 
   // Lịch sử thiết bị từng kết nối & Cài đặt chung của App
   List<Map<String, dynamic>> _deviceHistory = [];
@@ -926,6 +997,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     _scanSub?.cancel();
     _statusSub?.cancel();
     _telemetrySub?.cancel();
+    _telemetryPollTimer?.cancel();
+    _telemetryRevision.dispose();
     _ssidController.dispose();
     _passController.dispose();
     _phoneController.dispose();
@@ -996,7 +1069,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       // Yêu cầu MTU 512 bytes để nhận chuỗi JSON Hộp đen dài mà không bị đứt đoạn
       if (Platform.isAndroid) {
         try {
-          await device.requestMtu(512);
+          final mtu = await device.requestMtu(512);
+          debugPrint('[BLE] Negotiated MTU: $mtu (payload max ${mtu - 3} bytes)');
         } catch (_) {}
       }
 
@@ -1023,15 +1097,46 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
       // Khám phá dịch vụ BLE
       List<BluetoothService> services = await device.discoverServices();
+      _wifiChar = null;
+      _contactChar = null;
+      _statusChar = null;
+      _telemetryChar = null;
+      _cmdChar = null;
+      _otaChar = null;
       for (var s in services) {
         for (var c in s.characteristics) {
           String u = c.uuid.str128.toLowerCase();
+          debugPrint('[BLE] Char $u read=${c.properties.read} notify=${c.properties.notify} write=${c.properties.write}');
           if (u == charWifiUuid.toLowerCase()) _wifiChar = c;
           if (u == charContactUuid.toLowerCase()) _contactChar = c;
           if (u == charStatusUuid.toLowerCase()) _statusChar = c;
           if (u == charTelemetryUuid.toLowerCase()) _telemetryChar = c;
           if (u == charCmdUuid.toLowerCase()) _cmdChar = c;
           if (u == charOtaUuid.toLowerCase()) _otaChar = c;
+        }
+      }
+
+      // Dự phòng cho Android/GATT cache: nhận diện telemetry bằng payload JSON,
+      // không phụ thuộc hoàn toàn vào UUID.
+      if (_telemetryChar == null) {
+        for (final service in services) {
+          for (final candidate in service.characteristics) {
+            if (!candidate.properties.read || !candidate.properties.notify) continue;
+            try {
+              final probe = await candidate.read();
+              final text = utf8.decode(probe, allowMalformed: true);
+              final parsed = jsonDecode(text);
+              if (parsed is Map<String, dynamic> &&
+                  (parsed.containsKey('st') || parsed.containsKey('events'))) {
+                _telemetryChar = candidate;
+                debugPrint('[BLE] Telemetry fallback selected: ${candidate.uuid.str128}');
+                break;
+              }
+            } catch (_) {
+              // Đây có thể là status/contact characteristic; tiếp tục thử kênh khác.
+            }
+          }
+          if (_telemetryChar != null) break;
         }
       }
 
@@ -1059,33 +1164,28 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
       // Đăng ký nhận Telemetry thời gian thực & Dữ liệu Hộp đen
       if (_telemetryChar != null) {
-        await _telemetryChar!.setNotifyValue(true);
+        try {
+          await _telemetryChar!.setNotifyValue(true);
+        } catch (e) {
+          debugPrint('[BLE] Enable telemetry notify failed: $e');
+        }
         _telemetrySub?.cancel();
-        _telemetrySub = _telemetryChar!.onValueReceived.listen((value) {
+        _telemetryBuffer = '';
+        _telemetrySub = _telemetryChar!.onValueReceived.listen((value) => _consumeTelemetryBytes(value));
+        try {
+          final initial = await _telemetryChar!.read();
+          if (initial.isNotEmpty) _consumeTelemetryBytes(initial, source: 'BLE-READ');
+        } catch (e) {
+          debugPrint('[BLE] Initial telemetry read failed: $e');
+        }
+        _telemetryPollTimer?.cancel();
+        _telemetryPollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
           try {
-            String jsonStr = utf8.decode(value);
-            Map<String, dynamic> data = jsonDecode(jsonStr);
-
-            if (data.containsKey("events")) {
-              setState(() {
-                _eventHistory = data["events"];
-                _isLoadingHistory = false;
-              });
-            } else if (data.containsKey("st")) {
-              setState(() {
-                _sysState = data["st"] ?? "NORMAL";
-                _aiPosture = data["cls"] ?? "STAND";
-                _aiConfidence = (data["cf"] as num?)?.toDouble() ?? 0.0;
-                _tofHeight = (data["h"] as num?)?.toInt() ?? 0;
-                _radarMotion = (data["m"] as num?)?.toInt() ?? 0;
-                _radarStatic = (data["s"] as num?)?.toInt() ?? 0;
-                _dropRate = (data["dr"] as num?)?.toDouble() ?? 0.0;
-                if (data.containsKey("ver") && data["ver"] != null) {
-                  _deviceFirmwareVersion = data["ver"].toString();
-                }
-              });
-            }
-          } catch (_) {}
+            final value = await _telemetryChar?.read();
+            if (value != null && value.isNotEmpty) _consumeTelemetryBytes(value, source: 'BLE-READ');
+          } catch (e) {
+            debugPrint('[BLE-READ] Poll failed: $e');
+          }
         });
       }
 
@@ -1146,6 +1246,22 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _showSnackbar("ESP32 kết nối Wi-Fi thất bại! Kiểm tra mật khẩu.", Colors.red);
     } else if (msg == "CONFIG_UPDATED_OK") {
       _showSnackbar("Cấu hình danh bạ đã lưu thành công!", Colors.green);
+    } else if (msg == "NETWORK_RESET_REBOOTING") {
+      _stopWifiPolling();
+      setState(() {
+        _deviceIp = "";
+        _deviceIpController.clear();
+        _isWifiConnected = false;
+      });
+      _showSnackbar("Đã xóa cấu hình Wi-Fi. Thiết bị đang khởi động lại.", Colors.orange);
+    } else if (msg == "FACTORY_RESET_REBOOTING") {
+      _stopWifiPolling();
+      setState(() {
+        _deviceIp = "";
+        _deviceIpController.clear();
+        _isWifiConnected = false;
+      });
+      _showSnackbar("Đã khôi phục toàn bộ mặc định. Thiết bị đang khởi động lại.", Colors.orange);
     } else if (msg == "NIGHTLIGHT_SCHEDULE_SAVED") {
       _showSnackbar("Lịch night light đã lưu vào ESP32!", Colors.green);
     } else if (msg == "NIGHTLIGHT_SCHEDULE_ERROR") {
@@ -1325,6 +1441,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             if (oldState != "ALERT" && _sysState == "ALERT") {
               _showCriticalEmergencyDialog(isFall: true);
             }
+            _telemetryRevision.value++;
           }
         });
       } else {
@@ -1471,7 +1588,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (ctx) => DeviceDetailScreen(
+        builder: (ctx) => ValueListenableBuilder<int>(
+          valueListenable: _telemetryRevision,
+          builder: (context, _, __) => DeviceDetailScreen(
           device: device,
           isConnected: _isConnected,
           initialTabIndex: initialTab,
@@ -1516,6 +1635,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           wifiDelayMs: _wifiDelayMs,
           onSendWifiCommand: _sendWifiCommand,
           onFetchWifiHistory: _fetchHistoryOverWifi,
+          ),
         ),
       ),
     );
@@ -2218,9 +2338,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ],
         ],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(compact ? 12.0 : 16.0),
-        child: Column(
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 12.0 : 16.0),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Thẻ trạng thái Glanceable Live Status Card (Feature 6 & 1)
@@ -2435,6 +2559,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     ),
             ),
           ],
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: Container(
@@ -2609,6 +2735,32 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
   bool _nightScheduleEnabled = true;
   TimeOfDay _nightStart = const TimeOfDay(hour: 18, minute: 0);
   TimeOfDay _nightEnd = const TimeOfDay(hour: 6, minute: 0);
+
+  Future<void> _confirmDeviceReset(String command, String title, String message) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _handleDeviceCommand(command);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi lệnh. Thiết bị sẽ khởi động lại.')),
+        );
+      }
+    }
+  }
   bool _buzzerActiveHigh = false; // Mặc định khớp với module còi 3 chân: Active-LOW (High-Z im lặng, 0V báo động)
   bool _buzzerMuted = false;
 
@@ -2646,6 +2798,16 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     }
   }
 
+  Widget _constrainedTab(Widget child) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String devName = widget.device.platformName.isEmpty ? "FallDetector_S3R8" : widget.device.platformName;
@@ -2677,9 +2839,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       body: TabBarView(
         controller: _deviceTabController,
         children: [
-          _buildMonitorTab(),
-          _buildBlackBoxTab(),
-          _buildSettingsTab(),
+          _constrainedTab(_buildMonitorTab()),
+          _constrainedTab(_buildBlackBoxTab()),
+          _constrainedTab(_buildSettingsTab()),
         ],
       ),
     );
@@ -3418,6 +3580,38 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       backgroundColor: Colors.blueAccent,
                       foregroundColor: Colors.white,
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.restart_alt, color: Colors.orangeAccent),
+                    SizedBox(width: 8),
+                    Text('Khôi phục hệ thống', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ]),
+                  const SizedBox(height: 8),
+                  const Text('Xóa cấu hình mạng hoặc đưa thiết bị về trạng thái mặc định.', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmDeviceReset('RESET_NETWORK', 'Đặt lại Wi-Fi?', 'Thiết bị sẽ xóa SSID/mật khẩu Wi-Fi và khởi động lại.'),
+                    icon: const Icon(Icons.wifi_off),
+                    label: const Text('Xóa cấu hình mạng'),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+                    onPressed: () => _confirmDeviceReset('FACTORY_RESET', 'Khôi phục toàn bộ?', 'Xóa toàn bộ cấu hình, Wi-Fi, danh bạ và lịch sử hộp đen.'),
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Khôi phục mặc định toàn bộ'),
                   ),
                 ],
               ),

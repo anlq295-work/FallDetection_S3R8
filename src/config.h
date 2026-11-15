@@ -26,7 +26,8 @@
   #undef PIN_NEOPIXEL
 #endif
 #define PIN_NEOPIXEL          6     // WS2812B DIN (8 bóng RGB)
-#define PIN_CANCEL_BTN        0     // Nút bấm BOOT GPIO 0 (Active LOW)
+#define PIN_CANCEL_BTN        7     // OUT module touch (GPIO7, tránh GPIO0/BOOT)
+#define TOUCH_ACTIVE_HIGH     1     // Module touch thường xuất HIGH khi chạm
 #define NUM_LEDS              24     // Cấu hình 8 bóng LED cho thanh LED WS2812B
 #define LED_BRIGHTNESS        100    // Độ sáng LED (0 - 255): 200 (~80%) sáng rõ đẹp, không bị mờ
 

@@ -6,14 +6,92 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Cho phép nhấn nút "Run workflow" thủ công bất cứ lúc nào
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump when running manually'
+        required: true
+        default: patch
+        type: choice
+        options: [patch, minor, major]
 
 permissions:
   contents: write
 
+concurrency:
+  group: mobile-release-version
+  cancel-in-progress: false
+
 jobs:
+  prepare-version:
+    name: Calculate app version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - name: Checkout tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate semantic version
+        id: version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          BUMP_INPUT: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 | sed 's/^v//')
+          latest=${latest:-1.0.0}
+
+          if [[ "$REF" == refs/tags/v* ]]; then
+            version="${REF_NAME#v}"
+          else
+            bump="none"
+            if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+              bump="${BUMP_INPUT:-patch}"
+            elif [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/master" ]]; then
+              message=$(git log -1 --pretty=%B)
+              if grep -qiE '\[major\]|breaking change' <<< "$message"; then
+                bump="major"
+              elif grep -qiE '\[minor\]|feat:' <<< "$message"; then
+                bump="minor"
+              else
+                bump="patch"
+              fi
+            fi
+
+            version=$(python3 - "$latest" "$bump" <<'PY2'
+          import re
+          import sys
+          current = sys.argv[1]
+          bump = sys.argv[2]
+          match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', current)
+          if not match:
+              raise SystemExit(f'Invalid base version: {current}')
+          major, minor, patch = map(int, match.groups())
+          if bump == 'major':
+              major, minor, patch = major + 1, 0, 0
+          elif bump == 'minor':
+              minor, patch = minor + 1, 0
+          elif bump == 'patch':
+              patch += 1
+          print(f'{major}.{minor}.{patch}')
+          PY2
+            )
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "Building version $version (build ${GITHUB_RUN_NUMBER})"
+
   build-android:
     name: Build Android APK
+    needs: prepare-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -84,18 +162,23 @@ jobs:
       - name: Build Release APK
         run: |
           cd mobile_app
-          flutter build apk --release
+          flutter build apk --release \
+            --build-name "${{ needs.prepare-version.outputs.version }}" \
+            --build-number "${{ needs.prepare-version.outputs.build_number }}"
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            "build/app/outputs/flutter-apk/FallGuard-Android-v${{ needs.prepare-version.outputs.version }}-build-${{ needs.prepare-version.outputs.build_number }}.apk"
           ls -la build/app/outputs/flutter-apk/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FallGuard-Android-APK
-          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          path: mobile_app/build/app/outputs/flutter-apk/FallGuard-Android-*.apk
           if-no-files-found: error
 
   build-ios:
     name: Build iOS IPA
+    needs: prepare-version
     runs-on: macos-latest # Chạy trực tiếp trên máy ảo macOS có sẵn Xcode của GitHub
     steps:
       - name: Checkout repository
@@ -115,7 +198,9 @@ jobs:
       - name: Build iOS App Bundle
         run: |
           cd mobile_app
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --build-name "${{ needs.prepare-version.outputs.version }}" \
+            --build-number "${{ needs.prepare-version.outputs.build_number }}"
 
       - name: Code Sign IPA with Certificate
         env:
@@ -127,8 +212,11 @@ jobs:
           mkdir -p Payload
           cp -r Runner.app Payload/
 
+          VERSION="${{ needs.prepare-version.outputs.version }}"
+          BUILD_NUMBER="${{ needs.prepare-version.outputs.build_number }}"
+
           # Luon dong goi ban unsigned lam ban phat hanh cong khai
-          zip -qr FallGuard_iOS_unsigned.ipa Payload
+          zip -qr "FallGuard-iOS-v${VERSION}-build-${BUILD_NUMBER}-unsigned.ipa" Payload
 
           SIGNED_SUCCESS=false
           if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
@@ -169,8 +257,8 @@ jobs:
 
               # Ky App chinh
               if codesign --force --verify --verbose --sign "$CERT_IDENTITY" --entitlements $RUNNER_TEMP/entitlements.plist --keychain $KEYCHAIN_PATH Payload/Runner.app; then
-                zip -qr FallGuard_Signed.ipa Payload
-                echo "--> Ky so thanh cong: FallGuard_Signed.ipa"
+                zip -qr "FallGuard-iOS-v${VERSION}-build-${BUILD_NUMBER}-signed.ipa" Payload
+                echo "--> Ky so thanh cong"
                 SIGNED_SUCCESS=true
               fi
             fi
@@ -180,7 +268,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FallGuard-iOS-IPA
-          path: mobile_app/build/ios/iphoneos/*.ipa
+          path: mobile_app/build/ios/iphoneos/FallGuard-iOS-*.ipa
           if-no-files-found: error
 
   build-firmware:
@@ -209,7 +297,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release (OTA Assets)
-    needs: [build-android, build-ios, build-firmware]
+    needs: [prepare-version, build-android, build-ios, build-firmware]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     steps:
@@ -244,6 +332,17 @@ jobs:
       - name: Copy Manifest
         run: |
           cp ios_ota/manifest.plist release_assets/
+          python3 - <<'PY2'
+          from pathlib import Path
+          import re
+          version = "${{ needs.prepare-version.outputs.version }}"
+          build = "${{ needs.prepare-version.outputs.build_number }}"
+          manifest = Path("release_assets/manifest.plist")
+          text = manifest.read_text()
+          text = re.sub(r'(<key>bundle-version</key>\s*<string>)[^<]+(</string>)', rf'\g<1>{version}\g<2>', text)
+          text = text.replace('FallGuard_iOS_unsigned.ipa', f'FallGuard-iOS-v{version}-build-{build}-unsigned.ipa')
+          manifest.write_text(text)
+          PY2
 
       - name: Delete old stale latest release to refresh published date
         run: |
@@ -257,22 +356,23 @@ jobs:
               https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID
           fi
 
-      - name: Create or Update Version Release (v1.2.0)
+      - name: Create or Update Version Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
-          name: "Fall Guard S3R8 v1.2.0 (Phát hành ngày 08/11/2026)"
+          tag_name: v${{ needs.prepare-version.outputs.version }}
+          name: "Fall Guard S3R8 v${{ needs.prepare-version.outputs.version }}"
           body: |
-            ## Fall Guard S3R8 v1.2.0 - Phát hành chính thức 08/11/2026
+            ## Fall Guard S3R8 v${{ needs.prepare-version.outputs.version }}
+            Build: `${{ needs.prepare-version.outputs.build_number }}`
             - **Wi-Fi Direct Telemetry**: Giám sát thời gian thực & điều khiển từ xa trực tiếp qua mạng LAN cổng 80.
             - **Loại bỏ đồ thị ảo**: Xóa bỏ hoàn toàn Kinetic Graph và Phổ nhiệt giả lập; tập trung vào mô phỏng 3D tư thế thực tế và dữ liệu Flash NVS.
             - **Cập nhật In-App OTA**: Kiểm tra trực tiếp bản cập nhật qua GitHub REST API và cài đặt 1-chạm.
             - **Tệp cài đặt đính kèm**:
-              - Android APK: `app-release.apk`
+              - Android APK: file c? version trong t?n
               - ESP32 Firmware: `firmware.bin`
-              - iOS App: `FallGuard_iOS_unsigned.ipa`
+              - iOS App: file c? version trong t?n
           files: |
-            release_assets/app-release.apk
+            release_assets/FallGuard-Android-*.apk
             release_assets/*.ipa
             release_assets/manifest.plist
             release_assets/firmware.bin
@@ -285,16 +385,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Fall Guard S3R8 Latest Release (v1.2.0 - 08/11/2026)"
+          name: "Fall Guard S3R8 Latest Release (v${{ needs.prepare-version.outputs.version }})"
           body: |
-            ## Fall Guard S3R8 - Tự động cập nhật OTA (v1.2.0)
-            Cập nhật ngày 08/11/2026:
-            - **Android APK**: `app-release.apk` (v1.2.0 - Build 2)
-            - **ESP32 Firmware**: `firmware.bin` (v1.2.0 Dual-OTA)
-            - **iOS App**: `FallGuard_iOS_unsigned.ipa`
+            ## Fall Guard S3R8 - Tu dong cap nhat OTA (v${{ needs.prepare-version.outputs.version }})
+            APK/IPA duoc gan version va build number tu dong:
+            - **Android APK**: file c? version trong t?n
+            - **ESP32 Firmware**: `firmware.bin`
+            - **iOS App**: file c? version trong t?n
             - **Manifest**: `manifest.plist`
           files: |
-            release_assets/app-release.apk
+            release_assets/FallGuard-Android-*.apk
             release_assets/*.ipa
             release_assets/manifest.plist
             release_assets/firmware.bin

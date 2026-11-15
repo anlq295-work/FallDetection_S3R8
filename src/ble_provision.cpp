@@ -13,7 +13,7 @@
 #define CHAR_STATUS_UUID       "2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344"
 #define CHAR_TELEMETRY_UUID    "3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455"
 #define CHAR_CMD_UUID          "4fa0b044-9b3e-4d75-af4c-b70e901c5566"
-#define CHAR_OTA_UUID          "5e1c0155-ac5d-4e86-be5d-c81f012d6677"
+#define CHAR_OTA_UUID          "5fa0b044-9b3e-4d75-af4c-b70e901c5566"
 
 static Preferences prefs;
 static Preferences evtPrefs;
@@ -25,6 +25,8 @@ static BLECharacteristic* pCmdChar = nullptr;
 static BLECharacteristic* pOtaChar = nullptr;
 
 static bool bleConnected = false;
+static uint32_t telemetryNotifyCount = 0;
+static uint32_t telemetryConsoleCount = 0;
 static bool rebootFlag = false;
 static String pendingCommand = "";
 static portMUX_TYPE cmdMux = portMUX_INITIALIZER_UNLOCKED;
@@ -34,6 +36,8 @@ BleProvisioning bleProvision;
 class ServerCB: public BLEServerCallbacks {
   void onConnect(BLEServer* p) { 
     bleConnected = true; 
+    telemetryNotifyCount = 0;
+    telemetryConsoleCount = 0;
     Serial.println("[BLE] App Android/Client da ket noi!");
   }
   void onDisconnect(BLEServer* p) { 
@@ -182,9 +186,23 @@ void BleProvisioning::updateStatus(const String& statusMsg) {
 }
 
 void BleProvisioning::sendTelemetry(const String& telemetryJson) {
+  telemetryConsoleCount++;
+  // In trọn JSON telemetry mỗi ~1 giây để kiểm tra trực tiếp trên Serial Monitor.
+  if ((telemetryConsoleCount % 4) == 0) {
+    Serial.printf("[TELEMETRY] BLE=%s | %s\n",
+                  bleConnected ? "CONNECTED" : "DISCONNECTED",
+                  telemetryJson.c_str());
+  }
+
   if (pTelemetryChar && bleConnected) {
     pTelemetryChar->setValue(telemetryJson.c_str());
     pTelemetryChar->notify();
+    telemetryNotifyCount++;
+    if ((telemetryNotifyCount % 20) == 0) {
+      Serial.printf("[BLE] Telemetry notify #%lu (%u bytes)\n",
+                    (unsigned long)telemetryNotifyCount,
+                    (unsigned)telemetryJson.length());
+    }
   }
 }
 
