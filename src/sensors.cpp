@@ -164,12 +164,14 @@ void SensorManager::processRadarPayload(uint8_t* payload, uint16_t len) {
   uint8_t dataType = payload[0];
 
   if (dataType == 0x01 || dataType == 0x02) {
-    radarTargetState = payload[2];
-    uint16_t moveDist = payload[3] | ((uint16_t)payload[4] << 8);
-    uint8_t  moveEnergy = payload[5];
-    uint16_t statDist = payload[6] | ((uint16_t)payload[7] << 8);
-    uint8_t  statEnergy = payload[8];
-    uint16_t detectDist = (len >= 11) ? (payload[9] | ((uint16_t)payload[10] << 8)) : 0;
+    // LD2410 data payload: type, target-state, move-distance, move-energy,
+    // static-distance, static-energy, detect-distance.
+    radarTargetState = payload[1];
+    uint16_t moveDist = payload[2] | ((uint16_t)payload[3] << 8);
+    uint8_t  moveEnergy = payload[4];
+    uint16_t statDist = payload[5] | ((uint16_t)payload[6] << 8);
+    uint8_t  statEnergy = payload[7];
+    uint16_t detectDist = (len >= 10) ? (payload[8] | ((uint16_t)payload[9] << 8)) : 0;
 
     radarPeakMotion = moveEnergy;
     radarPeakStatic = statEnergy;

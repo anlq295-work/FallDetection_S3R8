@@ -33,9 +33,11 @@ String getSystemTelemetryJson() {
   const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
   const char* stateNames[] = {"NORMAL", "SUSPECTED", "PRE_ALARM", "ALERT", "ACK", "RESOLVED", "FAULT"};
 
-  int h = (lastFeatures[2] > 0) ? (int)lastFeatures[2] : (int)sensorMgr.getPrimaryTofDistance();
-  int m = (lastFeatures[0] > 0) ? (int)lastFeatures[0] : (int)sensorMgr.getRadarPeakMotion();
-  int s = (lastFeatures[1] > 0) ? (int)lastFeatures[1] : (int)sensorMgr.getRadarPeakStatic();
+  // Telemetry hiển thị mẫu cảm biến hiện tại, không dùng max của cửa sổ AI.
+  // Điều này tránh giá trị bị giữ/bão hòa dù cảm biến đã thay đổi.
+  int h = (int)sensorMgr.getPrimaryTofDistance();
+  int m = (int)sensorMgr.getRadarPeakMotion();
+  int s = (int)sensorMgr.getRadarPeakStatic();
 
   char telemBuf[256];
   snprintf(telemBuf, sizeof(telemBuf),

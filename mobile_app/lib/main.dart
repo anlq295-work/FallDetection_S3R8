@@ -541,6 +541,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   double _dropRate = 0.0;
   String _deviceFirmwareVersion = "v1.2.0";
   List<dynamic> _eventHistory = [];
+  final List<Map<String, double>> _telemetryHistory = <Map<String, double>>[];
   bool _isLoadingHistory = false;
 
   void _consumeTelemetryBytes(List<int> value, {String source = 'BLE'}) {
@@ -581,6 +582,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           _radarStatic = (data['s'] as num?)?.toInt() ?? 0;
           _dropRate = (data['dr'] as num?)?.toDouble() ?? 0.0;
           if (data['ver'] != null) _deviceFirmwareVersion = data['ver'].toString();
+          _telemetryHistory.add({
+            'h': _tofHeight.toDouble(),
+            'm': _radarMotion.toDouble(),
+            's': _radarStatic.toDouble(),
+            'cf': _aiConfidence,
+          });
+          if (_telemetryHistory.length > 120) _telemetryHistory.removeAt(0);
         }
       });
       _telemetryRevision.value++;
@@ -1437,6 +1445,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             if (data.containsKey("ver") && data["ver"] != null) {
               _deviceFirmwareVersion = data["ver"].toString();
             }
+            _telemetryHistory.add({
+              'h': _tofHeight.toDouble(),
+              'm': _radarMotion.toDouble(),
+              's': _radarStatic.toDouble(),
+              'cf': _aiConfidence,
+            });
+            if (_telemetryHistory.length > 120) _telemetryHistory.removeAt(0);
 
             if (oldState != "ALERT" && _sysState == "ALERT") {
               _showCriticalEmergencyDialog(isFall: true);
@@ -1604,6 +1619,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           dropRate: _dropRate,
           eventHistory: _eventHistory,
           isLoadingHistory: _isLoadingHistory,
+          telemetryHistory: _telemetryHistory,
           // Controllers
           ssidController: _ssidController,
           passController: _passController,
@@ -2606,6 +2622,7 @@ class DeviceDetailScreen extends StatefulWidget {
   final double dropRate;
   final List<dynamic> eventHistory;
   final bool isLoadingHistory;
+  final List<Map<String, double>> telemetryHistory;
 
   // Controllers cấu hình
   final TextEditingController ssidController;
@@ -2648,6 +2665,7 @@ class DeviceDetailScreen extends StatefulWidget {
     required this.dropRate,
     required this.eventHistory,
     required this.isLoadingHistory,
+    this.telemetryHistory = const [],
     required this.ssidController,
     required this.passController,
     required this.phoneController,
@@ -3267,16 +3285,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             ),
             const SizedBox(height: 14),
 
-            // Mô phỏng tư thế 3D trực tiếp
-            HumanPostureSimulation(event: liveEvent),
-            const SizedBox(height: 14),
-
-            // Đồ thị động học va chạm trực tiếp
-            FallKinematicGraph(event: liveEvent),
-            const SizedBox(height: 14),
-
-            // Phổ năng lượng Radar FMCW không gian 128x128
-            VirtualThermalSpectrum(event: liveEvent),
+            // Chỉ hiển thị đồ thị từ mẫu telemetry thật nhận được.
+            LiveTelemetryChart(samples: widget.telemetryHistory),
           ] else ...[
             // ===================================================================
             // PHÂN ĐOẠN 2: LỊCH SỬ HỘP ĐEN NVS (FLASH BLACK BOX AUDIT)
@@ -3352,17 +3362,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
               ),
             const SizedBox(height: 12),
 
-            // Phát lại tư thế sự kiện đã chọn
-            HumanPostureSimulation(event: currentEvent),
-            const SizedBox(height: 14),
-
-            // Đồ thị động học va chạm của sự kiện
-            FallKinematicGraph(event: currentEvent),
-            const SizedBox(height: 14),
-
-            // Phổ năng lượng Radar FMCW không gian 128x128 của sự kiện
-            VirtualThermalSpectrum(event: currentEvent),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             // Danh sách các sự kiện ghi nhận trong hộp đen
             Row(
@@ -4755,6 +4755,78 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
       ),
     );
   }
+}
+
+class LiveTelemetryChart extends StatelessWidget {
+  final List<Map<String, double>> samples;
+  const LiveTelemetryChart({super.key, required this.samples});
+
+  @override
+  Widget build(BuildContext context) {
+    if (samples.length < 2) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(children: const [
+            Icon(Icons.show_chart, color: Colors.grey),
+            SizedBox(width: 10),
+            Expanded(child: Text('Đang chờ đủ dữ liệu telemetry để vẽ biểu đồ thời gian thực...', style: TextStyle(color: Colors.grey))),
+          ]),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [Icon(Icons.timeline, color: Colors.cyanAccent), SizedBox(width: 8), Text('Telemetry thời gian thực', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))]),
+          const SizedBox(height: 4),
+          const Text('120 mẫu gần nhất • ToF mm • Radar /100', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 12),
+          SizedBox(height: 210, child: CustomPaint(painter: LiveTelemetryPainter(samples))),
+          const SizedBox(height: 8),
+          const Wrap(spacing: 14, children: [
+            _ChartLegend(color: Colors.cyanAccent, label: 'ToF'),
+            _ChartLegend(color: Colors.orangeAccent, label: 'Radar động'),
+            _ChartLegend(color: Colors.tealAccent, label: 'Radar tĩnh'),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _ChartLegend({required this.color, required this.label});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 4), Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey))]);
+}
+
+class LiveTelemetryPainter extends CustomPainter {
+  final List<Map<String, double>> samples;
+  LiveTelemetryPainter(this.samples);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()..color = Colors.grey.withValues(alpha: .18)..strokeWidth = 1;
+    for (var i = 0; i <= 4; i++) canvas.drawLine(Offset(0, size.height * i / 4), Offset(size.width, size.height * i / 4), grid);
+    for (var i = 0; i <= 6; i++) canvas.drawLine(Offset(size.width * i / 6, 0), Offset(size.width * i / 6, size.height), grid);
+    final series = [('h', Colors.cyanAccent, 2000.0), ('m', Colors.orangeAccent, 100.0), ('s', Colors.tealAccent, 100.0)];
+    for (final item in series) {
+      final paint = Paint()..color = item.$2..style = PaintingStyle.stroke..strokeWidth = 2.2..strokeCap = StrokeCap.round;
+      final path = Path();
+      for (var i = 0; i < samples.length; i++) {
+        final x = samples.length == 1 ? 0.0 : size.width * i / (samples.length - 1);
+        final yValue = (samples[i][item.$1] ?? 0).clamp(0, item.$3);
+        final y = size.height * (1 - yValue / item.$3);
+        if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant LiveTelemetryPainter oldDelegate) => true;
 }
 
 class FallKinematicGraph extends StatelessWidget {
