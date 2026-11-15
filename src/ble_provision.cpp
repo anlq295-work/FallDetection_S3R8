@@ -187,7 +187,7 @@ void BleProvisioning::updateStatus(const String& statusMsg) {
 
 void BleProvisioning::sendTelemetry(const String& telemetryJson) {
   telemetryConsoleCount++;
-  // In trÃÂ¡ÃÂ»ÃÂn JSON telemetry mÃÂ¡ÃÂ»ÃÂi ~1 giÃÂÃÂ¢y ÃÂÃÂÃÂ¡ÃÂ»ÃÂ kiÃÂ¡ÃÂ»ÃÂm tra trÃÂ¡ÃÂ»ÃÂ±c tiÃÂ¡ÃÂºÃÂ¿p trÃÂÃÂªn Serial Monitor.
+  // In trÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Ân JSON telemetry mÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â—i ~1 giÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Â¢y ÃƒÂƒÃ‚Â„ÃƒÂ‚Ã‚Â‘ÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Âƒ kiÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Âƒm tra trÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â±c tiÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚ÂºÃƒÂ‚Ã‚Â¿p trÃƒÂƒÃ‚ÂƒÃƒÂ‚Ã‚Âªn Serial Monitor.
   if ((telemetryConsoleCount % 4) == 0) {
     Serial.printf("[TELEMETRY] BLE=%s | %s\n",
                   bleConnected ? "CONNECTED" : "DISCONNECTED",
@@ -280,7 +280,7 @@ String BleProvisioning::getEventHistoryJson() {
   StaticJsonDocument<512> doc;
   JsonArray arr = doc.createNestedArray("events");
 
-  // ÃÂÃÂÃÂ¡ÃÂ»ÃÂc tÃÂ¡ÃÂ»ÃÂ« sÃÂ¡ÃÂ»ÃÂ± kiÃÂ¡ÃÂ»ÃÂn mÃÂ¡ÃÂ»ÃÂi nhÃÂ¡ÃÂºÃÂ¥t vÃÂ¡ÃÂ»ÃÂ cÃÂÃÂ© nhÃÂ¡ÃÂºÃÂ¥t
+  // ÃƒÂƒÃ‚Â„ÃƒÂ‚Ã‚ÂÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Âc tÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â« sÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â± kiÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â‡n mÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â›i nhÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚ÂºÃƒÂ‚Ã‚Â¥t vÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚Â»ÃƒÂ‚Ã‚Â cÃƒÂƒÃ‚Â…ÃƒÂ‚Ã‚Â© nhÃƒÂƒÃ‚Â¡ÃƒÂ‚Ã‚ÂºÃƒÂ‚Ã‚Â¥t
   for (int i = 0; i < count; i++) {
     int idx = (head - 1 - i + 5) % 5;
     char key[16];
