@@ -8,6 +8,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+final Future<PackageInfo> _appPackageInfo = PackageInfo.fromPlatform();
+
+String _appVersionLabel(PackageInfo info) {
+  final build = info.buildNumber.trim();
+  return 'v${info.version}${build.isEmpty ? '' : ' (Build $build)'}';
+}
+
+double _dialogContentWidth(BuildContext context, {double max = 400}) =>
+    math.min(max, math.max(0, MediaQuery.sizeOf(context).width - 32));
 
 // =========================================================================
 // CÁC UUID TRÙNG KHỚP 100% VỚI FIRMWARE ESP32-S3 N16R8
@@ -2240,9 +2251,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildQuickHealthActionBar() {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.start,
           children: [
             ActionChip(
               avatar: const Icon(Icons.badge, size: 16, color: Colors.redAccent),
@@ -2251,7 +2263,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
               onPressed: _openMedicalIdCard,
             ),
-            const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.quiz, size: 16, color: Colors.blueAccent),
               label: Text("Khám CDC: $_cdcSteadiScoređ", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -2259,7 +2270,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               side: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.4)),
               onPressed: _openCdcSteadiAssessment,
             ),
-            const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.description, size: 16, color: Colors.tealAccent),
               label: const Text("Báo Cáo Y Khoa", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -2267,7 +2277,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               side: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.4)),
               onPressed: _openMedicalAuditReport,
             ),
-            const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.bathtub, size: 16, color: Colors.amberAccent),
               label: Text("Giám sát: ${_inactivityThresholdMinutes}p", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -4234,7 +4243,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: _dialogContentWidth(context),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -4276,11 +4285,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
+                                FutureBuilder<PackageInfo>(
+                                  future: _appPackageInfo,
+                                  builder: (context, snapshot) => Text(
+                                    snapshot.hasData ? _appVersionLabel(snapshot.data!) : "Loading...",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent),
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -4403,7 +4418,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: _dialogContentWidth(context),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -5709,7 +5724,7 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
           ],
         ),
         content: SizedBox(
-          width: 450,
+          width: _dialogContentWidth(context, max: 450),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -6225,7 +6240,7 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: _dialogContentWidth(context),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -6267,11 +6282,17 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text("Phiên bản hiện tại:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text("v1.2.0 (Build 2)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent)),
+                                FutureBuilder<PackageInfo>(
+                                  future: _appPackageInfo,
+                                  builder: (context, snapshot) => Text(
+                                    snapshot.hasData ? _appVersionLabel(snapshot.data!) : "Loading...",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.greenAccent),
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 4),
