@@ -617,7 +617,7 @@ void loop() {
       alertSys.sendSmsGateway(emergencyPhone, 
         "CANH BAO KHAN CAP: Phat hien te nga hoac nut SOS da bam! Kiem tra ngay!");
 
-      bleProvision.updateStatus("EMERGENCY_DISPATCHED");
+      bleProvision.updateStatus("EMERGENCY_ DISPATCHED");
       currentState = STATE_ACKNOWLEDGED;
       break;
     }
