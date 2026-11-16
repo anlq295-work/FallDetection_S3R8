@@ -48,12 +48,15 @@
 // 3. NGƯỠNG ĐỘ CHÍNH XÁC NHẬN DIỆN TÉ NGÃ (KINEMATIC & RADAR THRESHOLDS)
 // =========================================================================
 #define FALL_VELOCITY_THRESH_MM_S   550.0f  // Tốc độ sụt giảm ToF tối thiểu (>= 550 mm/s)
+#define FALL_STRONG_VELOCITY_MM_S   700.0f  // Van toc cao yeu cau them bang chung san
 #define FALL_RADAR_MOTION_THRESH    40      // Đỉnh năng lượng chuyển động va chạm LD2410 (>= 40/100)
+#define FALL_STRONG_MOTION_THRESH   70      // Chuyen dong rat manh co the bu cho van toc ToF thap
 #define POST_FALL_RADAR_MOTION_MAX  25      // Năng lượng chuyển động sau ngã (bất động <= 25/100)
 #define POST_FALL_RADAR_STATIC_MIN  15      // Năng lượng tĩnh hô hấp/sự hiện diện (>= 15/100)
 #define FLOOR_HEIGHT_DEFAULT_MM     450     // Chiều cao sàn: <= 450mm là tư thế nằm sàn
 #define STAND_HEIGHT_MIN_MM         900     // Chiều cao đứng: >= 900mm
 #define SIT_HEIGHT_MIN_MM           480     // Chiều cao ngồi: 480mm - 900mm
+#define POSTURE_FLOOR_MAX_MM       450     // ToF vung than sat san: nam
 
 #define IMMOBILE_VERIFY_TIME_MS     2000    // 2 giây theo dõi bất động sau chấn động
 #define PRE_ALARM_TIMEOUT_MS        30000   // 30 giây Pre-alarm tại chỗ trước khi gửi SOS

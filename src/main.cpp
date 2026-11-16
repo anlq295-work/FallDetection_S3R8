@@ -23,6 +23,14 @@ FallEventType currentEventType = EVENT_NONE;
 String wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken;
 uint16_t configuredFloorMm = FLOOR_HEIGHT_DEFAULT_MM;
 
+// Cảnh báo từ xa được giữ lại cho tới khi có mạng và gửi thành công.
+// Nhờ vậy ESP32 vẫn giám sát độc lập khi app bị đóng hoặc điện thoại ra ngoài.
+bool emergencyDispatchPending = false;
+unsigned long nextEmergencyDispatchAttempt = 0;
+uint8_t emergencyDispatchAttempts = 0;
+String emergencyTelegramMessage;
+String emergencySmsMessage;
+
 // Dữ liệu Telemetry thời gian thực được cập nhật cho cả BLE và Wi-Fi Web Server
 AIClass lastPredictedClass = CLASS_STAND;
 float lastConfidence = 0.0f;
@@ -62,6 +70,8 @@ String getSystemStatusJson() {
   doc["pir_active"] = lastPirState;
   doc["free_heap"] = ESP.getFreeHeap();
   doc["uptime_sec"] = millis() / 1000;
+  doc["remote_alert_pending"] = emergencyDispatchPending;
+  doc["remote_alert_attempts"] = emergencyDispatchAttempts;
   String out;
   serializeJson(doc, out);
   return out;
@@ -115,6 +125,7 @@ void handleButtonInput() {
         if (currentState == STATE_PRE_ALARM || currentState == STATE_ALERT || currentState == STATE_ACKNOWLEDGED) {
           Serial.printf("[USER] Touch GPIO%d -> Giai toa su co!\n", PIN_CANCEL_BTN);
           currentState = STATE_RESOLVED;
+          emergencyDispatchPending = false;
           alertSys.setIndicator(0x00FF00, false);
           alertSys.setBuzzerPattern(BUZZER_CONFIRM_BEEP);
           bleProvision.updateStatus("ALERT_MANUALLY_CANCELLED");
@@ -137,6 +148,7 @@ void executeSystemCommand(const String& cmd) {
   } else if (cmd == "CANCEL_ALARM") {
     Serial.println("[CMD] Nhan lenh: Huy canh bao khan cap");
     currentState = STATE_RESOLVED;
+    emergencyDispatchPending = false;
     alertSys.setIndicator(0x00FF00, false);
     alertSys.setBuzzerPattern(BUZZER_CONFIRM_BEEP);
     sensorMgr.resetFloorTracking();
@@ -251,6 +263,31 @@ void processBleCommands() {
     Serial.println("[SYSTEM] Nhan yeu cau khoi dong lai tu BLE...");
     delay(800);
     ESP.restart();
+  }
+}
+
+void retryEmergencyDispatch(unsigned long now) {
+  if (!emergencyDispatchPending || now < nextEmergencyDispatchAttempt) return;
+
+  if (WiFi.status() != WL_CONNECTED) {
+    nextEmergencyDispatchAttempt = now + 10000;
+    bleProvision.updateStatus("REMOTE_ALERT_WAITING_WIFI");
+    return;
+  }
+
+  emergencyDispatchAttempts++;
+  Serial.printf("[REMOTE ALERT] Thu gui lan %u qua Internet...\n", emergencyDispatchAttempts);
+  const bool telegramSent = alertSys.sendTelegramAlert(telegramBotToken, telegramChatId, emergencyTelegramMessage);
+  const bool smsSent = alertSys.sendSmsGateway(emergencyPhone, emergencySmsMessage);
+
+  if (telegramSent || smsSent) {
+    emergencyDispatchPending = false;
+    bleProvision.updateStatus("REMOTE_ALERT_SENT");
+    Serial.println("[REMOTE ALERT] Da gui canh bao thanh cong qua Internet.");
+  } else {
+    nextEmergencyDispatchAttempt = now + 30000;
+    bleProvision.updateStatus("REMOTE_ALERT_RETRYING");
+    Serial.println("[REMOTE ALERT] Chua gui duoc; se tu dong thu lai sau 30 giay.");
   }
 }
 
@@ -435,6 +472,9 @@ void loop() {
     lastWifiConnectedState = false;
   }
 
+  // Gửi độc lập từ ESP32, không phụ thuộc BLE hay ứng dụng điện thoại.
+  retryEmergencyDispatch(now);
+
   // Luôn gửi Telemetry thời gian thực qua BLE mỗi 250ms cho App điện thoại
   if (now - lastTelemetryTime >= 250) {
     lastTelemetryTime = now;
@@ -613,11 +653,12 @@ void loop() {
         (currentEventType == EVENT_MANUAL_SOS) ? "NUT BAM SOS KHAN CAP" : "PHAT HIEN TE NGA",
         reasonStr, recordedImpactVelocity, recordedImpactMotion, recordedTargetDist, (now / 1000));
 
-      alertSys.sendTelegramAlert(telegramBotToken, telegramChatId, String(msg));
-      alertSys.sendSmsGateway(emergencyPhone, 
-        "CANH BAO KHAN CAP: Phat hien te nga hoac nut SOS da bam! Kiem tra ngay!");
-
-      bleProvision.updateStatus("EMERGENCY_ DISPATCHED");
+      emergencyTelegramMessage = String(msg);
+      emergencySmsMessage = "CANH BAO KHAN CAP: Phat hien te nga hoac nut SOS da bam! Kiem tra ngay!";
+      emergencyDispatchPending = true;
+      emergencyDispatchAttempts = 0;
+      nextEmergencyDispatchAttempt = now;
+      bleProvision.updateStatus("REMOTE_ALERT_PENDING");
       currentState = STATE_ACKNOWLEDGED;
       break;
     }

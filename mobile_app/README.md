@@ -31,6 +31,12 @@
    - 🔊 **Kiểm tra còi/đèn:** Test hoạt động của còi và dải LED NeoPixel.
    - 📜 **Xem Hộp đen Sự cố:** Tải lịch sử 5 lần té ngã gần nhất lưu trong chip.
 
+6. **Giám sát khi điện thoại ở ngoài:**
+   - ESP32 tự phát hiện và phát còi/đèn, không phụ thuộc ứng dụng đang mở.
+   - Khi có Wi‑Fi Internet, ESP32 gửi cảnh báo trực tiếp qua Telegram và/hoặc SMS Gateway.
+   - Nếu Wi‑Fi tạm mất đúng lúc cảnh báo, firmware giữ cảnh báo và tự gửi lại khi mạng phục hồi.
+   - Điện thoại cần được cấu hình Wi‑Fi, Telegram Bot/Chat ID hoặc SMS Gateway trước khi rời nhà.
+
 ---
 
 ## 🚀 Hướng dẫn Cài đặt & Sử dụng

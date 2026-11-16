@@ -154,18 +154,20 @@ float EdgeAIEngine::evaluateKinematics(const float* raw) {
   // raw[5]: dropRate (mm/s)
   float motionScore = 0.0f;
   if (raw[0] >= FALL_RADAR_MOTION_THRESH) {
-    motionScore = (raw[0] - FALL_RADAR_MOTION_THRESH) / (100.0f - FALL_RADAR_MOTION_THRESH);
+    motionScore = (raw[0] - FALL_RADAR_MOTION_THRESH) /
+                  (100.0f - FALL_RADAR_MOTION_THRESH);
     if (motionScore > 1.0f) motionScore = 1.0f;
   }
 
   float velocityScore = 0.0f;
   if (raw[5] >= FALL_VELOCITY_THRESH_MM_S) {
-    velocityScore = (raw[5] - FALL_VELOCITY_THRESH_MM_S) / 800.0f;
+    velocityScore = (raw[5] - FALL_VELOCITY_THRESH_MM_S) /
+                    (FALL_STRONG_VELOCITY_MM_S - FALL_VELOCITY_THRESH_MM_S);
     if (velocityScore > 1.0f) velocityScore = 1.0f;
   }
 
-  // Điểm động học kết hợp: Cần cả vận tốc sụt giảm VÀ xung chấn va chạm trên radar
-  return (velocityScore * 0.6f + motionScore * 0.4f);
+  // Hai cảm biến bổ trợ nhau: ToF đo chuyển động theo chiều cao, radar đo xung va chạm.
+  return (velocityScore * 0.55f + motionScore * 0.45f);
 }
 
 float EdgeAIEngine::evaluateSpatialPosture(const float* raw) {
@@ -178,15 +180,15 @@ float EdgeAIEngine::evaluateSpatialPosture(const float* raw) {
   // - Vùng cao (High) và Giữa (Mid) không còn thân người đứng -> khoảng cách xa (>1800mm) hoặc trống
   // - Vùng thấp (Low) nằm trong dải sát sàn (< FLOOR_HEIGHT_DEFAULT_MM)
   float floorScore = 0.0f;
-  if (tofLow > 50 && tofLow <= FLOOR_HEIGHT_DEFAULT_MM) {
-    floorScore = 1.0f - (tofLow / (float)FLOOR_HEIGHT_DEFAULT_MM) * 0.4f;
-  } else if (tofLow > FLOOR_HEIGHT_DEFAULT_MM && tofLow < SIT_HEIGHT_MIN_MM) {
+  if (tofLow > 50 && tofLow <= POSTURE_FLOOR_MAX_MM) {
+    floorScore = 1.0f - (tofLow / (float)POSTURE_FLOOR_MAX_MM) * 0.4f;
+  } else if (tofLow > POSTURE_FLOOR_MAX_MM && tofLow < SIT_HEIGHT_MIN_MM) {
     floorScore = 0.5f;
   }
 
   // Kiểm tra loại trừ tư thế ngồi (SIT Rejection)
   // Nếu Mid vẫn bắt được vật cản ở tầm 500-800mm và Low không sát sàn -> Là đang ngồi, không phải ngã!
-  if (tofMid >= SIT_HEIGHT_MIN_MM && tofMid <= STAND_HEIGHT_MIN_MM && tofLow > FLOOR_HEIGHT_DEFAULT_MM) {
+  if (tofMid >= SIT_HEIGHT_MIN_MM && tofMid <= STAND_HEIGHT_MIN_MM && tofLow > POSTURE_FLOOR_MAX_MM) {
     return 0.1f; // Chặn báo động giả ngồi xuống ghế
   }
 
@@ -205,11 +207,11 @@ AIClass EdgeAIEngine::predictWithDiagnostics(float* inputFeatures, float* confid
 
   bool velTrig = (inputFeatures[5] >= FALL_VELOCITY_THRESH_MM_S);
   bool impTrig = (inputFeatures[0] >= FALL_RADAR_MOTION_THRESH);
-  bool floorTrig = (inputFeatures[4] > 50 && inputFeatures[4] <= FLOOR_HEIGHT_DEFAULT_MM);
+  bool floorTrig = (inputFeatures[4] > 50 && inputFeatures[4] <= POSTURE_FLOOR_MAX_MM);
 
   // Điểm tin cậy kết hợp đa tiêu chí (Multi-Criteria Hybrid Fusion)
-  // Trọng số: 45% AI Model + 35% Động học va chạm + 20% Không gian tiếp đất
-  float finalFallConf = (aiFallProb * 0.45f) + (kinScore * 0.35f) + (spatScore * 0.20f);
+  // Trọng số ưu tiên cảm biến thực tế hơn mạng MLP tĩnh chưa được huấn luyện tại nhà.
+  float finalFallConf = (aiFallProb * 0.25f) + (kinScore * 0.45f) + (spatScore * 0.30f);
 
   if (diag) {
     diag->neuralScore = aiFallProb;
@@ -221,9 +223,14 @@ AIClass EdgeAIEngine::predictWithDiagnostics(float* inputFeatures, float* confid
     diag->floorProximityTrigger = floorTrig;
   }
 
-  // Quyết định phân loại lớp:
-  // Nếu có xung chấn và vận tốc rơi vượt ngưỡng + độ tin cậy ngã >= 0.70 -> CLASS_FALL
-  if (finalFallConf >= 0.70f && (velTrig || impTrig)) {
+  // Xác nhận té cần ít nhất hai dấu hiệu. Không dùng OR đơn lẻ để tránh báo giả
+  // khi người dùng ngồi mạnh xuống hoặc radar bị nhiễu.
+  const bool strongVelocity = inputFeatures[5] >= FALL_STRONG_VELOCITY_MM_S;
+  const bool strongImpact = inputFeatures[0] >= FALL_STRONG_MOTION_THRESH;
+  const bool fallEvidence = (velTrig && impTrig) ||
+                            (strongVelocity && floorTrig) ||
+                            (strongImpact && floorTrig);
+  if (finalFallConf >= 0.62f && fallEvidence) {
     *confidenceScore = finalFallConf;
     return CLASS_FALL;
   }
@@ -251,7 +258,7 @@ AIClass EdgeAIEngine::predictWithDiagnostics(float* inputFeatures, float* confid
     } else if (tofDist >= SIT_HEIGHT_MIN_MM && tofDist < STAND_HEIGHT_MIN_MM) {
       bestClass = CLASS_SIT;
       maxP = 0.88f;
-    } else if (tofDist <= FLOOR_HEIGHT_DEFAULT_MM) {
+    } else if (tofDist <= POSTURE_FLOOR_MAX_MM) {
       bestClass = CLASS_LIE;
       maxP = 0.90f;
     } else {
