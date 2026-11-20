@@ -151,6 +151,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: Text(title),
         content: Text(message),
         actions: [
@@ -311,6 +313,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
                       widget.isWifiConnected
                           ? "Wi-Fi: Trực tiếp (${widget.wifiDelayMs}ms)"
                           : (widget.deviceIp.isNotEmpty ? "Wi-Fi: ${widget.deviceIp}" : "Wi-Fi: Chưa bật"),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1613,6 +1617,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
             }
 
             return AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Row(
                 children: [
@@ -1785,6 +1791,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> with SingleTick
         return StatefulBuilder(
           builder: (dialogCtx, setDialogState) {
             return AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Row(
                 children: [

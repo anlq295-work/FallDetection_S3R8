@@ -1062,6 +1062,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: const Row(
           children: [
             Icon(Icons.wifi, color: Colors.tealAccent),
@@ -1195,6 +1197,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: const Text("Đặt tên vị trí thiết bị"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1335,9 +1339,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
               ],
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            trailing: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 128),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 2,
+                children: [
                 if (!isCurrent)
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -1389,7 +1397,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     ),
                   ],
                 ),
-              ],
+                ],
+              ),
             ),
             onTap: () {
               if (isCurrent && _connectedDevice != null) {
@@ -1599,8 +1608,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             if (_isWifiMonitoringEnabled) ...[
               const Divider(height: 16),
               // Thanh địa chỉ IP và công cụ
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                runSpacing: 6,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

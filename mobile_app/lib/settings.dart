@@ -154,6 +154,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
             }
 
             return AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Row(
                 children: [
@@ -437,6 +439,8 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                               showDialog(
                                 context: context,
                                 builder: (c) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
                                   title: const Text("Xóa toàn bộ lịch sử?"),
                                   content: const Text("Bạn có chắc muốn xóa toàn bộ danh sách thiết bị từng kết nối không?"),
                                   actions: [
@@ -479,10 +483,11 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Đơn vị khoảng cách:", style: TextStyle(fontSize: 14)),
+                      const SizedBox(height: 6),
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: "mm", label: Text("mm", style: TextStyle(fontSize: 12))),
@@ -497,10 +502,11 @@ class _GeneralSettingsScreenState extends State<GeneralSettingsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Đơn vị năng lượng Radar:", style: TextStyle(fontSize: 14)),
+                      const SizedBox(height: 6),
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: "%", label: Text("% (Tỉ lệ)", style: TextStyle(fontSize: 12))),

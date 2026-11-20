@@ -150,8 +150,10 @@ class FallKinematicGraph extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Chú thích đồ thị
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Wrap(
+              alignment: WrapAlignment.spaceAround,
+              spacing: 12,
+              runSpacing: 6,
               children: [
                 _buildLegendItem(Colors.cyanAccent, "Độ cao ToF (mm)"),
                 _buildLegendItem(Colors.orangeAccent, "Động năng Radar (/100)"),
@@ -334,10 +336,11 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Tiêu đề và nhãn công nghệ HD 128x128
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              runSpacing: 6,
               children: [
-                const Row(
+                const Wrap(
                   children: [
                     Icon(Icons.radar, color: Colors.cyanAccent, size: 24),
                     SizedBox(width: 8),
@@ -411,8 +414,9 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             const SizedBox(height: 8),
 
             // Tùy chọn chuyển đổi kiểu hiển thị
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              runSpacing: 4,
               children: [
                 const Text(
                   "Chạm / Kéo trên ảnh để đo năng lượng radar tại điểm:",
@@ -443,8 +447,8 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
                 onPanDown: (details) => setState(() => _touchedPoint = details.localPosition),
                 onPanUpdate: (details) => setState(() => _touchedPoint = details.localPosition),
                 child: Container(
-                  width: 280,
-                  height: 280,
+                  width: math.max(0.0, math.min(280.0, MediaQuery.sizeOf(context).width - 48.0)),
+                  height: math.max(0.0, math.min(280.0, MediaQuery.sizeOf(context).width - 48.0)),
                   decoration: BoxDecoration(
                     color: const Color(0xFF060B14),
                     borderRadius: BorderRadius.circular(16),
@@ -478,8 +482,9 @@ class _VirtualThermalSpectrumState extends State<VirtualThermalSpectrum> {
             const SizedBox(height: 10),
 
             // 4. Chú giải 2 trục toạ độ không gian
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              runSpacing: 4,
               children: [
                 Text("Trục dọc Y: Trần (0m) ➔ Sàn nhà (2.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
                 Text("Trục ngang X: Cổng radar (0.75m ➔ 6.0m)", style: TextStyle(fontSize: 10, color: Colors.grey)),
@@ -940,6 +945,8 @@ Bản ghi được trích xuất từ bộ nhớ Flash NVS của thiết bị ES
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [

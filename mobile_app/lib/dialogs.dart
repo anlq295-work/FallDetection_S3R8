@@ -1539,6 +1539,8 @@ class _CdcSteadiAssessmentDialogState extends State<CdcSteadiAssessmentDialog> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: Row(
           children: [
             Icon(score >= 4 ? Icons.warning : Icons.check_circle, color: score >= 4 ? Colors.redAccent : Colors.green),

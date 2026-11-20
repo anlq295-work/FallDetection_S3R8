@@ -133,6 +133,8 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: const Row(
           children: [
             Icon(Icons.warning, color: Colors.orangeAccent),
@@ -170,6 +172,8 @@ class _IosNearbyDeviceConsentScreenState extends State<IosNearbyDeviceConsentScr
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+              actionsOverflowDirection: VerticalDirection.down,
+              actionsOverflowAlignment: OverflowBarAlignment.end,
         title: const Row(
           children: [
             Icon(Icons.bluetooth_disabled, color: Colors.amberAccent),
