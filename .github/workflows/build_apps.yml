@@ -31,6 +31,7 @@ jobs:
       build_number: ${{ steps.version.outputs.build_number }}
       previous_tag: ${{ steps.version.outputs.previous_tag }}
       should_release: ${{ steps.version.outputs.should_release }}
+      update_existing_release: ${{ steps.version.outputs.update_existing_release }}
       skip_reason: ${{ steps.version.outputs.skip_reason }}
     steps:
       - name: Checkout repository with tags
@@ -66,7 +67,7 @@ jobs:
 
           commit_msg=$(git log -1 --pretty=%B)
 
-          eval "$(python3 - "$latest" "$pubspec_ver" "$EVENT_NAME" "$REF" "$REF_NAME" "${BUMP_INPUT:-patch}" "$commit_msg" "$changed_files" <<'PY2'
+          eval "$(python3 - "$latest" "$pubspec_ver" "$EVENT_NAME" "$REF" "$REF_NAME" "${BUMP_INPUT:-patch}" "$commit_msg" "$changed_files" "$prev_tag" <<'PY2'
           import re
           import shlex
           import sys
@@ -85,6 +86,7 @@ jobs:
           bump_input = sys.argv[6]
           commit_msg = sys.argv[7]
           changed_files = [f.strip() for f in sys.argv[8].splitlines() if f.strip()]
+          has_existing_tag = bool(sys.argv[9].strip())
 
           first_line = commit_msg.splitlines()[0].strip().lower() if commit_msg.strip() else ""
           lower_msg = commit_msg.lower()
@@ -115,6 +117,7 @@ jobs:
           non_release_prefix = bool(re.match(r'^(ci|docs|chore|test|style|build|refactor)(\([^)]*\))?!?:', first_line))
 
           should_release = True
+          update_existing_release = False
           skip_reason = ""
           bump = "none"
 
@@ -122,9 +125,11 @@ jobs:
               version = ref_name[1:]
               should_release = True
           elif event_name == "pull_request":
-              version = f"{max(tag_ver, base_ver)[0]}.{max(tag_ver, base_ver)[1]}.{max(tag_ver, base_ver)[2]}"
+              cur = max(tag_ver, base_ver)
+              version = f"{cur[0]}.{cur[1]}.{cur[2]}"
               should_release = False
-              skip_reason = "Pull Request chỉ chạy kiểm tra CI, không phát hành Release."
+              update_existing_release = False
+              skip_reason = "Pull Request chỉ chạy kiểm tra CI, không cập nhật Release."
           elif event_name == "workflow_dispatch":
               bump = bump_input or "patch"
               should_release = True
@@ -142,20 +147,22 @@ jobs:
           elif ref in ("refs/heads/main", "refs/heads/master"):
               if explicit_skip:
                   should_release = False
-                  skip_reason = "Commit có từ khóa [no-release] / [skip release]."
+                  skip_reason = "Commit có từ khóa [no-release] / [skip release] -> không tăng version, cập nhật lại gói dựng trong release hiện tại."
               elif base_ver > tag_ver:
                   # Phiên bản trong pubspec.yaml lớn hơn tag cũ (VD: lần phát hành đầu v2.0.0)
                   should_release = True
               elif non_release_prefix and not explicit_force:
                   should_release = False
-                  skip_reason = f"Tiền tố commit không phát hành ({first_line.split(':', 1)[0]}:)."
+                  skip_reason = f"Tiền tố commit ({first_line.split(':', 1)[0]}:) -> không tăng version, cập nhật lại gói dựng trong release hiện tại."
               elif changed_files and not has_product_changes and not explicit_force:
                   should_release = False
-                  skip_reason = "Chỉ thay đổi tài liệu/CI/test/cấu hình, không thay đổi mã app hoặc firmware."
+                  skip_reason = "Không thay đổi mã app/firmware -> không tăng version, cập nhật lại gói dựng trong release hiện tại."
 
               if not should_release:
-                  cur = max(tag_ver, base_ver)
+                  # Giữ nguyên phiên bản release hiện tại và ghi đè lại tệp APK/IPA/firmware vào release đó
+                  cur = tag_ver if has_existing_tag else base_ver
                   version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+                  update_existing_release = True
               elif base_ver > tag_ver:
                   version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
               else:
@@ -177,27 +184,29 @@ jobs:
               cur = max(tag_ver, base_ver)
               version = f"{cur[0]}.{cur[1]}.{cur[2]}"
               should_release = False
+              update_existing_release = False
               skip_reason = f"Nhánh {ref_name} không thuộc nhánh phát hành chính."
 
           print(f"version={shlex.quote(version)}")
           print(f"should_release={'true' if should_release else 'false'}")
+          print(f"update_existing_release={'true' if update_existing_release else 'false'}")
           print(f"skip_reason={shlex.quote(skip_reason)}")
           PY2
           )"
 
-          if [[ "$REF" == refs/tags/v* ]]; then
-            prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "$REF_NAME" | head -n 1 || true)
-          fi
+          # Luôn chọn previous_tag là tag trước phiên bản mục tiêu v${version} để so sánh đầy đủ
+          prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "v${version}" | head -n 1 || true)
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "previous_tag=${prev_tag}" >> "$GITHUB_OUTPUT"
           echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
+          echo "update_existing_release=${update_existing_release}" >> "$GITHUB_OUTPUT"
           echo "skip_reason=${skip_reason}" >> "$GITHUB_OUTPUT"
 
-          echo "Version: v${version} (build ${GITHUB_RUN_NUMBER}) | should_release=${should_release}"
+          echo "Version: v${version} (build ${GITHUB_RUN_NUMBER}) | should_release=${should_release} | update_existing_release=${update_existing_release}"
           if [[ -n "$skip_reason" ]]; then
-            echo "Skip release reason: ${skip_reason}"
+            echo "Note: ${skip_reason}"
           fi
 
   build-android:
@@ -399,10 +408,10 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    name: Publish GitHub Release (OTA Assets)
+    name: Publish or Refresh GitHub Release (OTA Assets)
     needs: [prepare-version, build-android, build-ios, build-firmware]
     runs-on: ubuntu-latest
-    if: needs.prepare-version.outputs.should_release == 'true'
+    if: needs.prepare-version.outputs.should_release == 'true' || needs.prepare-version.outputs.update_existing_release == 'true'
     steps:
       - name: Checkout repository with full history
         uses: actions/checkout@v4
@@ -470,6 +479,7 @@ jobs:
           VERSION: ${{ needs.prepare-version.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare-version.outputs.build_number }}
           PREV_TAG: ${{ needs.prepare-version.outputs.previous_tag }}
+          UPDATE_EXISTING: ${{ needs.prepare-version.outputs.update_existing_release }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -484,6 +494,7 @@ jobs:
           version = os.environ["VERSION"]
           build = os.environ["BUILD_NUMBER"]
           prev_tag = os.environ.get("PREV_TAG", "").strip()
+          update_existing = os.environ.get("UPDATE_EXISTING", "false").lower() == "true"
           repo = os.environ["REPO"]
           today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
@@ -545,7 +556,12 @@ jobs:
               f"## Hearth (FallDetection S3R8) v{version}",
               "",
               f"- **Phiên bản:** `v{version}` (Build `{build}`)",
-              f"- **Ngày phát hành:** `{today}` (UTC)",
+              f"- **Ngày cập nhật:** `{today}` (UTC)",
+              *(
+                  [f"- **Chế độ cập nhật:** Giữ nguyên phiên bản `v{version}`, làm mới tệp cài đặt từ Build `{build}`."]
+                  if update_existing
+                  else []
+              ),
               "",
           ]
 
@@ -585,6 +601,29 @@ jobs:
           Path("release_notes.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
           print(Path("release_notes.md").read_text(encoding="utf-8"))
           PY2
+
+      - name: Clean Up Stale Assets On Existing Release (Before Re-Upload)
+        env:
+          VERSION: ${{ needs.prepare-version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/releases/tags/v$VERSION")
+          RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
+
+          if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
+            echo "Release v$VERSION đã tồn tại (ID: $RELEASE_ID). Xóa các tệp APK/IPA/manifest/firmware cũ trước khi tải bản dựng mới lên..."
+            echo "$RELEASE_JSON" | jq -r '.assets[]? | select(.name | test("\\.(apk|ipa|plist|bin)$")) | "\(.id) \(.name)"' | while read -r asset_id asset_name; do
+              [ -z "$asset_id" ] && continue
+              echo "  -> Xóa asset cũ: $asset_name (ID: $asset_id)"
+              curl -s -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$REPO/releases/assets/$asset_id" || true
+            done
+          fi
 
       - name: Clean Up Legacy Duplicate 'latest' Release (If Present)
         run: |
