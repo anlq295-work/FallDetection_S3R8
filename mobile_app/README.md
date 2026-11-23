@@ -1,83 +1,42 @@
-# Fall Guard S3R8 - Mobile App (Android & iOS)
+# Hearth – Mobile App (Android, iOS, Tablet & Foldable)
 
-Ứng dụng di động đa nền tảng (**Flutter**) chuyên dụng kết nối Bluetooth Low Energy (BLE) với thiết bị giám sát té ngã **ESP32-S3R8 (Time-of-Flight VL53L1X + Radar mmWave LD2410B)**.
-
----
-
-## 🌟 Tính năng chính
-
-1. **Quét & Kết nối BLE thông minh:**
-   - Tự động nhận diện thiết bị `FallDetector_S3R8`.
-   - Hiển thị cường độ sóng RSSI và trạng thái trực tuyến.
-
-2. **Cấu hình Wi-Fi từ xa:**
-   - Nhập tên mạng (SSID) và mật khẩu Wi-Fi.
-   - Gửi lệnh ghi vào NVS Flash và tự động kích hoạt ESP32 kết nối mạng, nhận phản hồi địa chỉ IP tại chỗ.
-
-3. **Cài đặt Danh bạ Cứu hộ khẩn cấp:**
-   - Cài đặt số điện thoại người thân để nhận tin nhắn SMS Gateway.
-   - Cài đặt Telegram Chat ID và Bot Token để nhận tin nhắn cảnh báo định dạng HTML kèm biểu đồ thông số va chạm.
-   - Tinh chỉnh ngưỡng chiều cao sàn nhà (`floor_mm`) từ 200mm - 800mm.
-
-4. **Bảng điều khiển Giám sát Thời gian thực (Live Dashboard):**
-   - **Trạng thái hệ thống (FSM):** `NORMAL`, `SUSPECTED`, `PRE_ALARM` (đếm ngược 30s), `ALERT` (cấp cứu đỏ), `ACKNOWLEDGED`, `FAULT`.
-   - **Tư thế nhận diện bởi AI:** `STAND` (Đứng), `SIT` (Ngồi), `LIE` (Nằm), `FALL` (Ngã) kèm độ tin cậy Softmax (%).
-   - **Thông số cảm biến liên tục:** Chiều cao ToF (mm), vận tốc rơi (mm/s), đỉnh động năng Radar va chạm (/100), năng lượng tĩnh hô hấp (/100).
-
-5. **Phím bấm Hành động Nhanh:**
-   - 🚨 **KÍCH HOẠT SOS CẤP CỨU TỪ XA:** Nút đỏ lớn kích hoạt báo động ngay lập tức từ điện thoại.
-   - 🔕 **Tắt còi / Hủy báo động:** Giải tỏa sự cố từ xa khi đã có người hỗ trợ.
-   - 📏 **Hiệu chuẩn sàn nhà:** Ra lệnh cho ESP32 tự động lấy mẫu mặt sàn hiện tại.
-   - 🔊 **Kiểm tra còi/đèn:** Test hoạt động của còi và dải LED NeoPixel.
-   - 📜 **Xem Hộp đen Sự cố:** Tải lịch sử 5 lần té ngã gần nhất lưu trong chip.
-
-6. **Giám sát khi điện thoại ở ngoài:**
-   - ESP32 tự phát hiện và phát còi/đèn, không phụ thuộc ứng dụng đang mở.
-   - Khi có Wi‑Fi Internet, ESP32 gửi cảnh báo trực tiếp qua Telegram và/hoặc SMS Gateway.
-   - Nếu Wi‑Fi tạm mất đúng lúc cảnh báo, firmware giữ cảnh báo và tự gửi lại khi mạng phục hồi.
-   - Điện thoại cần được cấu hình Wi‑Fi, Telegram Bot/Chat ID hoặc SMS Gateway trước khi rời nhà.
+Ứng dụng di động đa nền tảng (**Flutter**) cho hệ thống phát hiện té ngã không tiếp xúc **ESP32-S3R8 (VL53L1X ToF + HLK-LD2410B 24GHz Radar + PIR AM312)**, được thiết kế lại theo đặc tả **Hearth UX Spec v1** với phong cách **Liquid Glass**, hỗ trợ **3 ngôn ngữ (Tiếng Việt mặc định · English · Français)** và tự động thích ứng cho điện thoại, điện thoại gập (hinge-aware), tablet và desktop.
 
 ---
 
-## 🚀 Hướng dẫn Cài đặt & Sử dụng
+## Tính năng chính
 
-### 1. Dành cho Android
-- **Chạy trực tiếp trên thiết bị (hoặc máy ảo Android):**
-  ```bash
-  cd mobile_app
-  flutter run
-  ```
-- **Xuất file APK cài đặt (Release APK):**
-  ```bash
-  cd mobile_app
-  flutter build apk --release
-  ```
-  File `.apk` tạo ra tại: `mobile_app/build/app/outputs/flutter-apk/app-release.apk`. Chỉ cần copy file này vào điện thoại Android và mở cài đặt.
-
-### 2. Dành cho iOS (iPhone / iPad)
-- **Mở dự án trong Xcode:**
-  ```bash
-  cd mobile_app
-  open ios/Runner.xcworkspace
-  ```
-- **Cấu hình Signing & Chạy:**
-  1. Trong Xcode, chọn mục **Runner** -> tab **Signing & Capabilities**.
-  2. Chọn **Team** (tài khoản Apple Developer miễn phí hoặc trả phí).
-  3. Cắm iPhone vào máy Mac và nhấn **Run** (Cmd + R) để cài trực tiếp lên iPhone.
-- **Xuất file IPA:**
-  ```bash
-  flutter build ipa
-  ```
+1. **Luồng cài đặt hướng dẫn 4 bước & Đăng nhập không mật khẩu (S1 → S5 → S9):**
+   - **S1 Welcome & Sign in:** Đăng nhập bằng email + mã xác thực 6 chữ số, đổi ngôn ngữ tức thì (`VI / EN / FR`).
+   - **S2 Find the sensor:** Quét & ghép nối BLE thực tế với `FallDetector_S3R8` (UUID `4fafc201-...`), hiển thị cường độ sóng + trạng thái mạnh/yếu, hỗ trợ nhập mã thủ công hoặc cảm biến mô phỏng.
+   - **S3 Connect to Wi-Fi:** Cấu hình mạng Wi-Fi 2.4 GHz gửi qua BLE (`CHAR_WIFI_UUID`), tiến độ 3 giai đoạn trực quan.
+   - **S4 Name the room:** Chọn loại phòng trực quan, đặt tên phòng và tên người thân được chăm sóc.
+   - **S5 Test the sensor:** Kiểm tra phát hiện có người thời gian thực + gửi lệnh `TEST_ALARM` bật còi/đèn trước khi bắt đầu giám sát.
+2. **Giám sát hàng ngày & Cảnh báo té ngã khẩn cấp (S6, S7, S8, S9):**
+   - **S6 Home:** Trả lời câu hỏi *"Mọi người có ổn không?"* trong dưới 3 giây với dòng tóm tắt trạng thái, banner ngoại tuyến ưu tiên cao nhất và danh sách phòng (2 cột trên tablet/màn hình gập, lưới 3 cột + thanh điều hướng trái trên desktop).
+   - **S7 Fall Alert:** Màn hình đỏ khẩn cấp toàn màn hình (hoặc modal không thể tắt nhầm trên tablet/desktop) kèm bộ đếm thời gian chuyển cấp (escalation), nút chính **"Tôi đang xử lý"**, gọi người thân, gọi cấp cứu khu vực (`115`/`112`/`911`), tắt còi tại phòng, ghi nhận kết quả xử lý 3 mức và truy cập nhanh Sơ cứu / Hồ sơ y tế.
+   - **S8 Room Detail:** Nhật ký hôm nay, sức khỏe cảm biến, điều khiển phần cứng ESP32-S3 (dữ liệu ToF/Radar trực tiếp, mô phỏng tư thế AI, lịch đèn ngủ `NIGHTLIGHT_SCHEDULE`, phân cực/tắt tiếng còi, hiệu chuẩn mặt sàn `CALIBRATE_FLOOR`, kênh Telegram/SMS, Hộp đen NVS Flash 5 sự kiện và 3 chế độ OTA).
+   - **S9 Alert Contacts:** Danh sách người nhận cảnh báo theo thứ tự ưu tiên (kéo thả + nút Lên/Xuống dễ tiếp cận), chọn thời gian chờ chuyển cấp (`1 / 2 / 5 phút`).
+3. **Bộ công cụ Chăm sóc & Y tế cho người cao tuổi:**
+   - Hướng dẫn sơ cứu té ngã 4 bước chuẩn y khoa.
+   - Thẻ Hồ sơ Y tế Khẩn cấp (nhóm máu, bệnh nền, thuốc, dị ứng, bác sĩ).
+   - Bảng đánh giá nguy cơ té ngã **CDC STEADI**.
+   - Báo cáo kiểm tra an toàn y tế tổng hợp & kiểm tra cập nhật GitHub Releases OTA.
 
 ---
 
-## 📡 Chi tiết Giao thức BLE (UUID Mapping)
+## Chạy & Build
 
-| Đặc tính BLE | UUID | Chức năng | Định dạng dữ liệu |
-| :--- | :--- | :--- | :--- |
-| **Service** | `4fafc201-1fb5-459e-8fcc-c5c9c331914b` | Dịch vụ chính | - |
-| **Wi-Fi Char** | `0beb5483-e18e-4f36-9e1b-b4d6b63c7b28` | Ghi thông tin mạng | `{"ssid":"...","pass":"..."}` |
-| **Contact Char**| `1c6f8742-9a6d-4785-b9e1-e63f9b8c0011` | Đọc/Ghi danh bạ | `{"phone":"...","chat_id":"...","floor_mm":450}` |
-| **Status Char** | `2d8a9e22-7f1c-4b53-8d2a-f58c7e9a3344` | Thông báo trạng thái | Chuỗi ký tự ASCII / Notify |
-| **Telemetry** | `3e9baf33-8a2d-4c64-9e3b-a69d8f0b4455` | Dữ liệu đo thời gian thực | `{"st":"NORMAL","cls":"STAND","cf":0.92,...}` |
-| **Command** | `4fa0b044-9b3e-4d75-af4c-b70e901c5566` | Lệnh điều khiển | `CANCEL_ALARM`, `CALIBRATE_FLOOR`, `PANIC_SOS`,... |
+```bash
+cd mobile_app
+flutter pub get
+flutter analyze
+flutter test
+
+# Chạy trên thiết bị
+flutter run
+
+# Build Android APK / iOS IPA
+flutter build apk --release
+flutter build ipa
+```

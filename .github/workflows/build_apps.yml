@@ -1,4 +1,4 @@
-name: Build Mobile Apps (Android APK & iOS IPA)
+name: Build & Publish Hearth (Android, iOS & ESP32-S3)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Version bump when running manually'
+        description: 'Mức tăng phiên bản khi chạy thủ công'
         required: true
         default: patch
         type: choice
@@ -19,18 +19,19 @@ permissions:
   contents: write
 
 concurrency:
-  group: mobile-release-version
+  group: hearth-release-pipeline
   cancel-in-progress: false
 
 jobs:
   prepare-version:
-    name: Calculate app version
+    name: Calculate Release Version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       build_number: ${{ steps.version.outputs.build_number }}
+      previous_tag: ${{ steps.version.outputs.previous_tag }}
     steps:
-      - name: Checkout tags
+      - name: Checkout repository with tags
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -45,11 +46,15 @@ jobs:
           BUMP_INPUT: ${{ inputs.bump }}
         run: |
           set -euo pipefail
-          latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 | sed 's/^v//')
-          latest=${latest:-1.0.0}
+          prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || true)
+          latest=${prev_tag#v}
+          pubspec_ver=$(grep -E '^version:' mobile_app/pubspec.yaml | head -n 1 | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          pubspec_ver=${pubspec_ver:-2.0.0}
+          latest=${latest:-$pubspec_ver}
 
           if [[ "$REF" == refs/tags/v* ]]; then
             version="${REF_NAME#v}"
+            prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "$REF_NAME" | head -n 1 || true)
           else
             bump="none"
             if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
@@ -58,39 +63,50 @@ jobs:
               message=$(git log -1 --pretty=%B)
               if grep -qiE '\[major\]|breaking change' <<< "$message"; then
                 bump="major"
-              elif grep -qiE '\[minor\]|feat:' <<< "$message"; then
+              elif grep -qiE '\[minor\]|feat(\(.*\))?:' <<< "$message"; then
                 bump="minor"
               else
                 bump="patch"
               fi
             fi
 
-            version=$(python3 - "$latest" "$bump" <<'PY2'
+            version=$(python3 - "$latest" "$pubspec_ver" "$bump" <<'PY2'
           import re
           import sys
-          current = sys.argv[1]
-          bump = sys.argv[2]
-          match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', current)
-          if not match:
-              raise SystemExit(f'Invalid base version: {current}')
-          major, minor, patch = map(int, match.groups())
-          if bump == 'major':
-              major, minor, patch = major + 1, 0, 0
-          elif bump == 'minor':
-              minor, patch = minor + 1, 0
-          elif bump == 'patch':
-              patch += 1
-          print(f'{major}.{minor}.{patch}')
+
+          def parse(v):
+              m = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', v)
+              if not m:
+                  raise SystemExit(f'Invalid version: {v}')
+              return tuple(map(int, m.groups()))
+
+          tag_ver = parse(sys.argv[1])
+          base_ver = parse(sys.argv[2])
+          bump = sys.argv[3]
+
+          # Nếu pubspec.yaml cao hơn tag mới nhất (ví dụ nâng mặc định lên 2.0.0), dùng trực tiếp phiên bản đó.
+          if base_ver > tag_ver:
+              print(f'{base_ver[0]}.{base_ver[1]}.{base_ver[2]}')
+          else:
+              major, minor, patch = tag_ver
+              if bump == 'major':
+                  major, minor, patch = major + 1, 0, 0
+              elif bump == 'minor':
+                  minor, patch = minor + 1, 0
+              elif bump == 'patch':
+                  patch += 1
+              print(f'{major}.{minor}.{patch}')
           PY2
             )
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "Building version $version (build ${GITHUB_RUN_NUMBER})"
+          echo "previous_tag=${prev_tag}" >> "$GITHUB_OUTPUT"
+          echo "Building Hearth v${version} (build ${GITHUB_RUN_NUMBER}), previous tag: ${prev_tag:-none}"
 
   build-android:
-    name: Build Android APK
+    name: Test & Build Android APK
     needs: prepare-version
     runs-on: ubuntu-latest
     steps:
@@ -109,10 +125,12 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Install dependencies & verify quality
         run: |
           cd mobile_app
           flutter pub get
+          flutter analyze
+          flutter test
 
       - name: Configure Maven Mirrors via Gradle Init Script
         run: |
@@ -157,7 +175,6 @@ jobs:
               }
           }
           EOF
-          echo "Successfully created ~/.gradle/init.d/mirror.init.gradle"
 
       - name: Build Release APK
         run: |
@@ -166,20 +183,20 @@ jobs:
             --build-name "${{ needs.prepare-version.outputs.version }}" \
             --build-number "${{ needs.prepare-version.outputs.build_number }}"
           mv build/app/outputs/flutter-apk/app-release.apk \
-            "build/app/outputs/flutter-apk/FallGuard-Android-v${{ needs.prepare-version.outputs.version }}-build-${{ needs.prepare-version.outputs.build_number }}.apk"
+            "build/app/outputs/flutter-apk/Hearth-Android-v${{ needs.prepare-version.outputs.version }}-build-${{ needs.prepare-version.outputs.build_number }}.apk"
           ls -la build/app/outputs/flutter-apk/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FallGuard-Android-APK
-          path: mobile_app/build/app/outputs/flutter-apk/FallGuard-Android-*.apk
+          name: Hearth-Android-APK
+          path: mobile_app/build/app/outputs/flutter-apk/Hearth-Android-*.apk
           if-no-files-found: error
 
   build-ios:
     name: Build iOS IPA
     needs: prepare-version
-    runs-on: macos-latest # Chạy trực tiếp trên máy ảo macOS có sẵn Xcode của GitHub
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -202,7 +219,7 @@ jobs:
             --build-name "${{ needs.prepare-version.outputs.version }}" \
             --build-number "${{ needs.prepare-version.outputs.build_number }}"
 
-      - name: Code Sign IPA with Certificate
+      - name: Package Unsigned & Optional Signed IPA
         env:
           P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
           P12_PASS: ${{ secrets.APPLE_CERT_PASSWORD }}
@@ -215,64 +232,54 @@ jobs:
           VERSION="${{ needs.prepare-version.outputs.version }}"
           BUILD_NUMBER="${{ needs.prepare-version.outputs.build_number }}"
 
-          # Luon dong goi ban unsigned lam ban phat hanh cong khai
-          zip -qr "FallGuard-iOS-v${VERSION}-build-${BUILD_NUMBER}-unsigned.ipa" Payload
+          # Luôn đóng gói bản unsigned để phát hành công khai
+          zip -qr "Hearth-iOS-v${VERSION}-build-${BUILD_NUMBER}-unsigned.ipa" Payload
 
-          SIGNED_SUCCESS=false
           if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
-            echo "--> Phat hien chung chi Apple! Bat dau ky so..."
+            echo "--> Phát hiện chứng chỉ Apple, bắt đầu ký số IPA..."
             KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
-            security create-keychain -p "temp_pass" $KEYCHAIN_PATH || true
-            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-            security unlock-keychain -p "temp_pass" $KEYCHAIN_PATH
+            security create-keychain -p "temp_pass" "$KEYCHAIN_PATH" || true
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+            security unlock-keychain -p "temp_pass" "$KEYCHAIN_PATH"
 
-            # Them vao danh sach tim kiem keychain
-            security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
-            security default-keychain -s $KEYCHAIN_PATH
+            security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+            security default-keychain -s "$KEYCHAIN_PATH"
 
-            # Giai ma p12 va mobileprovision
-            echo "$P12_BASE64" | base64 --decode > $RUNNER_TEMP/cert.p12
-            echo "$PROFILE_BASE64" | base64 --decode > $RUNNER_TEMP/cert.mobileprovision
+            echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            echo "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.mobileprovision"
 
-            # Cai dat mobileprovision vao app
-            cp $RUNNER_TEMP/cert.mobileprovision Payload/Runner.app/embedded.mobileprovision
+            cp "$RUNNER_TEMP/cert.mobileprovision" Payload/Runner.app/embedded.mobileprovision
 
-            # Import vao Keychain
-            security import $RUNNER_TEMP/cert.p12 -k $KEYCHAIN_PATH -P "$P12_PASS" -A -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "temp_pass" $KEYCHAIN_PATH
+            security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$P12_PASS" -A -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "temp_pass" "$KEYCHAIN_PATH"
 
-            # Lay ten chu ky
-            CERT_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -E "iPhone|Apple" | head -n 1 | awk -F '"' '{print $2}')
+            CERT_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -E "iPhone|Apple" | head -n 1 | awk -F '"' '{print $2}')
             echo "Signing with identity: $CERT_IDENTITY"
 
             if [ -n "$CERT_IDENTITY" ]; then
-              # Trich xuat entitlements
-              security cms -D -i $RUNNER_TEMP/cert.mobileprovision > $RUNNER_TEMP/profile.plist
-              /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+              security cms -D -i "$RUNNER_TEMP/cert.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+              /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' "$RUNNER_TEMP/profile.plist" > "$RUNNER_TEMP/entitlements.plist"
 
-              # Ky Frameworks
               find Payload/Runner.app/Frameworks -name "*.dylib" -o -name "*.framework" 2>/dev/null | while read -r lib; do
-                codesign --force --verify --verbose --sign "$CERT_IDENTITY" --keychain $KEYCHAIN_PATH "$lib" 2>/dev/null || true
+                codesign --force --verify --verbose --sign "$CERT_IDENTITY" --keychain "$KEYCHAIN_PATH" "$lib" 2>/dev/null || true
               done
 
-              # Ky App chinh
-              if codesign --force --verify --verbose --sign "$CERT_IDENTITY" --entitlements $RUNNER_TEMP/entitlements.plist --keychain $KEYCHAIN_PATH Payload/Runner.app; then
-                zip -qr "FallGuard-iOS-v${VERSION}-build-${BUILD_NUMBER}-signed.ipa" Payload
-                echo "--> Ky so thanh cong"
-                SIGNED_SUCCESS=true
+              if codesign --force --verify --verbose --sign "$CERT_IDENTITY" --entitlements "$RUNNER_TEMP/entitlements.plist" --keychain "$KEYCHAIN_PATH" Payload/Runner.app; then
+                zip -qr "Hearth-iOS-v${VERSION}-build-${BUILD_NUMBER}-signed.ipa" Payload
+                echo "--> Ký số thành công."
               fi
             fi
           fi
 
-      - name: Upload Signed or Unsigned IPA
+      - name: Upload IPA Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: FallGuard-iOS-IPA
-          path: mobile_app/build/ios/iphoneos/FallGuard-iOS-*.ipa
+          name: Hearth-iOS-IPA
+          path: mobile_app/build/ios/iphoneos/Hearth-iOS-*.ipa
           if-no-files-found: error
 
   build-firmware:
-    name: Build ESP32 Firmware
+    name: Build ESP32-S3 Firmware
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -286,119 +293,229 @@ jobs:
       - name: Install PlatformIO
         run: pip install -U platformio
 
-      - name: Build ESP32-S3 Firmware
+      - name: Build ESP32-S3 N16R8 Firmware
         run: pio run -e esp32-s3-n16r8
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FallGuard-ESP32-Firmware
+          name: Hearth-ESP32-Firmware
           path: .pio/build/esp32-s3-n16r8/firmware.bin
+          if-no-files-found: error
 
   publish-release:
     name: Publish GitHub Release (OTA Assets)
     needs: [prepare-version, build-android, build-ios, build-firmware]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout repository
+      - name: Checkout repository with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Build Artifacts
+        run: mkdir -p release_assets
 
       - name: Download Android Artifact
         uses: actions/download-artifact@v4
         with:
-          name: FallGuard-Android-APK
+          name: Hearth-Android-APK
           path: release_assets/
 
       - name: Download iOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: FallGuard-iOS-IPA
+          name: Hearth-iOS-IPA
           path: release_assets/
 
       - name: Download Firmware Artifact
         uses: actions/download-artifact@v4
         with:
-          name: FallGuard-ESP32-Firmware
+          name: Hearth-ESP32-Firmware
           path: release_assets/
 
-      - name: Filter Out Signed Files from Public Release
+      - name: Filter Signed IPA & Prepare iOS Manifest
+        env:
+          VERSION: ${{ needs.prepare-version.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare-version.outputs.build_number }}
         run: |
-          # Xoa bo file Signed khoi ban release cong khai (chi giu trong Actions Artifacts de tai ve may tinh ca nhan)
-          rm -f release_assets/*_Signed.ipa release_assets/*_signed.ipa release_assets/FallGuard_Signed.ipa
-          echo "Danh sach tep se publish len Release cong khai:"
-          ls -la release_assets/
+          set -euo pipefail
+          # Xóa bản IPA đã ký khỏi bản phát hành công khai (chỉ giữ bản signed trong GitHub Actions Artifacts)
+          rm -f release_assets/*-signed.ipa release_assets/*-Signed.ipa release_assets/*_signed.ipa release_assets/*_Signed.ipa
 
-      - name: Copy Manifest
-        run: |
-          cp ios_ota/manifest.plist release_assets/
-          python3 - <<'PY2'
+          cp ios_ota/manifest.plist release_assets/manifest.plist
+          python3 - "$VERSION" "$BUILD_NUMBER" <<'PY2'
           from pathlib import Path
           import re
-          version = "${{ needs.prepare-version.outputs.version }}"
-          build = "${{ needs.prepare-version.outputs.build_number }}"
+          import sys
+
+          version, build = sys.argv[1], sys.argv[2]
+          ipa_name = f"Hearth-iOS-v{version}-build-{build}-unsigned.ipa"
           manifest = Path("release_assets/manifest.plist")
-          text = manifest.read_text()
-          text = re.sub(r'(<key>bundle-version</key>\s*<string>)[^<]+(</string>)', rf'\g<1>{version}\g<2>', text)
-          text = text.replace('FallGuard_iOS_unsigned.ipa', f'FallGuard-iOS-v{version}-build-{build}-unsigned.ipa')
-          manifest.write_text(text)
+          text = manifest.read_text(encoding="utf-8")
+          text = re.sub(
+              r'(<key>bundle-version</key>\s*<string>)[^<]+(</string>)',
+              rf'\g<1>{version}\g<2>',
+              text,
+          )
+          text = re.sub(
+              r'(releases/latest/download/)[^<]+\.ipa',
+              rf'\g<1>{ipa_name}',
+              text,
+          )
+          manifest.write_text(text, encoding="utf-8")
           PY2
 
-      - name: Delete old stale latest release to refresh published date
+          echo "Danh sách tệp phát hành:"
+          ls -lh release_assets/
+
+      - name: Generate Release Notes (Per-Release Changelog & Checksums)
+        env:
+          VERSION: ${{ needs.prepare-version.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare-version.outputs.build_number }}
+          PREV_TAG: ${{ needs.prepare-version.outputs.previous_tag }}
+          REPO: ${{ github.repository }}
         run: |
-          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/releases/tags/latest | jq -r '.id // empty')
+          set -euo pipefail
+          python3 - <<'PY2'
+          import datetime
+          import hashlib
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          build = os.environ["BUILD_NUMBER"]
+          prev_tag = os.environ.get("PREV_TAG", "").strip()
+          repo = os.environ["REPO"]
+          today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+
+          apk_name = f"Hearth-Android-v{version}-build-{build}.apk"
+          ipa_name = f"Hearth-iOS-v{version}-build-{build}-unsigned.ipa"
+
+          # 1. Trích xuất phần ghi chú thủ công từ CHANGELOG.md nếu có mục trùng phiên bản
+          curated_notes = ""
+          changelog_path = Path("CHANGELOG.md")
+          if changelog_path.exists():
+              raw = changelog_path.read_text(encoding="utf-8")
+              pattern = rf"^##\s+\[?v?{re.escape(version)}\]?.*?\n(.*?)(?=^##\s+|\Z)"
+              m = re.search(pattern, raw, flags=re.MULTILINE | re.DOTALL)
+              if m:
+                  curated_notes = m.group(1).strip()
+
+          # 2. Tự động gom commit kể từ tag phát hành gần nhất
+          git_range = f"{prev_tag}..HEAD" if prev_tag else "HEAD~15..HEAD"
+          try:
+              log_out = subprocess.check_output(
+                  ["git", "log", git_range, "--no-merges", "--pretty=format:%h|%s"],
+                  text=True,
+                  stderr=subprocess.DEVNULL,
+              ).strip()
+          except subprocess.CalledProcessError:
+              log_out = subprocess.check_output(
+                  ["git", "log", "-n", "15", "--no-merges", "--pretty=format:%h|%s"],
+                  text=True,
+              ).strip()
+
+          feats, fixes, others = [], [], []
+          for line in log_out.splitlines():
+              if "|" not in line:
+                  continue
+              sha, subject = line.split("|", 1)
+              subject = subject.strip()
+              if not subject:
+                  continue
+              lower = subject.lower()
+              entry = f"- {subject} (`{sha}`)"
+              if lower.startswith(("feat:", "feat(", "[minor]", "[major]")):
+                  feats.append(entry)
+              elif lower.startswith(("fix:", "fix(", "bugfix:")):
+                  fixes.append(entry)
+              else:
+                  others.append(entry)
+
+          # 3. Tính kích thước và SHA-256 cho các tệp phát hành
+          assets_dir = Path("release_assets")
+          asset_rows = []
+          for path in sorted(assets_dir.iterdir()):
+              if path.is_file():
+                  size_mb = path.stat().st_size / (1024 * 1024)
+                  size_str = f"{size_mb:.2f} MB" if size_mb >= 0.1 else f"{path.stat().st_size / 1024:.1f} KB"
+                  digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+                  asset_rows.append(f"| `{path.name}` | {size_str} | `{digest}…` |")
+
+          lines = [
+              f"## Hearth (FallDetection S3R8) v{version}",
+              "",
+              f"- **Phiên bản:** `v{version}` (Build `{build}`)",
+              f"- **Ngày phát hành:** `{today}` (UTC)",
+              "",
+          ]
+
+          if curated_notes:
+              lines.extend(["### Điểm nổi bật của bản phát hành", "", curated_notes, ""])
+
+          lines.append("### Chi tiết thay đổi trong bản cập nhật này")
+          lines.append("")
+          if feats:
+              lines.extend(["#### Tính năng mới", *feats, ""])
+          if fixes:
+              lines.extend(["#### Sửa lỗi", *fixes, ""])
+          if others:
+              lines.extend(["#### Cải tiến & Thay đổi khác", *others, ""])
+          if not (feats or fixes or others):
+              lines.extend(["- Đồng bộ hóa bản dựng và gói cài đặt phát hành.", ""])
+
+          lines.extend([
+              "### Tệp cài đặt đính kèm",
+              "",
+              f"- **Android APK:** `{apk_name}` — cài đặt trực tiếp trên thiết bị Android.",
+              f"- **iOS IPA (chưa ký):** `{ipa_name}` — dùng với AltStore / Sideloadly / Xcode (bản đã ký nằm trong GitHub Actions Artifacts nếu có chứng chỉ Apple).",
+              "- **Firmware ESP32-S3 N16R8:** `firmware.bin` — hỗ trợ cập nhật tự động qua lệnh `OTA_LATEST`, Web OTA (`/update`) hoặc BLE OTA.",
+              "- **iOS OTA Manifest:** `manifest.plist`.",
+              "",
+              "| Tệp phát hành | Dung lượng | SHA-256 (rút gọn) |",
+              "| :--- | ---: | :--- |",
+              *asset_rows,
+              "",
+          ])
+
+          if prev_tag:
+              lines.append(
+                  f"**So sánh mã nguồn đầy đủ:** https://github.com/{repo}/compare/{prev_tag}...v{version}"
+              )
+
+          Path("release_notes.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+          print(Path("release_notes.md").read_text(encoding="utf-8"))
+          PY2
+
+      - name: Clean Up Legacy Duplicate 'latest' Release (If Present)
+        run: |
+          RELEASE_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/latest" | jq -r '.id // empty')
           if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-            echo "Deleting old release ID: $RELEASE_ID"
-            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID
+            echo "Removing legacy duplicate 'latest' release (ID: $RELEASE_ID) so GitHub Latest points cleanly to v${{ needs.prepare-version.outputs.version }}..."
+            curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID" || true
           fi
 
-      - name: Create or Update Version Release
+      - name: Publish Official Version Release (Latest)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare-version.outputs.version }}
-          name: "Fall Guard S3R8 v${{ needs.prepare-version.outputs.version }}"
-          body: |
-            ## Fall Guard S3R8 v${{ needs.prepare-version.outputs.version }}
-            Build: `${{ needs.prepare-version.outputs.build_number }}`
-            - **Wi-Fi Direct Telemetry**: Giám sát thời gian thực & điều khiển từ xa trực tiếp qua mạng LAN cổng 80.
-            - **Loại bỏ đồ thị ảo**: Xóa bỏ hoàn toàn Kinetic Graph và Phổ nhiệt giả lập; tập trung vào mô phỏng 3D tư thế thực tế và dữ liệu Flash NVS.
-            - **Cập nhật In-App OTA**: Kiểm tra trực tiếp bản cập nhật qua GitHub REST API và cài đặt 1-chạm.
-            - **Tệp cài đặt đính kèm**:
-              - Android APK: file c? version trong t?n
-              - ESP32 Firmware: `firmware.bin`
-              - iOS App: file c? version trong t?n
-          files: |
-            release_assets/FallGuard-Android-*.apk
-            release_assets/*.ipa
-            release_assets/manifest.plist
-            release_assets/firmware.bin
+          name: "Hearth v${{ needs.prepare-version.outputs.version }}"
+          body_path: release_notes.md
+          make_latest: true
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Fresh Latest Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: "Fall Guard S3R8 Latest Release (v${{ needs.prepare-version.outputs.version }})"
-          body: |
-            ## Fall Guard S3R8 - Tu dong cap nhat OTA (v${{ needs.prepare-version.outputs.version }})
-            APK/IPA duoc gan version va build number tu dong:
-            - **Android APK**: file c? version trong t?n
-            - **ESP32 Firmware**: `firmware.bin`
-            - **iOS App**: file c? version trong t?n
-            - **Manifest**: `manifest.plist`
           files: |
-            release_assets/FallGuard-Android-*.apk
-            release_assets/*.ipa
+            release_assets/Hearth-Android-*.apk
+            release_assets/Hearth-iOS-*-unsigned.ipa
             release_assets/manifest.plist
             release_assets/firmware.bin
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
