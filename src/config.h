@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // Phiên bản Firmware hệ thống
-#define FIRMWARE_VERSION            "v2.0.0"
+#define FIRMWARE_VERSION            "Pre-release2.0.1"
 
 // =========================================================================
 // 1. PINOUT AN TOÀN CHO ESP32-S3R8 & CẤU HÌNH CẢM BIẾN

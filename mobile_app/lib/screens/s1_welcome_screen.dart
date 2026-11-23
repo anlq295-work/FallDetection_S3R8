@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/models.dart';
 import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../services/hearth_controller.dart';
@@ -24,21 +25,38 @@ class S1WelcomeScreen extends StatefulWidget {
 
 class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
   final _emailCtrl = TextEditingController();
+  final _carerNameCtrl = TextEditingController();
+  final _personNameCtrl = TextEditingController();
+  final _personPhoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _codeFocus = FocusNode();
 
   bool _stepTwo = false;
   bool _loading = false;
   String? _emailError;
+  String? _carerNameError;
+  String? _personNameError;
   String? _codeError;
   String? _networkError;
   int _resendSec = 0;
   Timer? _resendTimer;
 
   @override
+  void initState() {
+    super.initState();
+    _emailCtrl.text = widget.ctrl.userEmail;
+    _carerNameCtrl.text = widget.ctrl.carerName;
+    _personNameCtrl.text = widget.ctrl.personName;
+    _personPhoneCtrl.text = widget.ctrl.medicalProfile.personPhone;
+  }
+
+  @override
   void dispose() {
     _resendTimer?.cancel();
     _emailCtrl.dispose();
+    _carerNameCtrl.dispose();
+    _personNameCtrl.dispose();
+    _personPhoneCtrl.dispose();
     _codeCtrl.dispose();
     _codeFocus.dispose();
     super.dispose();
@@ -50,6 +68,31 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     if (at <= 0 || at == s.length - 1) return false;
     final domain = s.substring(at + 1);
     return domain.contains('.') && !domain.startsWith('.') && !domain.endsWith('.');
+  }
+
+  bool _validateStepOneFields() {
+    final s = widget.ctrl.s;
+    String? emailErr;
+    String? carerErr;
+    String? personErr;
+
+    if (!_isValidEmail(_emailCtrl.text)) {
+      emailErr = s.s1EmailError;
+    }
+    if (_carerNameCtrl.text.trim().isEmpty) {
+      carerErr = s.requiredFieldError;
+    }
+    if (_personNameCtrl.text.trim().isEmpty) {
+      personErr = s.s4PersonRequiredError;
+    }
+
+    setState(() {
+      _emailError = emailErr;
+      _carerNameError = carerErr;
+      _personNameError = personErr;
+      _networkError = null;
+    });
+    return emailErr == null && carerErr == null && personErr == null;
   }
 
   void _startResendCooldown() {
@@ -71,15 +114,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
 
   Future<void> _sendCode() async {
     final s = widget.ctrl.s;
-    setState(() {
-      _emailError = null;
-      _networkError = null;
-    });
-
-    if (!_isValidEmail(_emailCtrl.text)) {
-      setState(() => _emailError = s.s1EmailError);
-      return;
-    }
+    if (!_validateStepOneFields()) return;
 
     if (widget.ctrl.phoneOfflineSimulation) {
       setState(() => _networkError = s.s1NetworkError);
@@ -87,7 +122,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     }
 
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -99,14 +134,20 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     });
   }
 
-  Future<void> _verifyCode({bool returning = false}) async {
+  Future<void> _verifyCode({bool skipDirectToHome = false}) async {
     final s = widget.ctrl.s;
     setState(() {
       _codeError = null;
       _networkError = null;
     });
+
+    if (!_validateStepOneFields()) {
+      setState(() => _stepTwo = false);
+      return;
+    }
+
     final code = _codeCtrl.text.trim();
-    if (code.length != 6 || int.tryParse(code) == null) {
+    if (!skipDirectToHome && (code.length != 6 || int.tryParse(code) == null)) {
       setState(() => _codeError = s.s1CodeError);
       return;
     }
@@ -116,15 +157,18 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     }
 
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await Future<void>.delayed(const Duration(milliseconds: 350));
     await widget.ctrl.signIn(
-      email: _emailCtrl.text.trim().isEmpty ? 'anna.ruiz@mail.com' : _emailCtrl.text.trim(),
-      returningUser: returning || widget.ctrl.rooms.isNotEmpty,
+      email: _emailCtrl.text.trim(),
+      carerName: _carerNameCtrl.text.trim(),
+      personName: _personNameCtrl.text.trim(),
+      personPhone: _personPhoneCtrl.text.trim(),
+      skipDirectToHome: skipDirectToHome || widget.ctrl.rooms.isNotEmpty,
     );
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (returning || widget.ctrl.setupCompleted) {
+    if (skipDirectToHome || widget.ctrl.setupCompleted) {
       widget.onSignedInReturningUser();
     } else {
       widget.onSignedInNewUser();
@@ -146,27 +190,37 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
           children: [
             const HearthBrandMark(size: 46),
             const SizedBox(width: 12),
-            Text(
-              s.appName,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.appName,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    kAppReleaseLabel,
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: p.accent),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
             HearthLanguagePill(
               current: ctrl.language,
               onSelected: ctrl.setLanguage,
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
         Text(s.s1Headline, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         _FactRow(icon: Icons.videocam_off_rounded, text: s.s1Fact1),
-        const SizedBox(height: 12),
-        _FactRow(icon: Icons.notifications_active_rounded, text: s.s1Fact2),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
+        _FactRow(icon: Icons.campaign_rounded, text: s.s1Fact2),
+        const SizedBox(height: 10),
         _FactRow(icon: Icons.wifi_rounded, text: s.s1Fact3),
         if (layout.isDesktop) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           HearthBanner(
             tone: HearthBannerTone.info,
             icon: Icons.phonelink_setup_rounded,
@@ -189,7 +243,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
               icon: Icons.wifi_off_rounded,
               title: _networkError!,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
           ],
           if (!_stepTwo) ...[
             TextField(
@@ -197,14 +251,51 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
               readOnly: _loading,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _sendCode(),
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 labelText: s.s1EmailLabel,
                 hintText: s.s1EmailPlaceholder,
                 helperText: s.s1EmailHelper,
                 errorText: _emailError,
                 errorMaxLines: 3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _carerNameCtrl,
+              readOnly: _loading,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: s.s1CarerNameLabel,
+                hintText: s.s1CarerNameHint,
+                errorText: _carerNameError,
+                errorMaxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _personNameCtrl,
+              readOnly: _loading,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: s.s1PersonNameLabel,
+                hintText: s.s1PersonNameHint,
+                errorText: _personNameError,
+                errorMaxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _personPhoneCtrl,
+              readOnly: _loading,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _sendCode(),
+              decoration: InputDecoration(
+                labelText: s.s1PersonPhoneLabel,
+                hintText: '09xx xxx xxx',
               ),
             ),
             const SizedBox(height: 18),
@@ -220,29 +311,20 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
                 label: s.s1AlreadyHaveCode,
                 onPressed: _loading
                     ? null
-                    : () => setState(() {
-                          _stepTwo = true;
-                          _emailError = null;
-                        }),
+                    : () {
+                        if (_validateStepOneFields()) {
+                          setState(() => _stepTwo = true);
+                        }
+                      },
               ),
             ),
             Center(
               child: HearthTextLink(
-                label: s.s1ReturningSkip,
-                onPressed: _loading
-                    ? null
-                    : () async {
-                        await ctrl.signIn(
-                          email: _emailCtrl.text.trim().isEmpty
-                              ? 'anna.ruiz@mail.com'
-                              : _emailCtrl.text.trim(),
-                          returningUser: true,
-                        );
-                        widget.onSignedInReturningUser();
-                      },
+                label: s.s1SkipToHome,
+                onPressed: _loading ? null : () => _verifyCode(skipDirectToHome: true),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               s.s1Legal,
               textAlign: TextAlign.center,
@@ -252,9 +334,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
             HearthBanner(
               tone: HearthBannerTone.ok,
               icon: Icons.mark_email_read_rounded,
-              title: s.s1CodeSentTo(
-                _emailCtrl.text.trim().isEmpty ? s.s1EmailPlaceholder : _emailCtrl.text.trim(),
-              ),
+              title: s.s1CodeSentTo(_emailCtrl.text.trim()),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -334,7 +414,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           heroSection,
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 22),
                           formCard,
                         ],
                       ),

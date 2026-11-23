@@ -403,12 +403,12 @@ class Esp32HardwareService {
     }
   }
 
-  /// Queries latest GitHub Release for App APK/IPA & ESP32 firmware.bin.
+  /// Queries latest GitHub Release (including Pre-releases) for App APK/IPA & ESP32 firmware.bin.
   Future<GitHubReleaseInfo?> fetchLatestGitHubRelease() async {
     try {
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
       final req = await client.getUrl(
-        Uri.parse('https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases/latest'),
+        Uri.parse('https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases?per_page=1'),
       );
       req.headers.set('User-Agent', 'HearthApp');
       req.headers.set('Accept', 'application/vnd.github.v3+json');
@@ -417,28 +417,31 @@ class Esp32HardwareService {
       client.close();
 
       if (resp.statusCode == 200) {
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        String? apkUrl;
-        String? ipaUrl;
-        String? fwUrl;
-        final assets = (data['assets'] as List?) ?? [];
-        for (final a in assets) {
-          if (a is Map<String, dynamic>) {
-            final name = (a['name'] ?? '').toString().toLowerCase();
-            final url = (a['browser_download_url'] ?? '').toString();
-            if (name.endsWith('.apk')) apkUrl = url;
-            if (name.endsWith('.ipa')) ipaUrl = url;
-            if (name == 'firmware.bin') fwUrl = url;
+        final decoded = jsonDecode(body);
+        if (decoded is List && decoded.isNotEmpty && decoded.first is Map<String, dynamic>) {
+          final data = decoded.first as Map<String, dynamic>;
+          String? apkUrl;
+          String? ipaUrl;
+          String? fwUrl;
+          final assets = (data['assets'] as List?) ?? [];
+          for (final a in assets) {
+            if (a is Map<String, dynamic>) {
+              final name = (a['name'] ?? '').toString().toLowerCase();
+              final url = (a['browser_download_url'] ?? '').toString();
+              if (name.endsWith('.apk')) apkUrl = url;
+              if (name.endsWith('.ipa')) ipaUrl = url;
+              if (name == 'firmware.bin') fwUrl = url;
+            }
           }
+          return GitHubReleaseInfo(
+            tagName: (data['tag_name'] ?? kAppReleaseLabel).toString(),
+            releaseNotes: (data['body'] ?? '').toString(),
+            htmlUrl: (data['html_url'] ?? 'https://github.com/anlq295-work/FallDetection_S3R8/releases').toString(),
+            apkUrl: apkUrl,
+            ipaUrl: ipaUrl,
+            firmwareUrl: fwUrl,
+          );
         }
-        return GitHubReleaseInfo(
-          tagName: (data['tag_name'] ?? 'v2.0.0').toString(),
-          releaseNotes: (data['body'] ?? '').toString(),
-          htmlUrl: (data['html_url'] ?? 'https://github.com/anlq295-work/FallDetection_S3R8/releases').toString(),
-          apkUrl: apkUrl,
-          ipaUrl: ipaUrl,
-          firmwareUrl: fwUrl,
-        );
       }
     } catch (_) {}
     return null;

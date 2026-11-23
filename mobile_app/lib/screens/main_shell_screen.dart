@@ -74,6 +74,72 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
   }
 
+  void _openQuickCareProfileModal() {
+    final carerCtrl = TextEditingController(text: widget.ctrl.carerName);
+    final personCtrl = TextEditingController(text: widget.ctrl.personName);
+    final phoneCtrl = TextEditingController(text: widget.ctrl.medicalProfile.personPhone);
+    String? personErr;
+    String? carerErr;
+
+    showLiquidGlassAdaptiveModal(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (c, setModalState) {
+          final s = widget.ctrl.s;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.s6CompleteProfileBtn, style: Theme.of(c).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              TextField(
+                controller: carerCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: s.s1CarerNameLabel,
+                  errorText: carerErr,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: personCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: s.s4PersonLabel,
+                  errorText: personErr,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(labelText: s.s1PersonPhoneLabel),
+              ),
+              const SizedBox(height: 16),
+              HearthPrimaryButton(
+                label: s.save,
+                onPressed: () async {
+                  final cn = carerCtrl.text.trim();
+                  final pn = personCtrl.text.trim();
+                  setModalState(() {
+                    carerErr = cn.isEmpty ? s.requiredFieldError : null;
+                    personErr = pn.isEmpty ? s.s4PersonRequiredError : null;
+                  });
+                  if (cn.isEmpty || pn.isEmpty) return;
+                  await widget.ctrl.updateCareIdentity(
+                    carerName: cn,
+                    personName: pn,
+                    personPhone: phoneCtrl.text.trim(),
+                  );
+                  if (c.mounted) Navigator.pop(c);
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _checkUpdatesModal() async {
     final pkg = await PackageInfo.fromPlatform();
     if (!mounted) return;
@@ -101,7 +167,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 Text(s.appUpdatesTitle, style: Theme.of(c).textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  'Installed App: v${pkg.version} (Build ${pkg.buildNumber})',
+                  'Installed App: $kAppReleaseLabel (v${pkg.version} · Build ${pkg.buildNumber})',
                   style: TextStyle(fontSize: 15, color: p.textMuted),
                 ),
                 const SizedBox(height: 12),
@@ -323,6 +389,34 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final summaryBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!ctrl.hasRequiredCareProfile) ...[
+          HearthBanner(
+            tone: HearthBannerTone.warning,
+            icon: Icons.person_outline_rounded,
+            title: s.s6IncompleteProfileTitle,
+            subtitle: s.s6IncompleteProfileBody,
+            action: HearthSecondaryButton(
+              label: s.s6CompleteProfileBtn,
+              expand: false,
+              icon: Icons.edit_rounded,
+              onPressed: _openQuickCareProfileModal,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (ctrl.guestModeActive) ...[
+          HearthBanner(
+            tone: HearthBannerTone.info,
+            icon: Icons.pause_circle_outline_rounded,
+            title: s.s6GuestModeActive,
+            action: HearthSecondaryButton(
+              label: s.s6GuestModeResume,
+              expand: false,
+              onPressed: () => ctrl.setGuestMode(false),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (ctrl.phoneOfflineSimulation) ...[
           HearthBanner(
             tone: HearthBannerTone.warning,
@@ -349,14 +443,26 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     offline.name,
                     s.formatClock(offline.offlineSince ?? offline.lastCheckedAt),
                   )
-                : null,
+                : (ctrl.lastSafeCheckIn != null
+                    ? s.s6LastCheckIn(s.formatClock(ctrl.lastSafeCheckIn!))
+                    : null),
             action: offline != null
                 ? HearthPrimaryButton(
                     label: s.s6ReconnectSensor,
                     icon: Icons.bluetooth_searching_rounded,
                     onPressed: () => widget.onReconnectRoom(offline),
                   )
-                : null,
+                : HearthSecondaryButton(
+                    label: s.s6CheckInBtn,
+                    expand: false,
+                    icon: Icons.favorite_border_rounded,
+                    onPressed: () async {
+                      await ctrl.logSafeCheckIn();
+                      if (mounted) {
+                        showHearthToast(context, s.s6LastCheckIn(s.formatClock(DateTime.now())));
+                      }
+                    },
+                  ),
           ),
           const SizedBox(height: 14),
         ],
@@ -670,7 +776,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 minTileHeight: 64,
                 leading: Icon(Icons.group_rounded, color: p.accent),
                 title: Text(s.s9Title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text('${ctrl.contacts.length} · ${s.s9Minutes(ctrl.escalationMinutes)}'),
+                subtitle: Text(
+                  '${ctrl.contacts.length} · ${ctrl.dispatchMode == AlertDispatchMode.simultaneous ? s.s9ModeSimultaneous : s.s9Minutes(ctrl.escalationMinutes)}',
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -744,9 +852,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     minTileHeight: 60,
                     leading: Icon(Icons.badge_rounded, color: p.accent),
                     title: Text(s.medicalIdTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text('${ctrl.medicalProfile.fullName} · ${ctrl.medicalProfile.bloodType}'),
+                    subtitle: Text(
+                      ctrl.medicalProfile.fullName.isEmpty
+                          ? s.medicalIdSub
+                          : '${ctrl.medicalProfile.fullName}${ctrl.medicalProfile.bloodType.isNotEmpty ? " · ${ctrl.medicalProfile.bloodType}" : ""}',
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => showMedicalIdModal(context, ctrl),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    minTileHeight: 60,
+                    leading: Icon(Icons.medication_rounded, color: p.accent),
+                    title: Text(s.medicationTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text('${s.medicationSub} (${ctrl.medications.length})'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => showMedicationScheduleModal(context, ctrl),
                   ),
                   const Divider(height: 1),
                   ListTile(
@@ -810,11 +931,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     },
                   ),
                   const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: Icon(Icons.pause_circle_outline_rounded, color: p.accent),
+                    title: Text(s.guestModeTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(s.guestModeSub),
+                    value: ctrl.guestModeActive,
+                    onChanged: ctrl.setGuestMode,
+                  ),
+                  const Divider(height: 1),
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.system_update_rounded, color: p.accent),
                     title: Text(s.appUpdatesTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('GitHub Releases OTA (APK / IPA / ESP32)'),
+                    subtitle: const Text('$kAppReleaseLabel · GitHub Releases OTA'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _checkUpdatesModal,
                   ),

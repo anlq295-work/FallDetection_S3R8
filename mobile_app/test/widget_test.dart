@@ -10,15 +10,27 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('Hearth launches in Vietnamese by default and switches to EN / FR', (tester) async {
+  testWidgets('Hearth launches in VI with Pre-release2.0.1, enforces required fields, and switches EN/FR', (tester) async {
     final ctrl = HearthController();
     await ctrl.load();
+
+    // Ensure ZERO hardcoded fake names or contacts exist on fresh install
+    expect(ctrl.personName, isEmpty);
+    expect(ctrl.contacts, isEmpty);
+    expect(ctrl.rooms, isEmpty);
 
     await tester.pumpWidget(HearthApp(controller: ctrl));
     await tester.pumpAndSettle();
 
     expect(find.text('Hearth'), findsOneWidget);
+    expect(find.text(kAppReleaseLabel), findsOneWidget);
     expect(find.text('Gửi mã đăng nhập cho tôi'), findsOneWidget);
+
+    // Tapping submit with blank required fields shows validation error
+    await tester.ensureVisible(find.text('Gửi mã đăng nhập cho tôi'));
+    await tester.tap(find.text('Gửi mã đăng nhập cho tôi'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('bắt buộc'), findsWidgets);
 
     await ctrl.setLanguage(AppLanguage.en);
     await tester.pumpAndSettle();
@@ -29,10 +41,28 @@ void main() {
     expect(find.text('M’envoyer un code de connexion'), findsOneWidget);
   });
 
-  testWidgets('Hearth S6 Home and S7 Fall Alert render cleanly on compact phone', (tester) async {
+  testWidgets('Simultaneous multi-channel Fall Alert S7 works cleanly on compact phone', (tester) async {
     final ctrl = HearthController();
     await ctrl.load();
-    await ctrl.signIn(email: 'anna.ruiz@mail.com', returningUser: true);
+    await ctrl.signIn(
+      email: 'carer@example.com',
+      carerName: 'Hùng',
+      personName: 'Ông Nam',
+      personPhone: '0909111222',
+      skipDirectToHome: true,
+    );
+    await ctrl.addContact('Chị Hoa', '0908333444');
+    await ctrl.addOrUpdateRoom(
+      HearthRoom(
+        id: 'r1',
+        name: 'Phòng tắm',
+        type: RoomType.bathroom,
+        status: RoomStatus.occupied,
+        lastMovementAt: DateTime.now(),
+        sensorId: 'S3R8',
+        lastCheckedAt: DateTime.now(),
+      ),
+    );
 
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1.0;
@@ -42,23 +72,48 @@ void main() {
     await tester.pumpWidget(HearthApp(controller: ctrl));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Nhà của'), findsOneWidget);
+    expect(find.text('Nhà của Ông Nam'), findsOneWidget);
+    // Confirm no hardcoded demo contacts exist
+    expect(find.textContaining('Anh Minh'), findsNothing);
+    expect(find.textContaining('Bà Lan'), findsNothing);
 
-    ctrl.triggerFallAlert(simulated: true);
+    // Default dispatch mode is Simultaneous
+    expect(ctrl.dispatchMode, AlertDispatchMode.simultaneous);
+
+    ctrl.triggerFallAlert(roomId: 'r1', simulated: true);
     await tester.pumpAndSettle();
 
-    expect(find.text('Tôi đang xử lý'), findsOneWidget);
-    await tester.tap(find.text('Tôi đang xử lý'));
+    expect(find.textContaining('ĐỒNG THỜI'), findsOneWidget);
+    expect(find.textContaining('Gửi SMS khẩn cấp đồng loạt ngay'), findsOneWidget);
+    expect(find.textContaining('Chị Hoa'), findsOneWidget);
+
+    await tester.tap(find.text('Tôi đang xử lý (Nhận trách nhiệm)'));
     await tester.pumpAndSettle();
     expect(find.text('Đánh dấu đã xử lý xong'), findsOneWidget);
   });
 
-  testWidgets('Hearth renders cleanly on Tablet 2-pane and Desktop 3-column layouts', (tester) async {
+  testWidgets('Hearth renders cleanly on Tablet 2-pane and Desktop layouts without hardcoded names', (tester) async {
     final ctrl = HearthController();
     await ctrl.load();
-    await ctrl.signIn(email: 'anna.ruiz@mail.com', returningUser: true);
+    await ctrl.signIn(
+      email: 'carer@example.com',
+      carerName: 'Linh',
+      personName: '',
+      skipDirectToHome: true,
+    );
+    await ctrl.addOrUpdateRoom(
+      HearthRoom(
+        id: 'r1',
+        name: 'Phòng khách',
+        type: RoomType.livingRoom,
+        status: RoomStatus.occupied,
+        lastMovementAt: DateTime.now(),
+        sensorId: 'S3R8',
+        lastCheckedAt: DateTime.now(),
+      ),
+    );
 
-    // Tablet / Foldable 2-pane
+    // Tablet 2-pane
     tester.view.physicalSize = const Size(900, 1100);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -66,9 +121,12 @@ void main() {
 
     await tester.pumpWidget(HearthApp(controller: ctrl));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Nhà của'), findsOneWidget);
 
-    // Desktop 3-column + NavRail
+    // Neutral fallback title when personName is empty — never "Nhà của Bà Lan"!
+    expect(find.text('Ngôi nhà của bạn'), findsOneWidget);
+    expect(find.textContaining('Bà Lan'), findsNothing);
+
+    // Desktop layout
     tester.view.physicalSize = const Size(1280, 900);
     await tester.pumpWidget(HearthApp(controller: ctrl));
     await tester.pumpAndSettle();

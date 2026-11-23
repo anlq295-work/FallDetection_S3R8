@@ -228,17 +228,22 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${prof.fullName} · ${prof.age} · ${prof.bloodType}',
+                  [
+                    prof.fullName.isEmpty ? s.personOrGeneric('') : prof.fullName,
+                    if (prof.age != null) '${prof.age}',
+                    if (prof.bloodType.isNotEmpty) prof.bloodType,
+                  ].join(' · '),
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: p.critical),
                 ),
                 const Divider(height: 20),
                 row(_lbl(ctrl.language, 'SĐT người thân', 'Phone', 'Téléphone'), prof.personPhone),
+                row(_lbl(ctrl.language, 'Mã khóa cửa / PIN', 'Door lockbox code', 'Code porte'), prof.doorLockboxCode),
+                row(_lbl(ctrl.language, 'Địa chỉ nhà', 'Home address', 'Adresse'), prof.homeAddress),
                 row(_lbl(ctrl.language, 'Bệnh nền', 'Conditions', 'Antécédents'), prof.conditions),
                 row(_lbl(ctrl.language, 'Thuốc đang dùng', 'Medications', 'Traitements'), prof.medications),
                 row(_lbl(ctrl.language, 'Dị ứng', 'Allergies', 'Allergies'), prof.allergies),
                 row(_lbl(ctrl.language, 'Bác sĩ điều trị', 'Doctor', 'Médecin'), prof.primaryDoctor),
                 row(_lbl(ctrl.language, 'SĐT bác sĩ', 'Doctor phone', 'Tél. médecin'), prof.doctorPhone),
-                row(_lbl(ctrl.language, 'Địa chỉ nhà', 'Home address', 'Adresse'), prof.homeAddress),
               ],
             ),
           ),
@@ -260,9 +265,10 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
 Future<void> showMedicalProfileEditorModal(BuildContext context, HearthController ctrl) {
   final prof = ctrl.medicalProfile;
   final nameCtrl = TextEditingController(text: prof.fullName);
-  final ageCtrl = TextEditingController(text: prof.age.toString());
+  final ageCtrl = TextEditingController(text: prof.age?.toString() ?? '');
   final bloodCtrl = TextEditingController(text: prof.bloodType);
   final phoneCtrl = TextEditingController(text: prof.personPhone);
+  final lockboxCtrl = TextEditingController(text: prof.doorLockboxCode);
   final condCtrl = TextEditingController(text: prof.conditions);
   final medCtrl = TextEditingController(text: prof.medications);
   final allergyCtrl = TextEditingController(text: prof.allergies);
@@ -323,6 +329,13 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
           ),
           const SizedBox(height: 10),
           TextField(controller: addrCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Địa chỉ nhà', 'Home address', 'Adresse'))),
+          const SizedBox(height: 10),
+          TextField(
+            controller: lockboxCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(lang, 'Mã khóa cửa / Hộp chìa khóa khẩn cấp', 'Emergency door / lockbox code', 'Code porte / boîte à clés'),
+            ),
+          ),
           const SizedBox(height: 16),
           HearthPrimaryButton(
             label: s.save,
@@ -330,7 +343,7 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
               await ctrl.saveMedicalProfile(
                 prof.copyWith(
                   fullName: nameCtrl.text.trim(),
-                  age: int.tryParse(ageCtrl.text.trim()) ?? prof.age,
+                  age: int.tryParse(ageCtrl.text.trim()),
                   bloodType: bloodCtrl.text.trim(),
                   personPhone: phoneCtrl.text.trim(),
                   conditions: condCtrl.text.trim(),
@@ -339,6 +352,7 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
                   primaryDoctor: docCtrl.text.trim(),
                   doctorPhone: docPhoneCtrl.text.trim(),
                   homeAddress: addrCtrl.text.trim(),
+                  doorLockboxCode: lockboxCtrl.text.trim(),
                 ),
               );
               if (ctx.mounted) Navigator.pop(ctx);
@@ -498,7 +512,12 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${ctrl.medicalProfile.fullName} · ${ctrl.medicalProfile.age}',
+                  [
+                    ctrl.medicalProfile.fullName.isEmpty
+                        ? s.personOrGeneric(ctrl.personName)
+                        : ctrl.medicalProfile.fullName,
+                    if (ctrl.medicalProfile.age != null) '${ctrl.medicalProfile.age}',
+                  ].join(' · '),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: p.text),
                 ),
                 const SizedBox(height: 8),
@@ -531,6 +550,142 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
         ],
       );
     },
+  );
+}
+
+/// 5. Daily Medication Schedule Tracker (linked with room presence awareness).
+Future<void> showMedicationScheduleModal(BuildContext context, HearthController ctrl) {
+  final nameCtrl = TextEditingController();
+  final doseCtrl = TextEditingController();
+  int hour = 8;
+  int minute = 0;
+
+  return showLiquidGlassAdaptiveModal(
+    context: context,
+    maxDialogWidth: 580,
+    builder: (ctx) => ListenableBuilder(
+      listenable: ctrl,
+      builder: (c, _) {
+        final s = ctrl.s;
+        final p = HearthPalette.of(c);
+        final lang = ctrl.language;
+        final meds = ctrl.medications;
+
+        return StatefulBuilder(
+          builder: (sc, setModalState) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.medication_rounded, color: p.accent, size: 25),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(s.medicationTitle, style: Theme.of(sc).textTheme.titleLarge)),
+                  IconButton(onPressed: () => Navigator.pop(sc), icon: const Icon(Icons.close_rounded)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (meds.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    _lbl(
+                      lang,
+                      'Chưa có lịch uống thuốc nào. Thêm cữ thuốc bên dưới để theo dõi mỗi ngày.',
+                      'No medication reminders yet. Add a daily dose below.',
+                      'Aucun rappel configuré. Ajoutez une prise ci-dessous.',
+                    ),
+                    style: Theme.of(sc).textTheme.bodyMedium,
+                  ),
+                )
+              else
+                ...meds.map(
+                  (m) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: LiquidGlassCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: m.takenToday,
+                            onChanged: (_) => ctrl.toggleMedicationTaken(m.id),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${m.formattedTime} · ${m.name}',
+                                  style: TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: p.text,
+                                    decoration: m.takenToday ? TextDecoration.lineThrough : null,
+                                  ),
+                                ),
+                                if (m.dosage.isNotEmpty)
+                                  Text(m.dosage, style: TextStyle(fontSize: 13.5, color: p.textMuted)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete_outline_rounded, color: p.critical, size: 20),
+                            onPressed: () => ctrl.removeMedication(m.id),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              const Divider(height: 22),
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: _lbl(lang, 'Tên thuốc *', 'Medication name *', 'Nom du médicament *'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: doseCtrl,
+                      decoration: InputDecoration(
+                        labelText: _lbl(lang, 'Liều dùng', 'Dosage', 'Dosage'),
+                        hintText: '1 viên',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: hour,
+                      decoration: InputDecoration(labelText: _lbl(lang, 'Giờ', 'Hour', 'Heure')),
+                      items: List.generate(
+                        24,
+                        (h) => DropdownMenuItem(value: h, child: Text('${h.toString().padLeft(2, '0')}:00')),
+                      ),
+                      onChanged: (v) => setModalState(() => hour = v ?? hour),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              HearthPrimaryButton(
+                label: _lbl(lang, 'Thêm lịch nhắc thuốc', 'Add medication', 'Ajouter'),
+                icon: Icons.add_rounded,
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) return;
+                  await ctrl.addMedication(nameCtrl.text, doseCtrl.text, hour, minute);
+                  nameCtrl.clear();
+                  doseCtrl.clear();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    ),
   );
 }
 

@@ -47,12 +47,36 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
 
   Future<void> _dial(String rawNumber) async {
     final clean = rawNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (clean.isEmpty) return;
+    if (clean.isEmpty) {
+      if (mounted) showHearthToast(context, widget.ctrl.s.s9PhoneError, critical: true);
+      return;
+    }
     final uri = Uri(scheme: 'tel', path: clean);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else if (mounted) {
       showHearthToast(context, clean);
+    }
+  }
+
+  /// Launches group SMS composer pre-addressed to ALL family emergency phone numbers simultaneously!
+  Future<void> _launchSimultaneousGroupSms() async {
+    final phones = widget.ctrl.allEmergencyPhoneNumbers;
+    if (phones.isEmpty) {
+      if (mounted) showHearthToast(context, widget.ctrl.s.s7EscalationNoBackup, critical: true);
+      return;
+    }
+    final body = widget.ctrl.buildEmergencySmsBody(widget.alert);
+    final recipients = phones.join(',');
+    final uri = Uri(
+      scheme: 'sms',
+      path: recipients,
+      queryParameters: {'body': body},
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else if (mounted) {
+      showHearthToast(context, body);
     }
   }
 
@@ -69,35 +93,71 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
     });
   }
 
+  /// False-alarm confirmation WITH micro-survey reason tagging (for algorithm tuning & audit log)
   void _confirmFalseAlarm() {
+    FalseAlarmReason selectedReason = FalseAlarmReason.satDownQuickly;
     showLiquidGlassAdaptiveModal(
       context: context,
-      builder: (ctx) {
-        final s = widget.ctrl.s;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(s.s7FalseAlarmTitle, style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 10),
-            Text(s.s7FalseAlarmBody(widget.alert.roomName), style: Theme.of(ctx).textTheme.bodyLarge),
-            const SizedBox(height: 18),
-            HearthPrimaryButton(
-              label: s.s7KeepAlertOpen,
-              onPressed: () => Navigator.pop(ctx),
-            ),
-            const SizedBox(height: 10),
-            HearthCriticalOutlineButton(
-              label: s.s7OutcomeFalse,
-              onPressed: () async {
-                Navigator.pop(ctx);
-                final roomId = widget.alert.roomId;
-                await widget.ctrl.resolveActiveAlert(outcome: FallResolutionOutcome.falseAlarm);
-                widget.onResolvedNavigateToRoom?.call(roomId);
-              },
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => StatefulBuilder(
+        builder: (c, setModalState) {
+          final s = widget.ctrl.s;
+          final p = HearthPalette.of(c);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.s7FalseAlarmTitle, style: Theme.of(c).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(s.s7FalseAlarmBody(widget.alert.roomName), style: Theme.of(c).textTheme.bodyMedium),
+              const SizedBox(height: 12),
+              ...FalseAlarmReason.values.map((reason) {
+                final active = selectedReason == reason;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: LiquidGlassCard(
+                    selected: active,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    onTap: () => setModalState(() => selectedReason = reason),
+                    child: Row(
+                      children: [
+                        Icon(
+                          active ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                          color: active ? p.accent : p.textMuted,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s.falseAlarmReasonLabel(reason),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: p.text),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+              HearthPrimaryButton(
+                label: s.s7KeepAlertOpen,
+                onPressed: () => Navigator.pop(c),
+              ),
+              const SizedBox(height: 10),
+              HearthCriticalOutlineButton(
+                label: s.s7OutcomeFalse,
+                onPressed: () async {
+                  Navigator.pop(c);
+                  final roomId = widget.alert.roomId;
+                  await widget.ctrl.resolveActiveAlert(
+                    outcome: FallResolutionOutcome.falseAlarm,
+                    falseAlarmReason: selectedReason,
+                    note: s.falseAlarmReasonLabel(selectedReason),
+                  );
+                  widget.onResolvedNavigateToRoom?.call(roomId);
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -182,9 +242,15 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
     final s = ctrl.s;
     final p = HearthPalette.of(context);
     final alert = widget.alert;
-    final backup = ctrl.nextEscalationContact;
+    final backups = ctrl.backupContacts;
+    final isSimultaneous = alert.dispatchMode == AlertDispatchMode.simultaneous;
     final secLeft = ctrl.escalationSecondsLeft;
     final announceEscalation = secLeft % 30 == 0;
+    final doorInfo = [
+      if (ctrl.medicalProfile.homeAddress.trim().isNotEmpty) ctrl.medicalProfile.homeAddress.trim(),
+      if (ctrl.medicalProfile.doorLockboxCode.trim().isNotEmpty)
+        'PIN: ${ctrl.medicalProfile.doorLockboxCode.trim()}',
+    ].join(' · ');
 
     final body = Column(
       mainAxisSize: MainAxisSize.min,
@@ -239,17 +305,17 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
           ),
         ),
 
-        // Main actionable body
+        // Actionable body
         Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_ackFailed && backup != null) ...[
+              if (_ackFailed) ...[
                 HearthBanner(
                   tone: HearthBannerTone.critical,
                   icon: Icons.wifi_off_rounded,
-                  title: s.s7AckError(backup.name),
+                  title: s.s7AckError,
                   action: Wrap(
                     spacing: 10,
                     runSpacing: 8,
@@ -259,18 +325,19 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                         expand: false,
                         onPressed: _handleRespond,
                       ),
-                      HearthCriticalOutlineButton(
-                        label: s.s7CallPerson(backup.name),
-                        expand: false,
-                        onPressed: () => _dial(backup.phone),
-                      ),
+                      if (ctrl.allEmergencyPhoneNumbers.isNotEmpty)
+                        HearthCriticalOutlineButton(
+                          label: s.s7SendGroupSms,
+                          expand: false,
+                          onPressed: _launchSimultaneousGroupSms,
+                        ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
               ],
 
-              // Context block
+              // Context + Simultaneous Multi-Channel Status Card
               LiquidGlassCard(
                 borderColor: p.critical.withValues(alpha: 0.35),
                 child: Column(
@@ -299,45 +366,60 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                     Semantics(
                       liveRegion: announceEscalation,
                       child: _ContextLine(
-                        icon: alert.isAcknowledged ? Icons.check_circle_rounded : Icons.timer_rounded,
+                        icon: alert.isAcknowledged
+                            ? Icons.check_circle_rounded
+                            : (isSimultaneous ? Icons.campaign_rounded : Icons.timer_rounded),
                         color: alert.isAcknowledged ? p.ok : p.warning,
                         text: alert.isAcknowledged
-                            ? s.s7RespondingStatus(backup?.name)
-                            : (backup != null
-                                ? s.s7EscalationCountdown(backup.name, _formatCountdown(secLeft))
-                                : s.s7EscalationNoBackup),
+                            ? s.s7RespondingStatus(alert.acknowledgedBy ?? ctrl.carerName)
+                            : (isSimultaneous
+                                ? s.s7SimultaneousBroadcast(ctrl.contacts.length)
+                                : (backups.isNotEmpty
+                                    ? s.s7EscalationCountdown(backups.first.name, _formatCountdown(secLeft))
+                                    : s.s7EscalationNoBackup)),
                       ),
                     ),
-                    if (alert.telemetry != null) ...[
-                      const Divider(height: 20),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 6,
-                        children: [
-                          HearthStatusBadge(
-                            icon: Icons.speed_rounded,
-                            label: 'Drop: ${alert.telemetry!.dropRateMmS.toStringAsFixed(0)} mm/s',
-                            color: p.critical,
-                          ),
-                          HearthStatusBadge(
-                            icon: Icons.radar_rounded,
-                            label: 'Radar: ${alert.telemetry!.radarMotion}/100',
-                            color: p.warning,
-                          ),
-                          HearthStatusBadge(
-                            icon: Icons.favorite_rounded,
-                            label: 'Static: ${alert.telemetry!.radarStatic}/100',
-                            color: p.ok,
-                          ),
-                        ],
+                    if (doorInfo.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _ContextLine(
+                        icon: Icons.vpn_key_rounded,
+                        color: p.accent,
+                        text: '${s.s7DoorCodeLabel}: $doorInfo',
                       ),
                     ],
+                    const Divider(height: 20),
+                    // Simultaneous multi-channel dispatch pills
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        HearthStatusBadge(icon: Icons.notifications_active_rounded, label: 'App', color: p.critical),
+                        if (ctrl.channelSmsEnabled)
+                          HearthStatusBadge(
+                            icon: Icons.sms_rounded,
+                            label: 'SMS (${ctrl.allEmergencyPhoneNumbers.length})',
+                            color: ctrl.allEmergencyPhoneNumbers.isNotEmpty ? p.ok : p.textMuted,
+                          ),
+                        if (ctrl.channelTelegramEnabled)
+                          HearthStatusBadge(
+                            icon: Icons.send_rounded,
+                            label: 'Telegram',
+                            color: ctrl.telegramChatId.isNotEmpty ? p.ok : p.textMuted,
+                          ),
+                        if (alert.telemetry != null)
+                          HearthStatusBadge(
+                            icon: Icons.speed_rounded,
+                            label: '${alert.telemetry!.dropRateMmS.toStringAsFixed(0)} mm/s',
+                            color: p.warning,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-              // Primary 56px action (ONLY ONE primary accent button)
+              // Primary 56px action (Claim / Resolve)
               if (!alert.isAcknowledged)
                 HearthPrimaryButton(
                   label: s.s7PrimaryRespond,
@@ -366,18 +448,31 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
 
               const SizedBox(height: 12),
 
-              // Secondary call row (56px each)
+              // Simultaneous Group SMS button (messages ALL family contacts in 1 tap!)
+              if (ctrl.channelSmsEnabled && ctrl.allEmergencyPhoneNumbers.isNotEmpty) ...[
+                HearthSecondaryButton(
+                  label: '${s.s7SendGroupSms} (${ctrl.allEmergencyPhoneNumbers.length})',
+                  minHeight: HearthTokens.alertTarget,
+                  icon: Icons.textsms_rounded,
+                  onPressed: _launchSimultaneousGroupSms,
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // Direct Calls: Monitored Person + Emergency Services
               Row(
                 children: [
-                  Expanded(
-                    child: HearthSecondaryButton(
-                      label: s.s7CallPerson(alert.personName),
-                      minHeight: HearthTokens.alertTarget,
-                      icon: Icons.call_rounded,
-                      onPressed: () => _dial(ctrl.medicalProfile.personPhone),
+                  if (ctrl.medicalProfile.personPhone.trim().isNotEmpty) ...[
+                    Expanded(
+                      child: HearthSecondaryButton(
+                        label: s.s7CallPerson(alert.personName),
+                        minHeight: HearthTokens.alertTarget,
+                        icon: Icons.call_rounded,
+                        onPressed: () => _dial(ctrl.medicalProfile.personPhone),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: HearthCriticalOutlineButton(
                       label: s.s7CallEmergency(ctrl.emergencyServiceNumber),
@@ -389,9 +484,30 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                 ],
               ),
 
+              // Simultaneous Quick-Call chips for EVERY family contact
+              if (ctrl.channelCallEnabled && backups.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(s.s7QuickCallFamily, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: backups
+                      .map(
+                        (c) => HearthSecondaryButton(
+                          label: '${c.name} · ${c.phone}',
+                          expand: false,
+                          icon: Icons.call_rounded,
+                          onPressed: () => _dial(c.phone),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+
               const SizedBox(height: 12),
 
-              // 1-tap clinical helpers (First Aid + Medical ID from existing Fall Guard app)
+              // 1-tap Clinical Helpers (First Aid + Offline Medical ID & Door Code)
               Row(
                 children: [
                   Expanded(
@@ -435,8 +551,8 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: layout.maxModalWidth(preferred: 600),
-                maxHeight: layout.height * 0.90,
+                maxWidth: layout.maxModalWidth(preferred: 620),
+                maxHeight: layout.height * 0.92,
               ),
               child: LiquidGlassCard(
                 borderRadius: 24,

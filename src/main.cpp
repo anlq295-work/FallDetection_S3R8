@@ -282,8 +282,9 @@ void retryEmergencyDispatch(unsigned long now) {
 
   if (telegramSent || smsSent) {
     emergencyDispatchPending = false;
-    bleProvision.updateStatus("REMOTE_ALERT_SENT");
-    Serial.println("[REMOTE ALERT] Da gui canh bao thanh cong qua Internet.");
+    String channels = (telegramSent && smsSent) ? "TG+SMS" : (telegramSent ? "TG" : "SMS");
+    bleProvision.updateStatus("REMOTE_ALERT_SENT:" + channels);
+    Serial.printf("[REMOTE ALERT] Da gui canh bao dong thoi thanh cong qua Internet (%s).\n", channels.c_str());
   } else {
     nextEmergencyDispatchAttempt = now + 30000;
     bleProvision.updateStatus("REMOTE_ALERT_RETRYING");

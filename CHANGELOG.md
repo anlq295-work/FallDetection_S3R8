@@ -2,6 +2,25 @@
 
 Mọi thay đổi đáng chú ý của dự án **Hearth (FallDetection_S3R8)** được ghi nhận tại tệp này.
 
+## [Pre-release2.0.1]
+
+### Loại bỏ dữ liệu mẫu & Bắt buộc thiết lập hồ sơ thực
+- Xóa hoàn toàn tên và số điện thoại giả định (`Bà Lan`, `Anh Minh`, `0901234567`, danh sách Wi-Fi/phòng mẫu).
+- Bắt buộc nhập **Email**, **Tên người chăm sóc** và **Tên người thân được theo dõi** ở S1 và S4; nếu chưa có tên sẽ hiển thị trung tính *"Ngôi nhà của bạn"* kèm banner nhắc thiết lập thay vì tự tạo tên giả.
+
+### Cảnh báo khẩn cấp ĐỒNG THỜI đa kênh (Mặc định)
+- Chuyển chế độ phát cảnh báo mặc định sang **Đồng thời (Simultaneous)** tới toàn bộ người thân qua **App + SMS đồng loạt + Telegram nhiều Chat/Group + Gọi nhanh trên S7** (vẫn giữ tùy chọn chế độ tuần tự trong S9).
+- Bổ sung nút **Gửi SMS khẩn cấp đồng loạt 1 chạm** (điền sẵn tên người thân, phòng, thời điểm, địa chỉ & mã khóa cửa) và hàng nút **Gọi nhanh từng thành viên gia đình** ngay trên màn hình S7.
+- Cơ chế **Nhận trách nhiệm (Claim Alert)** giúp đồng bộ trạng thái xử lý cho cả gia đình, tránh gọi chồng chéo.
+- Bổ sung khảo sát nhanh nguyên nhân khi đánh dấu **Báo động giả** để hỗ trợ tinh chỉnh ngưỡng sàn.
+
+### Tính năng chăm sóc người cao tuổi bổ sung
+- **Chế độ Khách / Tạm dừng giám sát (Guest / Privacy Pause Mode)** tạm dừng báo động tự động khi có khách hoặc dọn nhà.
+- **Xác nhận hỏi thăm an toàn hằng ngày (Daily Safe Check-In)** ngay trên trang chủ S6.
+- **Lịch nhắc uống thuốc hằng ngày** trong Bộ công cụ Chăm sóc & Y tế.
+- **Cảnh báo ở quá lâu / bất động theo từng phòng** (`Off / 15 / 30 / 60 phút`) trong S8.
+- **Mã khóa cửa / hộp chìa khóa khẩn cấp (Door Lockbox Code)** lưu ngoại tuyến trên Thẻ Hồ sơ Y tế và hiển thị ngay trên S7 cho lực lượng cấp cứu hoặc hàng xóm.
+
 ## [2.0.0]
 
 ### Ứng dụng di động Hearth (Android, iOS, Tablet & Folding Phone)

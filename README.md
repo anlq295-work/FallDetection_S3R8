@@ -2,7 +2,7 @@
 
 Hệ thống giám sát và phát hiện té ngã không tiếp xúc (non-contact, bảo vệ quyền riêng tư không dùng camera) chạy trên **ESP32-S3 N16R8** (16MB Flash, 8MB Octal PSRAM), kết hợp cảm biến đa phương thức (**ToF VL53L1X + 24GHz FMCW Radar HLK-LD2410B + PIR AM312**), bộ suy luận **Edge AI lai đa tiêu chí** và ứng dụng di động đa nền tảng **Flutter (Android & iOS)**.
 
-> **Phiên bản hiện tại:** Firmware `v2.0.0` · Mobile App **Hearth** `v2.0.0+1` · Target MCU: `esp32-s3-devkitc-1` (`qio_opi`)
+> **Phiên bản hiện tại:** Firmware `Pre-release2.0.1` · Mobile App **Hearth** `Pre-release2.0.1` (`2.0.1+1`) · Target MCU: `esp32-s3-devkitc-1` (`qio_opi`)
 
 ---
 

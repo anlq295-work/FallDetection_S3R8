@@ -225,6 +225,43 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
     );
   }
 
+  void _openInactivityModal(HearthRoom room) {
+    int mins = room.inactivityLimitMinutes;
+    showLiquidGlassAdaptiveModal(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (c, setModalState) {
+          final s = widget.ctrl.s;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.s8InactivityAlert, style: Theme.of(c).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              SegmentedButton<int>(
+                segments: [
+                  const ButtonSegment(value: 0, label: Text('Off')),
+                  ButtonSegment(value: 15, label: Text(s.s9Minutes(15))),
+                  ButtonSegment(value: 30, label: Text(s.s9Minutes(30))),
+                  ButtonSegment(value: 60, label: Text(s.s9Minutes(60))),
+                ],
+                selected: {mins},
+                onSelectionChanged: (set) => setModalState(() => mins = set.first),
+              ),
+              const SizedBox(height: 18),
+              HearthPrimaryButton(
+                label: s.save,
+                onPressed: () async {
+                  await widget.ctrl.updateRoomSettings(room.id, inactivityLimitMinutes: mins);
+                  if (c.mounted) Navigator.pop(c);
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _openAdjustDetectionModal(HearthRoom room) {
     double floorMm = room.floorThresholdMm.toDouble().clamp(200, 800);
     final ipCtrl = TextEditingController(text: room.lanIp ?? '');
@@ -652,6 +689,15 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                 title: s.s8NightLight,
                 subtitle: room.nightlightEnabled ? 'On ($nightRange)' : 'Off',
                 onTap: () => _openNightlightModal(room),
+              ),
+              const Divider(height: 1),
+              _SettingsRow(
+                icon: Icons.hourglass_bottom_rounded,
+                title: s.s8InactivityAlert,
+                subtitle: room.inactivityLimitMinutes == 0
+                    ? 'Off'
+                    : s.s9Minutes(room.inactivityLimitMinutes),
+                onTap: () => _openInactivityModal(room),
               ),
               const Divider(height: 1),
               _SettingsRow(

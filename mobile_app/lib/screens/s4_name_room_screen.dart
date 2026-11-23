@@ -34,13 +34,12 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
   late final TextEditingController _personCtrl;
   bool _saving = false;
   String? _errorText;
+  String? _personError;
 
   @override
   void initState() {
     super.initState();
-    _personCtrl = TextEditingController(
-      text: widget.ctrl.rooms.isEmpty ? '' : widget.ctrl.personName,
-    );
+    _personCtrl = TextEditingController(text: widget.ctrl.personName);
   }
 
   @override
@@ -53,10 +52,20 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
   Future<void> _saveRoom() async {
     final s = widget.ctrl.s;
     final roomName = _roomNameCtrl.text.trim();
-    setState(() => _errorText = null);
+    final personName = _personCtrl.text.trim();
+    setState(() {
+      _errorText = null;
+      _personError = null;
+    });
 
     if (_selectedType == null && roomName.isEmpty) {
       setState(() => _errorText = s.s4MissingError);
+      return;
+    }
+
+    // Strict required field: never allow blank personName or invent a generic name!
+    if (personName.isEmpty) {
+      setState(() => _personError = s.s4PersonRequiredError);
       return;
     }
 
@@ -70,11 +79,8 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
     }
 
     setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-
-    if (_personCtrl.text.trim().isNotEmpty) {
-      await widget.ctrl.setPersonName(_personCtrl.text.trim());
-    }
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await widget.ctrl.setPersonName(personName);
 
     final now = DateTime.now();
     final room = HearthRoom(
@@ -196,11 +202,14 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
                                 TextField(
                                   controller: _personCtrl,
                                   enabled: !_saving,
+                                  textCapitalization: TextCapitalization.words,
                                   decoration: InputDecoration(
                                     labelText: s.s4PersonLabel,
                                     hintText: s.s4PersonPlaceholder,
                                     helperText: s.s4PersonHelper,
                                     helperMaxLines: 2,
+                                    errorText: _personError,
+                                    errorMaxLines: 2,
                                   ),
                                 ),
                                 const SizedBox(height: 20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/models.dart';
 import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../services/hearth_controller.dart';
@@ -27,6 +28,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
   void _openAddContactModal() {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    String? nameError;
     String? phoneError;
 
     showLiquidGlassAdaptiveModal(
@@ -41,7 +43,11 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
               const SizedBox(height: 14),
               TextField(
                 controller: nameCtrl,
-                decoration: InputDecoration(labelText: s.s9ContactName),
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: s.s9ContactName,
+                  errorText: nameError,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -59,12 +65,14 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
               HearthPrimaryButton(
                 label: s.s9SendInvite,
                 onPressed: () async {
+                  final name = nameCtrl.text.trim();
                   final digits = phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
-                  if (digits.length < 9) {
-                    setModalState(() => phoneError = s.s9PhoneError);
-                    return;
-                  }
-                  final name = nameCtrl.text.trim().isEmpty ? phoneCtrl.text.trim() : nameCtrl.text.trim();
+                  setModalState(() {
+                    nameError = name.isEmpty ? s.requiredFieldError : null;
+                    phoneError = digits.length < 9 ? s.s9PhoneError : null;
+                  });
+                  if (name.isEmpty || digits.length < 9) return;
+
                   await widget.ctrl.addContact(name, phoneCtrl.text.trim());
                   if (c.mounted) {
                     Navigator.pop(c);
@@ -88,6 +96,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
     final p = HearthPalette.of(context);
     final layout = HearthLayout.of(context);
     final contacts = ctrl.contacts;
+    final isSimultaneous = ctrl.dispatchMode == AlertDispatchMode.simultaneous;
 
     final body = Center(
       child: ConstrainedBox(
@@ -102,19 +111,92 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
             children: [
               Text(s.s9Title, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
-              Text(s.s9Explainer(ctrl.escalationMinutes), style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                isSimultaneous ? s.s9SimultaneousExplainer : s.s9SequentialExplainer(ctrl.escalationMinutes),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: 16),
+
+              // Dispatch Mode Card (Simultaneous DEFAULT vs Sequential)
+              LiquidGlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.s9ModeTitle, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<AlertDispatchMode>(
+                        segments: [
+                          ButtonSegment(
+                            value: AlertDispatchMode.simultaneous,
+                            icon: const Icon(Icons.campaign_rounded, size: 18),
+                            label: Text(s.s9ModeSimultaneous),
+                          ),
+                          ButtonSegment(
+                            value: AlertDispatchMode.sequential,
+                            icon: const Icon(Icons.format_list_numbered_rounded, size: 18),
+                            label: Text(s.s9ModeSequential),
+                          ),
+                        ],
+                        selected: {ctrl.dispatchMode},
+                        onSelectionChanged: (set) => ctrl.setDispatchMode(set.first),
+                      ),
+                    ),
+                    const Divider(height: 22),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilterChip(
+                          label: const Text('SMS'),
+                          avatar: const Icon(Icons.sms_rounded, size: 18),
+                          selected: ctrl.channelSmsEnabled,
+                          onSelected: (v) => ctrl.setChannelPreferences(sms: v),
+                        ),
+                        FilterChip(
+                          label: const Text('Telegram'),
+                          avatar: const Icon(Icons.send_rounded, size: 18),
+                          selected: ctrl.channelTelegramEnabled,
+                          onSelected: (v) => ctrl.setChannelPreferences(telegram: v),
+                        ),
+                        FilterChip(
+                          label: const Text('Call'),
+                          avatar: const Icon(Icons.call_rounded, size: 18),
+                          selected: ctrl.channelCallEnabled,
+                          onSelected: (v) => ctrl.setChannelPreferences(call: v),
+                        ),
+                      ],
+                    ),
+                    if (!isSimultaneous) ...[
+                      const SizedBox(height: 14),
+                      Text(s.s9WaitBeforeNext, style: Theme.of(context).textTheme.bodyMedium),
+                      const SizedBox(height: 8),
+                      SegmentedButton<int>(
+                        segments: [
+                          ButtonSegment(value: 1, label: Text(s.s9Minutes(1))),
+                          ButtonSegment(value: 2, label: Text(s.s9Minutes(2))),
+                          ButtonSegment(value: 5, label: Text(s.s9Minutes(5))),
+                        ],
+                        selected: {ctrl.escalationMinutes},
+                        onSelectionChanged: (set) => ctrl.setEscalationMinutes(set.first),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
 
               if (contacts.length <= 1) ...[
                 HearthBanner(
-                  tone: HearthBannerTone.info,
+                  tone: HearthBannerTone.warning,
                   icon: Icons.group_add_rounded,
                   title: s.s9EmptyHint,
                 ),
                 const SizedBox(height: 14),
               ],
 
-              // Reorderable contact list with BOTH drag handle (48px) and accessible Move Up/Down buttons
+              // Real contact list (drag handle + accessible Up/Down buttons)
               ReorderableListView.builder(
                 shrinkWrap: true,
                 buildDefaultDragHandles: false,
@@ -166,7 +248,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                                 if (!c.isPrimaryUser) ...[
                                   const SizedBox(height: 4),
                                   HearthStatusBadge(
-                                    icon: c.joined ? Icons.check_circle_rounded : Icons.mail_outline_rounded,
+                                    icon: c.joined ? Icons.check_circle_rounded : Icons.sms_rounded,
                                     label: c.joined ? s.s9BadgeJoined : s.s9BadgeInvited,
                                     color: c.joined ? p.ok : p.accent,
                                   ),
@@ -200,27 +282,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 },
               ),
 
-              const SizedBox(height: 12),
-              LiquidGlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s.s9WaitBeforeNext, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 10),
-                    SegmentedButton<int>(
-                      segments: [
-                        ButtonSegment(value: 1, label: Text(s.s9Minutes(1))),
-                        ButtonSegment(value: 2, label: Text(s.s9Minutes(2))),
-                        ButtonSegment(value: 5, label: Text(s.s9Minutes(5))),
-                      ],
-                      selected: {ctrl.escalationMinutes},
-                      onSelectionChanged: (set) => ctrl.setEscalationMinutes(set.first),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               if (widget.isOnboarding) ...[
                 HearthPrimaryButton(
                   label: s.continueBtn,

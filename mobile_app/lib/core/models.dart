@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
+const String kAppReleaseLabel = 'Pre-release2.0.1';
+const String kFirmwareDefaultVersion = 'Pre-release2.0.1';
+
 enum AppLanguage {
   vi('vi', 'Tiếng Việt', 'VI'),
   en('en', 'English', 'EN'),
@@ -16,6 +19,34 @@ enum AppLanguage {
       (e) => e.code == code,
       orElse: () => AppLanguage.vi,
     );
+  }
+}
+
+enum AlertDispatchMode {
+  simultaneous, // Default: notify ALL contacts & channels at the exact same time
+  sequential; // Optional: escalate step-by-step after wait timeout
+
+  static AlertDispatchMode fromName(String? name) {
+    return AlertDispatchMode.values.firstWhere(
+      (e) => e.name == name,
+      orElse: () => AlertDispatchMode.simultaneous,
+    );
+  }
+}
+
+enum FalseAlarmReason {
+  satDownQuickly,
+  droppedObject,
+  normalRoutine,
+  guestOrPet,
+  other;
+
+  static FalseAlarmReason? fromName(String? name) {
+    if (name == null) return null;
+    for (final v in FalseAlarmReason.values) {
+      if (v.name == name) return v;
+    }
+    return null;
   }
 }
 
@@ -59,7 +90,9 @@ enum HearthEventType {
   fallResolved,
   sensorOffline,
   testPassed,
-  manualSos;
+  manualSos,
+  inactivityWarning,
+  safeCheckIn;
 
   static HearthEventType fromName(String? name) {
     return HearthEventType.values.firstWhere(
@@ -131,7 +164,7 @@ class TelemetrySnapshot {
     this.ipAddress = '0.0.0.0',
     this.rssi = -56,
     this.uptimeSec = 0,
-    this.firmwareVersion = 'v2.0.0',
+    this.firmwareVersion = kFirmwareDefaultVersion,
     required this.receivedAt,
   });
 
@@ -148,7 +181,7 @@ class TelemetrySnapshot {
       ipAddress: (json['ip'] ?? '0.0.0.0').toString(),
       rssi: ((json['rssi'] as num?) ?? 0).toInt(),
       uptimeSec: ((json['uptime'] as num?) ?? 0).toInt(),
-      firmwareVersion: (json['ver'] ?? 'v2.0.0').toString(),
+      firmwareVersion: (json['ver'] ?? kFirmwareDefaultVersion).toString(),
       receivedAt: DateTime.now(),
     );
   }
@@ -195,7 +228,7 @@ class HearthRoom {
   final String? bleDeviceId;
   final String? lanIp;
   final String wifiSsid;
-  final int wifiRssi; // dBm, e.g. -52
+  final int wifiRssi;
   final DateTime lastCheckedAt;
   final AlarmSoundLevel alarmVolume;
   final bool buzzerActiveHigh;
@@ -205,6 +238,7 @@ class HearthRoom {
   final int nightEndHour;
   final int nightEndMinute;
   final int floorThresholdMm;
+  final int inactivityLimitMinutes; // 0 = off; e.g. 30 min bathroom lingering / inactivity alert
   final String firmwareVersion;
   final TelemetrySnapshot? latestTelemetry;
 
@@ -229,7 +263,8 @@ class HearthRoom {
     this.nightEndHour = 7,
     this.nightEndMinute = 0,
     this.floorThresholdMm = 450,
-    this.firmwareVersion = 'v2.0.0',
+    this.inactivityLimitMinutes = 30,
+    this.firmwareVersion = kFirmwareDefaultVersion,
     this.latestTelemetry,
   });
 
@@ -254,6 +289,7 @@ class HearthRoom {
     int? nightEndHour,
     int? nightEndMinute,
     int? floorThresholdMm,
+    int? inactivityLimitMinutes,
     String? firmwareVersion,
     TelemetrySnapshot? latestTelemetry,
   }) {
@@ -278,6 +314,7 @@ class HearthRoom {
       nightEndHour: nightEndHour ?? this.nightEndHour,
       nightEndMinute: nightEndMinute ?? this.nightEndMinute,
       floorThresholdMm: floorThresholdMm ?? this.floorThresholdMm,
+      inactivityLimitMinutes: inactivityLimitMinutes ?? this.inactivityLimitMinutes,
       firmwareVersion: firmwareVersion ?? this.firmwareVersion,
       latestTelemetry: latestTelemetry ?? this.latestTelemetry,
     );
@@ -304,13 +341,14 @@ class HearthRoom {
         'nightEndHour': nightEndHour,
         'nightEndMinute': nightEndMinute,
         'floorThresholdMm': floorThresholdMm,
+        'inactivityLimitMinutes': inactivityLimitMinutes,
         'firmwareVersion': firmwareVersion,
       };
 
   factory HearthRoom.fromJson(Map<String, dynamic> json) {
     return HearthRoom(
       id: json['id']?.toString() ?? 'room_${DateTime.now().millisecondsSinceEpoch}',
-      name: json['name']?.toString() ?? 'Room',
+      name: json['name']?.toString() ?? '',
       type: RoomType.fromId(json['type']?.toString()),
       status: RoomStatus.fromName(json['status']?.toString()),
       lastMovementAt: DateTime.tryParse(json['lastMovementAt']?.toString() ?? '') ?? DateTime.now(),
@@ -329,7 +367,8 @@ class HearthRoom {
       nightEndHour: ((json['nightEndHour'] as num?) ?? 7).toInt(),
       nightEndMinute: ((json['nightEndMinute'] as num?) ?? 0).toInt(),
       floorThresholdMm: ((json['floorThresholdMm'] as num?) ?? 450).toInt(),
-      firmwareVersion: json['firmwareVersion']?.toString() ?? 'v2.0.0',
+      inactivityLimitMinutes: ((json['inactivityLimitMinutes'] as num?) ?? 30).toInt(),
+      firmwareVersion: json['firmwareVersion']?.toString() ?? kFirmwareDefaultVersion,
     );
   }
 }
@@ -341,6 +380,7 @@ class HearthEvent {
   final HearthEventType type;
   final DateTime at;
   final FallResolutionOutcome? outcome;
+  final FalseAlarmReason? falseAlarmReason;
   final String? resolvedBy;
   final String? note;
 
@@ -351,6 +391,7 @@ class HearthEvent {
     required this.type,
     required this.at,
     this.outcome,
+    this.falseAlarmReason,
     this.resolvedBy,
     this.note,
   });
@@ -362,6 +403,7 @@ class HearthEvent {
         'type': type.name,
         'at': at.toIso8601String(),
         'outcome': outcome?.name,
+        'falseAlarmReason': falseAlarmReason?.name,
         'resolvedBy': resolvedBy,
         'note': note,
       };
@@ -374,6 +416,7 @@ class HearthEvent {
       type: HearthEventType.fromName(json['type']?.toString()),
       at: DateTime.tryParse(json['at']?.toString() ?? '') ?? DateTime.now(),
       outcome: FallResolutionOutcome.fromName(json['outcome']?.toString()),
+      falseAlarmReason: FalseAlarmReason.fromName(json['falseAlarmReason']?.toString()),
       resolvedBy: json['resolvedBy']?.toString(),
       note: json['note']?.toString(),
     );
@@ -386,6 +429,9 @@ class AlertContact {
   final String phone;
   final bool isPrimaryUser;
   final bool joined;
+  final bool notifySms;
+  final bool notifyCall;
+  final bool notifyApp;
 
   const AlertContact({
     required this.id,
@@ -393,12 +439,18 @@ class AlertContact {
     required this.phone,
     this.isPrimaryUser = false,
     this.joined = false,
+    this.notifySms = true,
+    this.notifyCall = true,
+    this.notifyApp = true,
   });
 
   AlertContact copyWith({
     String? name,
     String? phone,
     bool? joined,
+    bool? notifySms,
+    bool? notifyCall,
+    bool? notifyApp,
   }) {
     return AlertContact(
       id: id,
@@ -406,6 +458,9 @@ class AlertContact {
       phone: phone ?? this.phone,
       isPrimaryUser: isPrimaryUser,
       joined: joined ?? this.joined,
+      notifySms: notifySms ?? this.notifySms,
+      notifyCall: notifyCall ?? this.notifyCall,
+      notifyApp: notifyApp ?? this.notifyApp,
     );
   }
 
@@ -415,6 +470,9 @@ class AlertContact {
         'phone': phone,
         'isPrimaryUser': isPrimaryUser,
         'joined': joined,
+        'notifySms': notifySms,
+        'notifyCall': notifyCall,
+        'notifyApp': notifyApp,
       };
 
   factory AlertContact.fromJson(Map<String, dynamic> json) {
@@ -424,8 +482,58 @@ class AlertContact {
       phone: json['phone']?.toString() ?? '',
       isPrimaryUser: json['isPrimaryUser'] == true,
       joined: json['joined'] == true,
+      notifySms: json['notifySms'] != false,
+      notifyCall: json['notifyCall'] != false,
+      notifyApp: json['notifyApp'] != false,
     );
   }
+}
+
+class MedicationReminder {
+  final String id;
+  final String name;
+  final String dosage;
+  final int hour;
+  final int minute;
+  final bool takenToday;
+
+  const MedicationReminder({
+    required this.id,
+    required this.name,
+    required this.dosage,
+    required this.hour,
+    required this.minute,
+    this.takenToday = false,
+  });
+
+  MedicationReminder copyWith({bool? takenToday}) => MedicationReminder(
+        id: id,
+        name: name,
+        dosage: dosage,
+        hour: hour,
+        minute: minute,
+        takenToday: takenToday ?? this.takenToday,
+      );
+
+  String get formattedTime => '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'dosage': dosage,
+        'hour': hour,
+        'minute': minute,
+        'takenToday': takenToday,
+      };
+
+  factory MedicationReminder.fromJson(Map<String, dynamic> json) => MedicationReminder(
+        id: json['id']?.toString() ?? 'med_${DateTime.now().millisecondsSinceEpoch}',
+        name: json['name']?.toString() ?? '',
+        dosage: json['dosage']?.toString() ?? '',
+        hour: ((json['hour'] as num?) ?? 8).toInt(),
+        minute: ((json['minute'] as num?) ?? 0).toInt(),
+        takenToday: json['takenToday'] == true,
+      );
 }
 
 class ActiveFallAlert {
@@ -440,6 +548,10 @@ class ActiveFallAlert {
   final bool isAcknowledged;
   final String? acknowledgedBy;
   final DateTime? acknowledgedAt;
+  final AlertDispatchMode dispatchMode;
+  final List<String> notifiedContactIds;
+  final bool smsBroadcastReady;
+  final bool telegramBroadcastReady;
   final bool simulated;
   final TelemetrySnapshot? telemetry;
 
@@ -455,6 +567,10 @@ class ActiveFallAlert {
     this.isAcknowledged = false,
     this.acknowledgedBy,
     this.acknowledgedAt,
+    this.dispatchMode = AlertDispatchMode.simultaneous,
+    this.notifiedContactIds = const [],
+    this.smsBroadcastReady = false,
+    this.telegramBroadcastReady = false,
     this.simulated = false,
     this.telemetry,
   });
@@ -480,15 +596,20 @@ class ActiveFallAlert {
       isAcknowledged: isAcknowledged ?? this.isAcknowledged,
       acknowledgedBy: acknowledgedBy ?? this.acknowledgedBy,
       acknowledgedAt: acknowledgedAt ?? this.acknowledgedAt,
+      dispatchMode: dispatchMode,
+      notifiedContactIds: notifiedContactIds,
+      smsBroadcastReady: smsBroadcastReady,
+      telegramBroadcastReady: telegramBroadcastReady,
       simulated: simulated,
       telemetry: telemetry ?? this.telemetry,
     );
   }
 }
 
+/// Strictly empty defaults — NO generic fake names or fake phone numbers!
 class ElderlyMedicalProfile {
   final String fullName;
-  final int age;
+  final int? age;
   final String bloodType;
   final String conditions;
   final String medications;
@@ -498,19 +619,21 @@ class ElderlyMedicalProfile {
   final String personPhone;
   final String insuranceId;
   final String homeAddress;
+  final String doorLockboxCode; // For paramedics / neighbors arriving during a fall
 
   const ElderlyMedicalProfile({
-    this.fullName = 'Bà Lan',
-    this.age = 82,
-    this.bloodType = 'O+',
+    this.fullName = '',
+    this.age,
+    this.bloodType = '',
     this.conditions = '',
     this.medications = '',
     this.allergies = '',
     this.primaryDoctor = '',
     this.doctorPhone = '',
-    this.personPhone = '0901234567',
+    this.personPhone = '',
     this.insuranceId = '',
     this.homeAddress = '',
+    this.doorLockboxCode = '',
   });
 
   ElderlyMedicalProfile copyWith({
@@ -525,6 +648,7 @@ class ElderlyMedicalProfile {
     String? personPhone,
     String? insuranceId,
     String? homeAddress,
+    String? doorLockboxCode,
   }) {
     return ElderlyMedicalProfile(
       fullName: fullName ?? this.fullName,
@@ -538,6 +662,7 @@ class ElderlyMedicalProfile {
       personPhone: personPhone ?? this.personPhone,
       insuranceId: insuranceId ?? this.insuranceId,
       homeAddress: homeAddress ?? this.homeAddress,
+      doorLockboxCode: doorLockboxCode ?? this.doorLockboxCode,
     );
   }
 
@@ -553,13 +678,14 @@ class ElderlyMedicalProfile {
         'personPhone': personPhone,
         'insuranceId': insuranceId,
         'homeAddress': homeAddress,
+        'doorLockboxCode': doorLockboxCode,
       };
 
   factory ElderlyMedicalProfile.fromJson(Map<String, dynamic> json) {
     return ElderlyMedicalProfile(
-      fullName: json['fullName']?.toString() ?? 'Bà Lan',
-      age: ((json['age'] as num?) ?? 82).toInt(),
-      bloodType: json['bloodType']?.toString() ?? 'O+',
+      fullName: json['fullName']?.toString() ?? '',
+      age: (json['age'] as num?)?.toInt(),
+      bloodType: json['bloodType']?.toString() ?? '',
       conditions: json['conditions']?.toString() ?? '',
       medications: json['medications']?.toString() ?? '',
       allergies: json['allergies']?.toString() ?? '',
@@ -568,6 +694,7 @@ class ElderlyMedicalProfile {
       personPhone: json['personPhone']?.toString() ?? '',
       insuranceId: json['insuranceId']?.toString() ?? '',
       homeAddress: json['homeAddress']?.toString() ?? '',
+      doorLockboxCode: json['doorLockboxCode']?.toString() ?? '',
     );
   }
 

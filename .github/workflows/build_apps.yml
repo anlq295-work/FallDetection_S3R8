@@ -3,7 +3,7 @@ name: Build & Publish Hearth (Android, iOS & ESP32-S3)
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*' ]
+    tags: [ 'v*', 'Pre-release*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
       build_number: ${{ steps.version.outputs.build_number }}
       previous_tag: ${{ steps.version.outputs.previous_tag }}
       should_release: ${{ steps.version.outputs.should_release }}
@@ -51,11 +53,12 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || true)
-          latest=${prev_tag#v}
+          all_tags=$(git tag --list --sort=-creatordate | grep -E '^(v|Pre-release)[0-9]' || true)
+          latest_tag=$(echo "$all_tags" | head -n 1 || true)
           pubspec_ver=$(grep -E '^version:' mobile_app/pubspec.yaml | head -n 1 | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-          pubspec_ver=${pubspec_ver:-2.0.0}
-          latest=${latest:-$pubspec_ver}
+          pubspec_ver=${pubspec_ver:-2.0.1}
+          code_label=$(grep -E "kAppReleaseLabel\s*=" mobile_app/lib/core/models.dart | head -n 1 | sed -E "s/.*'([^']+)'.*/\1/" || true)
+          code_label=${code_label:-"v${pubspec_ver}"}
 
           # Lấy danh sách tệp thay đổi trong lần push này
           changed_files=""
@@ -67,31 +70,32 @@ jobs:
 
           commit_msg=$(git log -1 --pretty=%B)
 
-          eval "$(python3 - "$latest" "$pubspec_ver" "$EVENT_NAME" "$REF" "$REF_NAME" "${BUMP_INPUT:-patch}" "$commit_msg" "$changed_files" "$prev_tag" <<'PY2'
+          eval "$(python3 - "$latest_tag" "$pubspec_ver" "$code_label" "$EVENT_NAME" "$REF" "$REF_NAME" "${BUMP_INPUT:-patch}" "$commit_msg" "$changed_files" <<'PY2'
           import re
           import shlex
           import sys
 
-          def parse(v):
-              m = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', v)
-              if not m:
-                  raise SystemExit(f'Invalid version: {v}')
-              return tuple(map(int, m.groups()))
+          def parse_semver(text, default=(2, 0, 1)):
+              m = re.search(r'(\d+)\.(\d+)\.(\d+)', text or "")
+              return tuple(map(int, m.groups())) if m else default
 
-          tag_ver = parse(sys.argv[1])
-          base_ver = parse(sys.argv[2])
-          event_name = sys.argv[3]
-          ref = sys.argv[4]
-          ref_name = sys.argv[5]
-          bump_input = sys.argv[6]
-          commit_msg = sys.argv[7]
-          changed_files = [f.strip() for f in sys.argv[8].splitlines() if f.strip()]
-          has_existing_tag = bool(sys.argv[9].strip())
+          latest_tag = sys.argv[1].strip()
+          pubspec_ver = sys.argv[2].strip()
+          code_label = sys.argv[3].strip()
+          event_name = sys.argv[4]
+          ref = sys.argv[5]
+          ref_name = sys.argv[6]
+          bump_input = sys.argv[7]
+          commit_msg = sys.argv[8]
+          changed_files = [f.strip() for f in sys.argv[9].splitlines() if f.strip()]
+
+          tag_ver = parse_semver(latest_tag, parse_semver(pubspec_ver))
+          base_ver = parse_semver(pubspec_ver)
+          has_existing_tag = bool(latest_tag)
 
           first_line = commit_msg.splitlines()[0].strip().lower() if commit_msg.strip() else ""
           lower_msg = commit_msg.lower()
 
-          # Các đường dẫn thuộc mã nguồn sản phẩm thực tế (app & firmware)
           product_prefixes = (
               "src/",
               "include/",
@@ -119,22 +123,26 @@ jobs:
           should_release = True
           update_existing_release = False
           skip_reason = ""
-          bump = "none"
+          release_tag = ""
 
-          if ref.startswith("refs/tags/v"):
-              version = ref_name[1:]
+          if ref.startswith("refs/tags/"):
+              release_tag = ref_name
+              v = parse_semver(ref_name, base_ver)
+              version = f"{v[0]}.{v[1]}.{v[2]}"
               should_release = True
           elif event_name == "pull_request":
               cur = max(tag_ver, base_ver)
               version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+              release_tag = code_label if parse_semver(code_label) == cur else f"v{version}"
               should_release = False
               update_existing_release = False
               skip_reason = "Pull Request chỉ chạy kiểm tra CI, không cập nhật Release."
           elif event_name == "workflow_dispatch":
               bump = bump_input or "patch"
               should_release = True
-              if base_ver > tag_ver:
+              if base_ver > tag_ver or (not has_existing_tag):
                   version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
+                  release_tag = code_label
               else:
                   major, minor, patch = tag_ver
                   if bump == "major":
@@ -144,12 +152,15 @@ jobs:
                   else:
                       patch += 1
                   version = f"{major}.{minor}.{patch}"
+                  prefix = "Pre-release" if "pre" in latest_tag.lower() else "v"
+                  release_tag = f"{prefix}{version}"
           elif ref in ("refs/heads/main", "refs/heads/master"):
+              # Nếu code_label (VD: Pre-release2.0.1) mới hơn hoặc khác tag hiện tại và có version >= tag
+              code_label_new = (base_ver > tag_ver) or (base_ver == tag_ver and code_label != latest_tag)
               if explicit_skip:
                   should_release = False
                   skip_reason = "Commit có từ khóa [no-release] / [skip release] -> không tăng version, cập nhật lại gói dựng trong release hiện tại."
-              elif base_ver > tag_ver:
-                  # Phiên bản trong pubspec.yaml lớn hơn tag cũ (VD: lần phát hành đầu v2.0.0)
+              elif code_label_new and not non_release_prefix:
                   should_release = True
               elif non_release_prefix and not explicit_force:
                   should_release = False
@@ -159,12 +170,13 @@ jobs:
                   skip_reason = "Không thay đổi mã app/firmware -> không tăng version, cập nhật lại gói dựng trong release hiện tại."
 
               if not should_release:
-                  # Giữ nguyên phiên bản release hiện tại và ghi đè lại tệp APK/IPA/firmware vào release đó
                   cur = tag_ver if has_existing_tag else base_ver
                   version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+                  release_tag = latest_tag if has_existing_tag else code_label
                   update_existing_release = True
-              elif base_ver > tag_ver:
+              elif code_label_new:
                   version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
+                  release_tag = code_label
               else:
                   if re.search(r'\[major\]|breaking change', lower_msg):
                       bump = "major"
@@ -180,31 +192,40 @@ jobs:
                   else:
                       patch += 1
                   version = f"{major}.{minor}.{patch}"
+                  prefix = "Pre-release" if "pre" in latest_tag.lower() else "v"
+                  release_tag = f"{prefix}{version}"
           else:
               cur = max(tag_ver, base_ver)
               version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+              release_tag = code_label
               should_release = False
               update_existing_release = False
               skip_reason = f"Nhánh {ref_name} không thuộc nhánh phát hành chính."
 
+          is_prerelease = any(k in release_tag.lower() for k in ("pre", "alpha", "beta", "rc"))
+
           print(f"version={shlex.quote(version)}")
+          print(f"release_tag={shlex.quote(release_tag)}")
+          print(f"is_prerelease={'true' if is_prerelease else 'false'}")
           print(f"should_release={'true' if should_release else 'false'}")
           print(f"update_existing_release={'true' if update_existing_release else 'false'}")
           print(f"skip_reason={shlex.quote(skip_reason)}")
           PY2
           )"
 
-          # Luôn chọn previous_tag là tag trước phiên bản mục tiêu v${version} để so sánh đầy đủ
-          prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "v${version}" | head -n 1 || true)
+          prev_tag=$(echo "$all_tags" | grep -vx "$release_tag" | head -n 1 || true)
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
           echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "previous_tag=${prev_tag}" >> "$GITHUB_OUTPUT"
           echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
           echo "update_existing_release=${update_existing_release}" >> "$GITHUB_OUTPUT"
           echo "skip_reason=${skip_reason}" >> "$GITHUB_OUTPUT"
 
-          echo "Version: v${version} (build ${GITHUB_RUN_NUMBER}) | should_release=${should_release} | update_existing_release=${update_existing_release}"
+          echo "Release Tag: ${release_tag} (numeric ${version}, build ${GITHUB_RUN_NUMBER}, prerelease=${is_prerelease})"
+          echo "should_release=${should_release} | update_existing_release=${update_existing_release}"
           if [[ -n "$skip_reason" ]]; then
             echo "Note: ${skip_reason}"
           fi
@@ -287,7 +308,7 @@ jobs:
             --build-name "${{ needs.prepare-version.outputs.version }}" \
             --build-number "${{ needs.prepare-version.outputs.build_number }}"
           mv build/app/outputs/flutter-apk/app-release.apk \
-            "build/app/outputs/flutter-apk/Hearth-Android-v${{ needs.prepare-version.outputs.version }}-build-${{ needs.prepare-version.outputs.build_number }}.apk"
+            "build/app/outputs/flutter-apk/Hearth-Android-${{ needs.prepare-version.outputs.release_tag }}-build-${{ needs.prepare-version.outputs.build_number }}.apk"
           ls -la build/app/outputs/flutter-apk/
 
       - name: Upload APK Artifact
@@ -333,11 +354,10 @@ jobs:
           mkdir -p Payload
           cp -r Runner.app Payload/
 
-          VERSION="${{ needs.prepare-version.outputs.version }}"
+          RELEASE_TAG="${{ needs.prepare-version.outputs.release_tag }}"
           BUILD_NUMBER="${{ needs.prepare-version.outputs.build_number }}"
 
-          # Luôn đóng gói bản unsigned để phát hành công khai
-          zip -qr "Hearth-iOS-v${VERSION}-build-${BUILD_NUMBER}-unsigned.ipa" Payload
+          zip -qr "Hearth-iOS-${RELEASE_TAG}-build-${BUILD_NUMBER}-unsigned.ipa" Payload
 
           if [ -n "$P12_BASE64" ] && [ -n "$P12_PASS" ] && [ -n "$PROFILE_BASE64" ]; then
             echo "--> Phát hiện chứng chỉ Apple, bắt đầu ký số IPA..."
@@ -369,7 +389,7 @@ jobs:
               done
 
               if codesign --force --verify --verbose --sign "$CERT_IDENTITY" --entitlements "$RUNNER_TEMP/entitlements.plist" --keychain "$KEYCHAIN_PATH" Payload/Runner.app; then
-                zip -qr "Hearth-iOS-v${VERSION}-build-${BUILD_NUMBER}-signed.ipa" Payload
+                zip -qr "Hearth-iOS-${RELEASE_TAG}-build-${BUILD_NUMBER}-signed.ipa" Payload
                 echo "--> Ký số thành công."
               fi
             fi
@@ -442,20 +462,22 @@ jobs:
       - name: Filter Signed IPA & Prepare iOS Manifest
         env:
           VERSION: ${{ needs.prepare-version.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare-version.outputs.release_tag }}
           BUILD_NUMBER: ${{ needs.prepare-version.outputs.build_number }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          # Xóa bản IPA đã ký khỏi bản phát hành công khai (chỉ giữ bản signed trong GitHub Actions Artifacts)
           rm -f release_assets/*-signed.ipa release_assets/*-Signed.ipa release_assets/*_signed.ipa release_assets/*_Signed.ipa
 
           cp ios_ota/manifest.plist release_assets/manifest.plist
-          python3 - "$VERSION" "$BUILD_NUMBER" <<'PY2'
+          python3 - "$VERSION" "$RELEASE_TAG" "$BUILD_NUMBER" "$REPO" <<'PY2'
           from pathlib import Path
           import re
           import sys
 
-          version, build = sys.argv[1], sys.argv[2]
-          ipa_name = f"Hearth-iOS-v{version}-build-{build}-unsigned.ipa"
+          version, release_tag, build, repo = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+          ipa_name = f"Hearth-iOS-{release_tag}-build-{build}-unsigned.ipa"
+          ipa_url = f"https://github.com/{repo}/releases/download/{release_tag}/{ipa_name}"
           manifest = Path("release_assets/manifest.plist")
           text = manifest.read_text(encoding="utf-8")
           text = re.sub(
@@ -464,8 +486,8 @@ jobs:
               text,
           )
           text = re.sub(
-              r'(releases/latest/download/)[^<]+\.ipa',
-              rf'\g<1>{ipa_name}',
+              r'(<key>url</key>\s*<string>)[^<]+(</string>)',
+              rf'\g<1>{ipa_url}\g<2>',
               text,
           )
           manifest.write_text(text, encoding="utf-8")
@@ -477,9 +499,11 @@ jobs:
       - name: Generate Release Notes (Per-Release Changelog & Checksums)
         env:
           VERSION: ${{ needs.prepare-version.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare-version.outputs.release_tag }}
           BUILD_NUMBER: ${{ needs.prepare-version.outputs.build_number }}
           PREV_TAG: ${{ needs.prepare-version.outputs.previous_tag }}
           UPDATE_EXISTING: ${{ needs.prepare-version.outputs.update_existing_release }}
+          IS_PRERELEASE: ${{ needs.prepare-version.outputs.is_prerelease }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -492,26 +516,28 @@ jobs:
           from pathlib import Path
 
           version = os.environ["VERSION"]
+          release_tag = os.environ["RELEASE_TAG"]
           build = os.environ["BUILD_NUMBER"]
           prev_tag = os.environ.get("PREV_TAG", "").strip()
           update_existing = os.environ.get("UPDATE_EXISTING", "false").lower() == "true"
+          is_prerelease = os.environ.get("IS_PRERELEASE", "false").lower() == "true"
           repo = os.environ["REPO"]
           today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
-          apk_name = f"Hearth-Android-v{version}-build-{build}.apk"
-          ipa_name = f"Hearth-iOS-v{version}-build-{build}-unsigned.ipa"
+          apk_name = f"Hearth-Android-{release_tag}-build-{build}.apk"
+          ipa_name = f"Hearth-iOS-{release_tag}-build-{build}-unsigned.ipa"
 
-          # 1. Trích xuất phần ghi chú thủ công từ CHANGELOG.md nếu có mục trùng phiên bản
           curated_notes = ""
           changelog_path = Path("CHANGELOG.md")
           if changelog_path.exists():
               raw = changelog_path.read_text(encoding="utf-8")
-              pattern = rf"^##\s+\[?v?{re.escape(version)}\]?.*?\n(.*?)(?=^##\s+|\Z)"
-              m = re.search(pattern, raw, flags=re.MULTILINE | re.DOTALL)
-              if m:
-                  curated_notes = m.group(1).strip()
+              for key in (release_tag, version):
+                  pattern = rf"^##\s+\[?v?{re.escape(key)}\]?.*?\n(.*?)(?=^##\s+|\Z)"
+                  m = re.search(pattern, raw, flags=re.MULTILINE | re.DOTALL)
+                  if m:
+                      curated_notes = m.group(1).strip()
+                      break
 
-          # 2. Tự động gom commit kể từ tag phát hành gần nhất
           git_range = f"{prev_tag}..HEAD" if prev_tag else "HEAD~15..HEAD"
           try:
               log_out = subprocess.check_output(
@@ -542,7 +568,6 @@ jobs:
               else:
                   others.append(entry)
 
-          # 3. Tính kích thước và SHA-256 cho các tệp phát hành
           assets_dir = Path("release_assets")
           asset_rows = []
           for path in sorted(assets_dir.iterdir()):
@@ -553,12 +578,13 @@ jobs:
                   asset_rows.append(f"| `{path.name}` | {size_str} | `{digest}…` |")
 
           lines = [
-              f"## Hearth (FallDetection S3R8) v{version}",
+              f"## Hearth (FallDetection S3R8) {release_tag}",
               "",
-              f"- **Phiên bản:** `v{version}` (Build `{build}`)",
+              f"- **Phiên bản phát hành:** `{release_tag}` (SemVer `{version}`, Build `{build}`)",
+              f"- **Loại phát hành:** {'Pre-release (Bản thử nghiệm trước)' if is_prerelease else 'Official Release'}",
               f"- **Ngày cập nhật:** `{today}` (UTC)",
               *(
-                  [f"- **Chế độ cập nhật:** Giữ nguyên phiên bản `v{version}`, làm mới tệp cài đặt từ Build `{build}`."]
+                  [f"- **Chế độ cập nhật:** Giữ nguyên phiên bản `{release_tag}`, làm mới tệp cài đặt từ Build `{build}`."]
                   if update_existing
                   else []
               ),
@@ -583,8 +609,8 @@ jobs:
               "### Tệp cài đặt đính kèm",
               "",
               f"- **Android APK:** `{apk_name}` — cài đặt trực tiếp trên thiết bị Android.",
-              f"- **iOS IPA (chưa ký):** `{ipa_name}` — dùng với AltStore / Sideloadly / Xcode (bản đã ký nằm trong GitHub Actions Artifacts nếu có chứng chỉ Apple).",
-              "- **Firmware ESP32-S3 N16R8:** `firmware.bin` — hỗ trợ cập nhật tự động qua lệnh `OTA_LATEST`, Web OTA (`/update`) hoặc BLE OTA.",
+              f"- **iOS IPA (chưa ký):** `{ipa_name}` — dùng với AltStore / Sideloadly / Xcode.",
+              "- **Firmware ESP32-S3 N16R8:** `firmware.bin` — hỗ trợ cập nhật qua Web OTA (`/update`), BLE OTA hoặc HTTP OTA.",
               "- **iOS OTA Manifest:** `manifest.plist`.",
               "",
               "| Tệp phát hành | Dung lượng | SHA-256 (rút gọn) |",
@@ -595,7 +621,7 @@ jobs:
 
           if prev_tag:
               lines.append(
-                  f"**So sánh mã nguồn đầy đủ:** https://github.com/{repo}/compare/{prev_tag}...v{version}"
+                  f"**So sánh mã nguồn đầy đủ:** https://github.com/{repo}/compare/{prev_tag}...{release_tag}"
               )
 
           Path("release_notes.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
@@ -604,18 +630,18 @@ jobs:
 
       - name: Clean Up Stale Assets On Existing Release (Before Re-Upload)
         env:
-          VERSION: ${{ needs.prepare-version.outputs.version }}
+          RELEASE_TAG: ${{ needs.prepare-version.outputs.release_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           RELEASE_JSON=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/releases/tags/v$VERSION")
+            "https://api.github.com/repos/$REPO/releases/tags/$RELEASE_TAG")
           RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
 
           if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-            echo "Release v$VERSION đã tồn tại (ID: $RELEASE_ID). Xóa các tệp APK/IPA/manifest/firmware cũ trước khi tải bản dựng mới lên..."
+            echo "Release $RELEASE_TAG đã tồn tại (ID: $RELEASE_ID). Xóa các tệp APK/IPA/manifest/firmware cũ trước khi tải bản dựng mới lên..."
             echo "$RELEASE_JSON" | jq -r '.assets[]? | select(.name | test("\\.(apk|ipa|plist|bin)$")) | "\(.id) \(.name)"' | while read -r asset_id asset_name; do
               [ -z "$asset_id" ] && continue
               echo "  -> Xóa asset cũ: $asset_name (ID: $asset_id)"
@@ -625,27 +651,15 @@ jobs:
             done
           fi
 
-      - name: Clean Up Legacy Duplicate 'latest' Release (If Present)
-        run: |
-          RELEASE_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/latest" | jq -r '.id // empty')
-          if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-            echo "Removing legacy duplicate 'latest' release (ID: $RELEASE_ID) so GitHub Latest points cleanly to v${{ needs.prepare-version.outputs.version }}..."
-            curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID" || true
-          fi
-
-      - name: Publish Official Version Release (Latest)
+      - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.prepare-version.outputs.version }}
-          name: "Hearth v${{ needs.prepare-version.outputs.version }}"
+          tag_name: ${{ needs.prepare-version.outputs.release_tag }}
+          name: "Hearth ${{ needs.prepare-version.outputs.release_tag }}"
           body_path: release_notes.md
-          make_latest: true
+          prerelease: ${{ needs.prepare-version.outputs.is_prerelease == 'true' }}
+          make_latest: ${{ needs.prepare-version.outputs.is_prerelease == 'true' && 'false' || 'true' }}
           draft: false
-          prerelease: false
           files: |
             release_assets/Hearth-Android-*.apk
             release_assets/Hearth-iOS-*-unsigned.ipa

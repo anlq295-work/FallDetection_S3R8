@@ -28,61 +28,32 @@ class S3WifiSetupScreen extends StatefulWidget {
 }
 
 class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
-  final _manualSsidCtrl = TextEditingController();
+  final _ssidCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _passFocus = FocusNode();
 
-  bool _loadingList = true;
-  bool _manualMode = false;
   bool _obscurePass = true;
   bool _connecting = false;
   int _progressStage = 0; // 1=joining, 2=reaching, 3=done
   bool _success = false;
   String? _errorText;
-  String? _selectedSsid;
   String? _assignedIp;
-
-  List<WifiNetworkCandidate> _networks = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNetworks();
-  }
 
   @override
   void dispose() {
-    _manualSsidCtrl.dispose();
+    _ssidCtrl.dispose();
     _passCtrl.dispose();
     _passFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _loadNetworks() async {
-    setState(() {
-      _loadingList = true;
-      _errorText = null;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 550));
-    if (!mounted) return;
-    setState(() {
-      _loadingList = false;
-      _networks = const [
-        WifiNetworkCandidate(ssid: 'Home_2.4G', rssi: -52),
-        WifiNetworkCandidate(ssid: 'VNPT_2.4GHz', rssi: -63),
-        WifiNetworkCandidate(ssid: 'FPT_LivingRoom', rssi: -76),
-      ];
-      _selectedSsid = _networks.first.ssid;
-    });
-  }
-
   Future<void> _connectWifi() async {
     final s = widget.ctrl.s;
-    final ssid = _manualMode ? _manualSsidCtrl.text.trim() : (_selectedSsid ?? '').trim();
+    final ssid = _ssidCtrl.text.trim();
     final pass = _passCtrl.text;
 
     if (ssid.isEmpty) {
-      setState(() => _errorText = s.s3NoNetworksError);
+      setState(() => _errorText = s.s3SsidRequiredError);
       return;
     }
 
@@ -104,17 +75,17 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(const Duration(milliseconds: 550));
     if (!mounted) return;
     setState(() => _progressStage = 2);
 
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(const Duration(milliseconds: 550));
     if (!mounted) return;
     setState(() {
       _progressStage = 3;
       _connecting = false;
       _success = true;
-      _assignedIp = widget.ctrl.hardware.activeLanIp ?? '192.168.1.48';
+      _assignedIp = widget.ctrl.hardware.activeLanIp;
     });
   }
 
@@ -145,77 +116,31 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
     final s = widget.ctrl.s;
     final p = HearthPalette.of(context);
     final layout = HearthLayout.of(context);
-    final activeSsid = _manualMode ? _manualSsidCtrl.text.trim() : (_selectedSsid ?? '');
+    final activeSsid = _ssidCtrl.text.trim();
 
-    final networksPanel = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(s.s3NetworksTitle, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
-        if (_loadingList) ...[
-          Text(s.s3ScanningNetworks, style: TextStyle(fontSize: 15, color: p.textMuted)),
-          const SizedBox(height: 10),
-          const LiquidGlassCard(child: HearthSkeleton(height: 36)),
-          const SizedBox(height: 8),
-          const LiquidGlassCard(child: HearthSkeleton(height: 36)),
-          const SizedBox(height: 8),
-          const LiquidGlassCard(child: HearthSkeleton(height: 36)),
-        ] else ...[
-          ..._networks.map((net) {
-            final selected = !_manualMode && _selectedSsid == net.ssid;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: LiquidGlassCard(
-                selected: selected,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                onTap: _connecting
-                    ? null
-                    : () => setState(() {
-                          _manualMode = false;
-                          _selectedSsid = net.ssid;
-                          _errorText = null;
-                        }),
-                child: Row(
-                  children: [
-                    Icon(
-                      selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                      color: selected ? p.accent : p.textMuted,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        net.ssid,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.text),
-                      ),
-                    ),
-                    HearthSignalIndicator(rssi: net.rssi, s: s),
-                  ],
+    final infoCard = LiquidGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wifi_2_bar_rounded, color: p.accent, size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${widget.sensor.name} · ${widget.sensor.shortCode}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.text),
                 ),
               ),
-            );
-          }),
-          LiquidGlassCard(
-            selected: _manualMode,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            onTap: _connecting ? null : () => setState(() => _manualMode = true),
-            child: Row(
-              children: [
-                Icon(Icons.edit_rounded, color: p.accent, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    s.s3ManualNetwork,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: p.accent),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
+          const SizedBox(height: 10),
+          Text(s.s3Helper, style: Theme.of(context).textTheme.bodyLarge),
         ],
-      ],
+      ),
     );
 
-    final credentialsPanel = LiquidGlassCard(
+    final credentialsCard = LiquidGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -231,30 +156,31 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
             HearthBanner(
               tone: HearthBannerTone.ok,
               icon: Icons.wifi_rounded,
-              title: s.s3SuccessBanner(activeSsid.isEmpty ? 'Wi-Fi' : activeSsid),
+              title: s.s3SuccessBanner(activeSsid),
             ),
             const SizedBox(height: 16),
             HearthPrimaryButton(
               label: s.continueBtn,
-              onPressed: () => widget.onWifiConnected(
-                activeSsid.isEmpty ? 'Home_2.4G' : activeSsid,
-                _assignedIp,
-              ),
+              onPressed: () => widget.onWifiConnected(activeSsid, _assignedIp),
             ),
           ] else ...[
-            if (_manualMode) ...[
-              TextField(
-                controller: _manualSsidCtrl,
-                enabled: !_connecting,
-                decoration: InputDecoration(labelText: s.s3SsidLabel),
+            TextField(
+              controller: _ssidCtrl,
+              enabled: !_connecting,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: s.s3SsidLabel,
+                hintText: s.s3SsidHint,
               ),
-              const SizedBox(height: 12),
-            ],
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _passCtrl,
               focusNode: _passFocus,
               enabled: !_connecting,
               obscureText: _obscurePass,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _connectWifi(),
               decoration: InputDecoration(
                 labelText: s.s3PasswordLabel,
                 helperText: s.s3PasswordHelper,
@@ -316,22 +242,20 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(s.s3Title, style: Theme.of(context).textTheme.headlineSmall),
-                          const SizedBox(height: 8),
-                          Text(s.s3Helper, style: Theme.of(context).textTheme.bodyMedium),
                           const SizedBox(height: 16),
                           if (layout.isTwoPane)
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(child: networksPanel),
+                                Expanded(child: infoCard),
                                 SizedBox(width: layout.hingeGap + 12),
-                                Expanded(child: credentialsPanel),
+                                Expanded(child: credentialsCard),
                               ],
                             )
                           else ...[
-                            networksPanel,
-                            const SizedBox(height: 16),
-                            credentialsPanel,
+                            infoCard,
+                            const SizedBox(height: 14),
+                            credentialsCard,
                           ],
                         ],
                       ),
