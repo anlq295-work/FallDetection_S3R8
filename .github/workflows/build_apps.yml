@@ -129,7 +129,7 @@ jobs:
         run: |
           cd mobile_app
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
 
       - name: Configure Maven Mirrors via Gradle Init Script

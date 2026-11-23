@@ -12,6 +12,9 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+  errors:
+    # Giữ tương thích cả Flutter < 3.47 và Flutter >= 3.47 (package:flutter/material.dart)
+    deprecated_member_use: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:
