@@ -30,13 +30,15 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       build_number: ${{ steps.version.outputs.build_number }}
       previous_tag: ${{ steps.version.outputs.previous_tag }}
+      should_release: ${{ steps.version.outputs.should_release }}
+      skip_reason: ${{ steps.version.outputs.skip_reason }}
     steps:
       - name: Checkout repository with tags
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Calculate semantic version
+      - name: Calculate semantic version & release eligibility
         id: version
         shell: bash
         env:
@@ -44,6 +46,8 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           REF: ${{ github.ref }}
           BUMP_INPUT: ${{ inputs.bump }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || true)
@@ -52,26 +56,19 @@ jobs:
           pubspec_ver=${pubspec_ver:-2.0.0}
           latest=${latest:-$pubspec_ver}
 
-          if [[ "$REF" == refs/tags/v* ]]; then
-            version="${REF_NAME#v}"
-            prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "$REF_NAME" | head -n 1 || true)
+          # Lấy danh sách tệp thay đổi trong lần push này
+          changed_files=""
+          if [[ -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            changed_files=$(git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" || true)
           else
-            bump="none"
-            if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-              bump="${BUMP_INPUT:-patch}"
-            elif [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/master" ]]; then
-              message=$(git log -1 --pretty=%B)
-              if grep -qiE '\[major\]|breaking change' <<< "$message"; then
-                bump="major"
-              elif grep -qiE '\[minor\]|feat(\(.*\))?:' <<< "$message"; then
-                bump="minor"
-              else
-                bump="patch"
-              fi
-            fi
+            changed_files=$(git diff-tree --no-commit-id --name-only -r "$HEAD_SHA" || true)
+          fi
 
-            version=$(python3 - "$latest" "$pubspec_ver" "$bump" <<'PY2'
+          commit_msg=$(git log -1 --pretty=%B)
+
+          eval "$(python3 - "$latest" "$pubspec_ver" "$EVENT_NAME" "$REF" "$REF_NAME" "${BUMP_INPUT:-patch}" "$commit_msg" "$changed_files" <<'PY2'
           import re
+          import shlex
           import sys
 
           def parse(v):
@@ -82,28 +79,126 @@ jobs:
 
           tag_ver = parse(sys.argv[1])
           base_ver = parse(sys.argv[2])
-          bump = sys.argv[3]
+          event_name = sys.argv[3]
+          ref = sys.argv[4]
+          ref_name = sys.argv[5]
+          bump_input = sys.argv[6]
+          commit_msg = sys.argv[7]
+          changed_files = [f.strip() for f in sys.argv[8].splitlines() if f.strip()]
 
-          # Nếu pubspec.yaml cao hơn tag mới nhất (ví dụ nâng mặc định lên 2.0.0), dùng trực tiếp phiên bản đó.
-          if base_ver > tag_ver:
-              print(f'{base_ver[0]}.{base_ver[1]}.{base_ver[2]}')
+          first_line = commit_msg.splitlines()[0].strip().lower() if commit_msg.strip() else ""
+          lower_msg = commit_msg.lower()
+
+          # Các đường dẫn thuộc mã nguồn sản phẩm thực tế (app & firmware)
+          product_prefixes = (
+              "src/",
+              "include/",
+              "lib/",
+              "mobile_app/lib/",
+              "mobile_app/android/",
+              "mobile_app/ios/",
+              "mobile_app/assets/",
+              "ios_ota/",
+          )
+          product_exact = {
+              "platformio.ini",
+              "mobile_app/pubspec.yaml",
+              "mobile_app/pubspec.lock",
+          }
+
+          def is_product_file(path):
+              return path in product_exact or path.startswith(product_prefixes)
+
+          has_product_changes = any(is_product_file(f) for f in changed_files)
+          explicit_skip = bool(re.search(r'\[(no-release|skip release|skip-release)\]', lower_msg))
+          explicit_force = bool(re.search(r'\[(release|major|minor|patch)\]', lower_msg))
+          non_release_prefix = bool(re.match(r'^(ci|docs|chore|test|style|build|refactor)(\([^)]*\))?!?:', first_line))
+
+          should_release = True
+          skip_reason = ""
+          bump = "none"
+
+          if ref.startswith("refs/tags/v"):
+              version = ref_name[1:]
+              should_release = True
+          elif event_name == "pull_request":
+              version = f"{max(tag_ver, base_ver)[0]}.{max(tag_ver, base_ver)[1]}.{max(tag_ver, base_ver)[2]}"
+              should_release = False
+              skip_reason = "Pull Request chỉ chạy kiểm tra CI, không phát hành Release."
+          elif event_name == "workflow_dispatch":
+              bump = bump_input or "patch"
+              should_release = True
+              if base_ver > tag_ver:
+                  version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
+              else:
+                  major, minor, patch = tag_ver
+                  if bump == "major":
+                      major, minor, patch = major + 1, 0, 0
+                  elif bump == "minor":
+                      minor, patch = minor + 1, 0
+                  else:
+                      patch += 1
+                  version = f"{major}.{minor}.{patch}"
+          elif ref in ("refs/heads/main", "refs/heads/master"):
+              if explicit_skip:
+                  should_release = False
+                  skip_reason = "Commit có từ khóa [no-release] / [skip release]."
+              elif base_ver > tag_ver:
+                  # Phiên bản trong pubspec.yaml lớn hơn tag cũ (VD: lần phát hành đầu v2.0.0)
+                  should_release = True
+              elif non_release_prefix and not explicit_force:
+                  should_release = False
+                  skip_reason = f"Tiền tố commit không phát hành ({first_line.split(':', 1)[0]}:)."
+              elif changed_files and not has_product_changes and not explicit_force:
+                  should_release = False
+                  skip_reason = "Chỉ thay đổi tài liệu/CI/test/cấu hình, không thay đổi mã app hoặc firmware."
+
+              if not should_release:
+                  cur = max(tag_ver, base_ver)
+                  version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+              elif base_ver > tag_ver:
+                  version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
+              else:
+                  if re.search(r'\[major\]|breaking change', lower_msg):
+                      bump = "major"
+                  elif re.search(r'\[minor\]|feat(\([^)]*\))?:', lower_msg):
+                      bump = "minor"
+                  else:
+                      bump = "patch"
+                  major, minor, patch = tag_ver
+                  if bump == "major":
+                      major, minor, patch = major + 1, 0, 0
+                  elif bump == "minor":
+                      minor, patch = minor + 1, 0
+                  else:
+                      patch += 1
+                  version = f"{major}.{minor}.{patch}"
           else:
-              major, minor, patch = tag_ver
-              if bump == 'major':
-                  major, minor, patch = major + 1, 0, 0
-              elif bump == 'minor':
-                  minor, patch = minor + 1, 0
-              elif bump == 'patch':
-                  patch += 1
-              print(f'{major}.{minor}.{patch}')
+              cur = max(tag_ver, base_ver)
+              version = f"{cur[0]}.{cur[1]}.{cur[2]}"
+              should_release = False
+              skip_reason = f"Nhánh {ref_name} không thuộc nhánh phát hành chính."
+
+          print(f"version={shlex.quote(version)}")
+          print(f"should_release={'true' if should_release else 'false'}")
+          print(f"skip_reason={shlex.quote(skip_reason)}")
           PY2
-            )
+          )"
+
+          if [[ "$REF" == refs/tags/v* ]]; then
+            prev_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -vx "$REF_NAME" | head -n 1 || true)
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "previous_tag=${prev_tag}" >> "$GITHUB_OUTPUT"
-          echo "Building Hearth v${version} (build ${GITHUB_RUN_NUMBER}), previous tag: ${prev_tag:-none}"
+          echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
+          echo "skip_reason=${skip_reason}" >> "$GITHUB_OUTPUT"
+
+          echo "Version: v${version} (build ${GITHUB_RUN_NUMBER}) | should_release=${should_release}"
+          if [[ -n "$skip_reason" ]]; then
+            echo "Skip release reason: ${skip_reason}"
+          fi
 
   build-android:
     name: Test & Build Android APK
@@ -307,7 +402,7 @@ jobs:
     name: Publish GitHub Release (OTA Assets)
     needs: [prepare-version, build-android, build-ios, build-firmware]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+    if: needs.prepare-version.outputs.should_release == 'true'
     steps:
       - name: Checkout repository with full history
         uses: actions/checkout@v4

@@ -332,11 +332,13 @@ Thiết bị hỗ trợ **3 phương thức nâng cấp Firmware không dây**:
 
 Workflow `.github/workflows/build_apps.yml` tự động chạy khi push lên `main`/`master`, gắn tag `v*`, mở PR hoặc kích hoạt thủ công (`workflow_dispatch`):
 
-1. **`prepare-version`:** Tự động tăng Semantic Version theo tag gần nhất hoặc commit message (`[major]` / `breaking change`, `[minor]` / `feat:`, mặc định `patch`).
-2. **`build-android`:** Build Release APK (`FallGuard-Android-v<ver>-build-<num>.apk`).
+1. **`prepare-version`:** Tự động tính Semantic Version và lọc phát hành thông minh:
+   - **Tự động bỏ qua tạo version/Release** (chỉ chạy build & test CI) khi chỉ sửa tài liệu/CI/test/cấu hình (`README.md`, `CHANGELOG.md`, `.github/workflows/*`, `scripts/*`, `analysis_options.yaml`, `mobile_app/test/*`) hoặc khi commit bắt đầu bằng `ci:`, `docs:`, `chore:`, `test:`, `style:`, `build:`, `refactor:` hoặc chứa `[no-release]` / `[skip release]`.
+   - **Tự động tăng version & phát hành Release** khi có thay đổi mã app/firmware (`src/`, `mobile_app/lib/`, `platformio.ini`, ...) theo mức `[major]` / `breaking change`, `[minor]` / `feat:`, mặc định `patch`, hoặc khi có từ khóa `[release]`, push tag `v*`, hay chạy thủ công `workflow_dispatch`.
+2. **`build-android`:** Chạy `flutter analyze --no-fatal-infos`, `flutter test` và build Release APK (`Hearth-Android-v<ver>-build-<num>.apk`).
 3. **`build-ios`:** Chạy trên `macos-latest`, đóng gói bản `-unsigned.ipa` (và tự động ký số `-signed.ipa` vào Artifacts riêng nếu đã khai báo secrets `APPLE_CERT_P12_BASE64`, `APPLE_CERT_PASSWORD`, `APPLE_PROVISION_PROFILE_BASE64`).
 4. **`build-firmware`:** Chạy `pio run -e esp32-s3-n16r8` tạo `firmware.bin`.
-5. **`publish-release`:** Tạo/cập nhật GitHub Release theo tag `v<ver>` và tag `latest` kèm APK, IPA unsigned, `manifest.plist` và `firmware.bin`.
+5. **`publish-release`:** Chỉ chạy khi `should_release == 'true'`; tự động sinh Release Notes chi tiết từ `CHANGELOG.md` + git commits kèm bảng SHA-256 và phát hành 1 Release chính thức duy nhất (`v<ver>`, `make_latest: true`).
 
 ### Tải nhanh Artifacts từ GitHub Actions về máy
 ```bash
