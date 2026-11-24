@@ -328,9 +328,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     children: [
                       Icon(Icons.shield_outlined, size: 15, color: p.ok),
                       const SizedBox(width: 5),
-                      Text(
-                        ctrl.offlineRoom == null ? s.s6MonitoringActive : s.s6AttentionNeeded,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: p.textMuted),
+                      Expanded(
+                        child: Text(
+                          ctrl.offlineRoom == null ? s.s6MonitoringActive : s.s6AttentionNeeded,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: p.textMuted),
+                        ),
                       ),
                     ],
                   ),
