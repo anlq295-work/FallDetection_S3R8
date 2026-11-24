@@ -46,14 +46,17 @@ String getSystemTelemetryJson() {
   int h = (int)sensorMgr.getPrimaryTofDistance();
   int m = (int)sensorMgr.getRadarPeakMotion();
   int s = (int)sensorMgr.getRadarPeakStatic();
+  String sensorId = WiFi.macAddress();
+  sensorId.replace(":", "");
 
   char telemBuf[256];
   snprintf(telemBuf, sizeof(telemBuf),
-    "{\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"ver\":\"%s\"}",
+    "{\"sid\":\"%s\",\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"hb\":%lu,\"ver\":\"%s\"}",
+    sensorId.c_str(),
     stateNames[currentState], classNames[lastPredictedClass], lastConfidence,
     h, m, s, lastFeatures[5],
     (int)lastPirState, (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString().c_str() : "0.0.0.0",
-    (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0, (millis() / 1000), FIRMWARE_VERSION);
+    (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0, (millis() / 1000), (millis() / 1000), FIRMWARE_VERSION);
   return String(telemBuf);
 }
 

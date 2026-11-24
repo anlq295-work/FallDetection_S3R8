@@ -287,6 +287,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     contextLine,
                     style: TextStyle(fontSize: 15, color: p.textMuted),
                   ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Sensor ${room.sensorId}',
+                    style: TextStyle(fontSize: 11.5, color: p.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (telemetry != null) ...[
                     const SizedBox(height: 8),
                     Wrap(

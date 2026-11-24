@@ -148,6 +148,7 @@ class HearthController extends ChangeNotifier {
           wifiRssi: snap.rssi != 0 ? snap.rssi : room.wifiRssi,
           lanIp: snap.ipAddress != '0.0.0.0' ? snap.ipAddress : room.lanIp,
           firmwareVersion: snap.firmwareVersion,
+          sensorId: snap.deviceId.isNotEmpty ? snap.deviceId : room.sensorId,
           latestTelemetry: snap,
           clearOfflineSince: true,
         );

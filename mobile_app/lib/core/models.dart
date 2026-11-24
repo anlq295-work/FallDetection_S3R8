@@ -138,6 +138,8 @@ enum ConnectionTransport {
 }
 
 class TelemetrySnapshot {
+  final String deviceId;
+  final int heartbeatSec;
   final String state; // NORMAL, SUSPECTED, PRE_ALARM, ALERT, ACK, RESOLVED, FAULT
   final String postureClass; // STAND, SIT, LIE, FALL
   final double confidence;
@@ -153,6 +155,8 @@ class TelemetrySnapshot {
   final DateTime receivedAt;
 
   const TelemetrySnapshot({
+    this.deviceId = '',
+    this.heartbeatSec = 0,
     this.state = 'NORMAL',
     this.postureClass = 'STAND',
     this.confidence = 0.92,
@@ -170,6 +174,8 @@ class TelemetrySnapshot {
 
   factory TelemetrySnapshot.fromJson(Map<String, dynamic> json) {
     return TelemetrySnapshot(
+      deviceId: (json['sid'] ?? json['sensor_id'] ?? '').toString(),
+      heartbeatSec: ((json['hb'] ?? json['uptime']) as num?)?.toInt() ?? 0,
       state: (json['st'] ?? 'NORMAL').toString().toUpperCase(),
       postureClass: (json['cls'] ?? 'STAND').toString().toUpperCase(),
       confidence: ((json['cf'] as num?) ?? 0.0).toDouble(),
