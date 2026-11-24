@@ -58,7 +58,7 @@ jobs:
           all_tags=$(git tag --list --sort=-creatordate | grep -Ei '^(v|pre-release)[0-9]' || true)
           latest_tag=$(echo "$all_tags" | head -n 1 || true)
           pubspec_ver=$(grep -E '^version:' mobile_app/pubspec.yaml | head -n 1 | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-          pubspec_ver=${pubspec_ver:-2.0.1}
+          pubspec_ver=${pubspec_ver:-1.0.0}
           code_label=$(grep -E "kAppReleaseLabel\s*=" mobile_app/lib/core/models.dart | head -n 1 | sed -E "s/.*'([^']+)'.*/\1/" || true)
           code_label=${code_label:-"v${pubspec_ver}"}
 
@@ -148,9 +148,9 @@ jobs:
               else:
                   major, minor, patch = tag_ver
                   if bump == "major":
-                      major, minor, patch = major + 1, 0, 0
+                      major, minor, patch = major, minor + 1, 0
                   elif bump == "minor":
-                      minor, patch = minor + 1, 0
+                      patch += 1
                   else:
                       patch += 1
                   version = f"{major}.{minor}.{patch}"
@@ -188,9 +188,9 @@ jobs:
                       bump = "patch"
                   major, minor, patch = tag_ver
                   if bump == "major":
-                      major, minor, patch = major + 1, 0, 0
+                      major, minor, patch = major, minor + 1, 0
                   elif bump == "minor":
-                      minor, patch = minor + 1, 0
+                      patch += 1
                   else:
                       patch += 1
                   version = f"{major}.{minor}.{patch}"
