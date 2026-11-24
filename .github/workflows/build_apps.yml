@@ -3,7 +3,9 @@ name: Build & Publish Hearth (Android, iOS & ESP32-S3)
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*', 'Pre-release*' ]
+    # GitHub Actions phân biệt hoa thường trong pattern tag.
+    # Nhận cả dạng chuẩn hiện tại và tag pre-release viết thường.
+    tags: [ 'v*', 'Pre-release*', 'pre-release*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -53,7 +55,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          all_tags=$(git tag --list --sort=-creatordate | grep -E '^(v|Pre-release)[0-9]' || true)
+          all_tags=$(git tag --list --sort=-creatordate | grep -Ei '^(v|pre-release)[0-9]' || true)
           latest_tag=$(echo "$all_tags" | head -n 1 || true)
           pubspec_ver=$(grep -E '^version:' mobile_app/pubspec.yaml | head -n 1 | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
           pubspec_ver=${pubspec_ver:-2.0.1}
