@@ -339,6 +339,8 @@ class AppStrings {
     }
     return _t('Nhà của $trimmed', "$trimmed's home", 'Maison de $trimmed');
   }
+  String get s6MonitoringActive => _t('Đang giám sát', 'Monitoring active', 'Surveillance active');
+  String get s6AttentionNeeded => _t('Cần chú ý', 'Attention needed', 'Attention requise');
 
   String get s6IncompleteProfileTitle => _t(
         'Chưa thiết lập tên người thân & liên hệ khẩn cấp',

@@ -15,7 +15,7 @@ on:
         required: true
         default: patch
         type: choice
-        options: [patch, minor, major]
+        options: [patch, minor]
 
 permissions:
   contents: write
@@ -55,7 +55,16 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          all_tags=$(git tag --list --sort=-creatordate | grep -Ei '^(v|pre-release)[0-9]' || true)
+          all_tags=$(git tag --list --merged HEAD --sort=-version:refname | grep -E '^pre-release[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          if git rev-parse --verify --quiet 'refs/tags/pre-release1.0.0^{commit}' >/dev/null; then
+            release_line_tags=()
+            while IFS= read -r tag; do
+              if [[ -n "$tag" ]] && git merge-base --is-ancestor refs/tags/pre-release1.0.0 "refs/tags/$tag"; then
+                release_line_tags+=("$tag")
+              fi
+            done <<< "$all_tags"
+            all_tags=$(printf '%s\n' "${release_line_tags[@]}")
+          fi
           latest_tag=$(echo "$all_tags" | head -n 1 || true)
           pubspec_ver=$(grep -E '^version:' mobile_app/pubspec.yaml | head -n 1 | sed -E 's/^version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
           pubspec_ver=${pubspec_ver:-1.0.0}
@@ -77,9 +86,15 @@ jobs:
           import shlex
           import sys
 
-          def parse_semver(text, default=(2, 0, 1)):
+          def parse_semver(text, default=(1, 0, 0)):
               m = re.search(r'(\d+)\.(\d+)\.(\d+)', text or "")
               return tuple(map(int, m.groups())) if m else default
+
+          def bumped_version(current, bump):
+              major, minor, patch = current
+              if bump == "minor":
+                  return f"{major}.{minor + 1}.0"
+              return f"{major}.{minor}.{patch + 1}"
 
           latest_tag = sys.argv[1].strip()
           pubspec_ver = sys.argv[2].strip()
@@ -146,16 +161,8 @@ jobs:
                   version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
                   release_tag = code_label
               else:
-                  major, minor, patch = tag_ver
-                  if bump == "major":
-                      major, minor, patch = major, minor + 1, 0
-                  elif bump == "minor":
-                      patch += 1
-                  else:
-                      patch += 1
-                  version = f"{major}.{minor}.{patch}"
-                  prefix = "Pre-release" if "pre" in latest_tag.lower() else "v"
-                  release_tag = f"{prefix}{version}"
+                  version = bumped_version(tag_ver, bump)
+                  release_tag = f"pre-release{version}"
           elif ref in ("refs/heads/main", "refs/heads/master"):
               # Nếu code_label (VD: Pre-release2.0.1) mới hơn hoặc khác tag hiện tại và có version >= tag
               code_label_new = (base_ver > tag_ver) or (base_ver == tag_ver and code_label != latest_tag)
@@ -180,22 +187,14 @@ jobs:
                   version = f"{base_ver[0]}.{base_ver[1]}.{base_ver[2]}"
                   release_tag = code_label
               else:
-                  if re.search(r'\[major\]|breaking change', lower_msg):
-                      bump = "major"
-                  elif re.search(r'\[minor\]|feat(\([^)]*\))?:', lower_msg):
+                  if "[patch]" in lower_msg:
+                      bump = "patch"
+                  elif re.search(r'\[(major|minor)\]|breaking change|^feat(\([^)]*\))?!?:', lower_msg):
                       bump = "minor"
                   else:
                       bump = "patch"
-                  major, minor, patch = tag_ver
-                  if bump == "major":
-                      major, minor, patch = major, minor + 1, 0
-                  elif bump == "minor":
-                      patch += 1
-                  else:
-                      patch += 1
-                  version = f"{major}.{minor}.{patch}"
-                  prefix = "Pre-release" if "pre" in latest_tag.lower() else "v"
-                  release_tag = f"{prefix}{version}"
+                  version = bumped_version(tag_ver, bump)
+                  release_tag = f"pre-release{version}"
           else:
               cur = max(tag_ver, base_ver)
               version = f"{cur[0]}.{cur[1]}.{cur[2]}"

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
-const String kAppReleaseLabel = 'pre-release1.0.0';
-const String kFirmwareDefaultVersion = 'pre-release1.0.0';
+const String kAppReleaseLabel = 'pre-release1.0.1';
+const String kFirmwareDefaultVersion = 'pre-release1.0.1';
 
 enum AppLanguage {
   vi('vi', 'Tiếng Việt', 'VI'),

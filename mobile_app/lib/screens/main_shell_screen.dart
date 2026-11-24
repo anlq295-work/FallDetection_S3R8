@@ -305,68 +305,88 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final offline = ctrl.offlineRoom;
     final recent = ctrl.mostRecentOccupiedRoom;
 
-    final headerBar = Row(
-      children: [
-        const HearthBrandMark(size: 38),
-        const SizedBox(width: 10),
-        Expanded(
-          child: GestureDetector(
-            onLongPress: () => ctrl.triggerFallAlert(simulated: true),
-            child: Text(
-              s.s6HomeTitle(ctrl.personName),
-              style: Theme.of(context).textTheme.headlineSmall,
-              overflow: TextOverflow.ellipsis,
+    final headerBar = LiquidGlassCard(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      child: Row(
+        children: [
+          const HearthBrandMark(size: 42),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onLongPress: () => ctrl.triggerFallAlert(simulated: true),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    s.s6HomeTitle(ctrl.personName),
+                    style: Theme.of(context).textTheme.titleLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 15, color: p.ok),
+                      const SizedBox(width: 5),
+                      Text(
+                        ctrl.offlineRoom == null ? s.s6MonitoringActive : s.s6AttentionNeeded,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: p.textMuted),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        IconButton(
-          tooltip: s.tabActivity,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          icon: const Icon(Icons.notifications_none_rounded),
-          onPressed: () => setState(() => _tabIndex = 1),
-        ),
-        PopupMenuButton<String>(
-          tooltip: 'Menu',
-          icon: const Icon(Icons.more_vert_rounded),
-          onSelected: (v) {
-            if (v == 'sim_fall') ctrl.triggerFallAlert(simulated: true);
-            if (v == 'first_aid') showFirstAidGuideModal(context, ctrl);
-            if (v == 'med_id') showMedicalIdModal(context, ctrl);
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem(
-              value: 'sim_fall',
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: p.critical, size: 20),
-                  const SizedBox(width: 10),
-                  Text(s.s6SimulateFall),
-                ],
+          IconButton(
+            tooltip: s.tabActivity,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () => setState(() => _tabIndex = 1),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) {
+              if (v == 'sim_fall') ctrl.triggerFallAlert(simulated: true);
+              if (v == 'first_aid') showFirstAidGuideModal(context, ctrl);
+              if (v == 'med_id') showMedicalIdModal(context, ctrl);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'sim_fall',
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: p.critical, size: 20),
+                    const SizedBox(width: 10),
+                    Text(s.s6SimulateFall),
+                  ],
+                ),
               ),
-            ),
-            PopupMenuItem(
-              value: 'first_aid',
-              child: Row(
-                children: [
-                  Icon(Icons.medical_services_outlined, color: p.accent, size: 20),
-                  const SizedBox(width: 10),
-                  Text(s.firstAidTitle),
-                ],
+              PopupMenuItem(
+                value: 'first_aid',
+                child: Row(
+                  children: [
+                    Icon(Icons.medical_services_outlined, color: p.accent, size: 20),
+                    const SizedBox(width: 10),
+                    Text(s.firstAidTitle),
+                  ],
+                ),
               ),
-            ),
-            PopupMenuItem(
-              value: 'med_id',
-              child: Row(
-                children: [
-                  Icon(Icons.badge_outlined, color: p.accent, size: 20),
-                  const SizedBox(width: 10),
-                  Text(s.medicalIdTitle),
-                ],
+              PopupMenuItem(
+                value: 'med_id',
+                child: Row(
+                  children: [
+                    Icon(Icons.badge_outlined, color: p.accent, size: 20),
+                    const SizedBox(width: 10),
+                    Text(s.medicalIdTitle),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
 
     if (_loadingHome) {
