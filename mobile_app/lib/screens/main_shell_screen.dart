@@ -223,6 +223,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final String statusWord;
     final Color statusColor;
     final String contextLine;
+    final telemetry = room.latestTelemetry;
 
     switch (room.status) {
       case RoomStatus.occupied:
@@ -286,6 +287,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     contextLine,
                     style: TextStyle(fontSize: 15, color: p.textMuted),
                   ),
+                  if (telemetry != null) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      children: [
+                        _RoomMetric(label: 'ToF', value: '${telemetry.tofHeightMm} mm'),
+                        _RoomMetric(label: 'Motion', value: '${telemetry.radarMotion}/100'),
+                        _RoomMetric(label: 'Static', value: '${telemetry.radarStatic}/100'),
+                        _RoomMetric(label: 'PIR', value: telemetry.pirActive ? 'ON' : 'OFF'),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -296,6 +310,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
   }
+
+
 
   Widget _buildHomeContent(HearthLayout layout) {
     final ctrl = widget.ctrl;
@@ -1215,6 +1231,22 @@ class _RailNavItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RoomMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _RoomMetric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = HearthPalette.of(context);
+    return Text(
+      '$label $value',
+      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.textMuted),
     );
   }
 }
