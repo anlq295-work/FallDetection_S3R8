@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 // The release label is deliberately separate from the numeric native app
 // version. Android/iOS receive a SemVer value (for example 1.3.0), while this
 // label is the GitHub release/OTA identifier (for example pre-release1.3.0).
-const String kAppReleaseLabel = 'pre-release1.3.0';
-const String kFirmwareDefaultVersion = 'pre-release1.3.0';
+const String kAppReleaseLabel = 'pre-release1.3.1';
+const String kFirmwareDefaultVersion = 'pre-release1.3.1';
 const String kDefaultAlertBotUrl = String.fromEnvironment(
   'ALERT_BOT_URL',
   defaultValue: 'https://hearth-alert-bot.onrender.com',
