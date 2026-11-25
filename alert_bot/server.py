@@ -52,7 +52,13 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        if should_poll:
+        if cfg.has_telegram and cfg.telegram_webhook_base_url:
+            wh_url = f"{cfg.telegram_webhook_base_url}/api/telegram/webhook"
+            res = await disp.telegram.set_webhook(wh_url, secret_token=cfg.telegram_webhook_secret)
+            logger.info("Telegram webhook mode configured (%s): ok=%s", wh_url, res.get("ok"))
+        elif should_poll:
+            if cfg.has_telegram:
+                await disp.telegram.delete_webhook()
             poller.start()
         yield
         await poller.stop()
@@ -257,6 +263,18 @@ def create_app(
         if not rec:
             raise HTTPException(status_code=404, detail="Alert not found")
         return {"ok": True, "alert": rec.model_dump()}
+
+    @app.post("/api/telegram/webhook", include_in_schema=False)
+    async def telegram_webhook(
+        update: dict[str, Any],
+        x_telegram_bot_api_secret_token: str | None = Header(
+            default=None, alias="X-Telegram-Bot-Api-Secret-Token"
+        ),
+    ) -> dict[str, Any]:
+        if cfg.telegram_webhook_secret and x_telegram_bot_api_secret_token != cfg.telegram_webhook_secret:
+            raise HTTPException(status_code=401, detail="Invalid Telegram webhook secret")
+        await poller.handle_update(update)
+        return {"ok": True}
 
     @app.post("/api/auth/otp/send", dependencies=[Depends(verify_api_key)])
     async def send_email_otp(body: OtpSendRequest) -> dict[str, Any]:

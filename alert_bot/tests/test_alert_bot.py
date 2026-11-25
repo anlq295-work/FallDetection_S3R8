@@ -463,3 +463,45 @@ def test_targeted_channel_and_recipient_test_buttons(tmp_path: Path) -> None:
         assert call_deliveries[0]["provider"] == "twilio_voice"
         twilio_call_req = next(c for c in calls if "Calls.json" in str(c["url"]))
         assert "Google.vi-VN-Standard-A" in str(twilio_call_req["body"])
+
+
+def test_telegram_webhook_mode_for_render(tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    mock_client = httpx.AsyncClient(transport=_make_mock_transport(calls))
+
+    cfg = BotConfig(
+        data_file=str(tmp_path / "settings.json"),
+        telegram_bot_token="123456:TEST_TOKEN",
+        telegram_webhook_base_url="https://hearth-alert-bot.onrender.com",
+        telegram_webhook_secret="wh_secret_123",
+    )
+    store = SettingsStore(cfg.data_file)
+    dispatcher = AlertDispatcher(cfg, store, http_client=mock_client)
+    app = create_app(config=cfg, store=store, dispatcher=dispatcher, enable_poller=False)
+
+    with TestClient(app) as tc:
+        # Startup registered setWebhook automatically
+        assert any("setWebhook" in str(c["url"]) for c in calls)
+
+        # Wrong secret rejected
+        bad = tc.post(
+            "/api/telegram/webhook",
+            headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"},
+            json={"message": {"text": "/start", "chat": {"id": 777}}},
+        )
+        assert bad.status_code == 401
+
+        # Valid webhook registers recipient
+        ok = tc.post(
+            "/api/telegram/webhook",
+            headers={"X-Telegram-Bot-Api-Secret-Token": "wh_secret_123"},
+            json={
+                "message": {
+                    "text": "/register An 0912345678",
+                    "chat": {"id": 777888},
+                    "from": {"first_name": "An", "username": "an_test"},
+                }
+            },
+        )
+        assert ok.status_code == 200
+        assert any(r.telegram_chat_id == "777888" and r.phone == "0912345678" for r in store.enabled_recipients())

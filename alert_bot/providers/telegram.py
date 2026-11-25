@@ -111,6 +111,28 @@ class TelegramProvider:
         except Exception as exc:
             return {"ok": False, "description": str(exc)}
 
+    async def set_webhook(self, url: str, secret_token: str = "") -> dict[str, Any]:
+        if not self.configured:
+            return {"ok": False, "description": "TELEGRAM_BOT_TOKEN not configured"}
+        payload: dict[str, Any] = {
+            "url": url,
+            "allowed_updates": ["message", "callback_query"],
+        }
+        if secret_token:
+            payload["secret_token"] = secret_token
+        try:
+            return await self._post("setWebhook", payload, timeout=10.0)
+        except Exception as exc:
+            return {"ok": False, "description": str(exc)}
+
+    async def delete_webhook(self) -> dict[str, Any]:
+        if not self.configured:
+            return {"ok": False}
+        try:
+            return await self._post("deleteWebhook", {}, timeout=8.0)
+        except Exception as exc:
+            return {"ok": False, "description": str(exc)}
+
     async def get_updates(self, offset: int | None = None, timeout: int = 25) -> list[dict[str, Any]]:
         if not self.configured:
             return []

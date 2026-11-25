@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: hearth-alert-bot
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: alert_bot
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_DEFAULT_CHAT_IDS
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: CALLMEBOT_ENABLED
+        value: "true"
+      - key: CALLMEBOT_LANG
+        value: "vi-VN-Standard-A"
+      - key: CALLMEBOT_REPEAT
+        value: "3"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: TWILIO_VOICE_LANG
+        value: "vi-VN"
+      - key: TWILIO_VOICE_NAME
+        value: "Google.vi-VN-Standard-A"
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: SENDGRID_FROM_NAME
+        value: "Hearth Fall Guard"
+      - key: DEFAULT_COUNTRY_CODE
+        value: "+84"
+      - key: ALERT_BOT_API_KEY
+        sync: false

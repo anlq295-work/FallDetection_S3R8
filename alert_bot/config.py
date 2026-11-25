@@ -32,6 +32,8 @@ class BotConfig:
     telegram_bot_token: str = ""
     telegram_default_chat_ids: tuple[str, ...] = ()
     telegram_polling_enabled: bool = True
+    telegram_webhook_base_url: str = ""
+    telegram_webhook_secret: str = ""
 
     # CallMeBot (Free Telegram Voice Call)
     callmebot_enabled: bool = True
@@ -72,9 +74,16 @@ class BotConfig:
 
     @classmethod
     def from_env(cls) -> "BotConfig":
+        # Render / Railway / Fly.io automatically inject PORT; local uses ALERT_BOT_PORT
+        port_raw = (os.getenv("PORT") or os.getenv("ALERT_BOT_PORT") or "8080").strip()
+        webhook_base = (
+            os.getenv("TELEGRAM_WEBHOOK_BASE_URL")
+            or os.getenv("RENDER_EXTERNAL_URL")
+            or ""
+        ).strip().rstrip("/")
         return cls(
             host=os.getenv("ALERT_BOT_HOST", "0.0.0.0"),
-            port=int(os.getenv("ALERT_BOT_PORT", "8080")),
+            port=int(port_raw),
             api_key=os.getenv("ALERT_BOT_API_KEY", "").strip(),
             data_file=os.getenv("ALERT_BOT_DATA_FILE", str(_BOT_DIR / "data" / "settings.json")),
             alert_cooldown_sec=int(os.getenv("ALERT_COOLDOWN_SEC", "15")),
@@ -83,6 +92,8 @@ class BotConfig:
             telegram_default_chat_ids=tuple(_split_csv(os.getenv("TELEGRAM_DEFAULT_CHAT_IDS", ""))),
             telegram_polling_enabled=os.getenv("TELEGRAM_POLLING_ENABLED", "true").lower()
             not in ("0", "false", "no"),
+            telegram_webhook_base_url=webhook_base,
+            telegram_webhook_secret=os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip(),
             callmebot_enabled=os.getenv("CALLMEBOT_ENABLED", "true").lower()
             not in ("0", "false", "no"),
             callmebot_default_users=tuple(_split_csv(os.getenv("CALLMEBOT_DEFAULT_USERS", ""))),
