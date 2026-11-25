@@ -1,5 +1,6 @@
 #include "alert_system.h"
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -401,10 +402,13 @@ bool AlertSystem::sendTelegramAlert(const String& botToken, const String& chatId
 
     if (singleId.length() > 0) {
       idCount++;
+      esp_task_wdt_reset();
+      WiFiClientSecure secureClient;
+      secureClient.setInsecure();
       HTTPClient http;
       String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
-      http.begin(url);
-      http.setTimeout(5000);
+      http.begin(secureClient, url);
+      http.setTimeout(6000);
       http.addHeader("Content-Type", "application/json");
 
       StaticJsonDocument<512> doc;
@@ -583,8 +587,19 @@ bool AlertSystem::sendAlertBotWebhook(const String& botBaseUrl, const String& ap
 
   esp_task_wdt_reset();
   HTTPClient http;
-  http.begin(url);
-  http.setTimeout(7000);
+  WiFiClientSecure secureClient;
+  bool began = false;
+  if (url.startsWith("https://")) {
+    secureClient.setInsecure();
+    began = http.begin(secureClient, url);
+  } else {
+    began = http.begin(url);
+  }
+  if (!began) {
+    Serial.printf("[ALERT_BOT] Khong khoi tao duoc ket noi toi %s\n", url.c_str());
+    return false;
+  }
+  http.setTimeout(8000);
   http.addHeader("Content-Type", "application/json");
   if (apiKey.length() > 0) {
     http.addHeader("X-API-Key", apiKey);

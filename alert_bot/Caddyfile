@@ -1,0 +1,4 @@
+{$BOT_DOMAIN} {
+    encode gzip
+    reverse_proxy hearth-alert-bot:8080
+}
