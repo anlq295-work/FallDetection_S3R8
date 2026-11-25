@@ -58,11 +58,14 @@ class HearthController extends ChangeNotifier {
   List<BlackboxEvent> _blackboxEvents = [];
   String _lastHardwareStatus = '';
   String? _activeRoomIdForHardware;
+  final Map<String, int> _presenceHits = {};
+  final Map<String, int> _absenceHits = {};
 
   // Active fall alert (S7)
   ActiveFallAlert? _activeAlert;
   int _escalationSecondsLeft = 0;
   Timer? _escalationTimer;
+  final Timer _heartbeatWatchdog;
   bool _phoneOfflineSimulation = false;
 
   StreamSubscription<TelemetrySnapshot>? _telemSub;
@@ -173,6 +176,21 @@ class HearthController extends ChangeNotifier {
 
   HearthController() {
     _bindHardwareStreams();
+    _heartbeatWatchdog = Timer.periodic(const Duration(seconds: 3), (_) => _expireStaleHardware());
+  }
+
+  void _expireStaleHardware() {
+    if (_activeRoomIdForHardware == null || hardware.isLanConnected || hardware.isBleConnected) {
+      return;
+    }
+    final idx = _rooms.indexWhere((r) => r.id == _activeRoomIdForHardware);
+    if (idx < 0) return;
+    final room = _rooms[idx];
+    if (room.status != RoomStatus.offline &&
+        DateTime.now().difference(room.lastCheckedAt) > const Duration(seconds: 8)) {
+      _rooms[idx] = room.copyWith(status: RoomStatus.offline);
+      notifyListeners();
+    }
   }
 
   void _bindHardwareStreams() {
@@ -186,17 +204,35 @@ class HearthController extends ChangeNotifier {
             : 0;
         final targetIdx = idx >= 0 ? idx : 0;
         final room = _rooms[targetIdx];
-        final newStatus = snap.isPersonPresent ? RoomStatus.occupied : RoomStatus.empty;
+        // A BLE telemetry packet alone does not prove Wi-Fi connectivity.
+        // Firmware reports 0.0.0.0 until the station has a valid IP.
+        final hasWifi = snap.ipAddress.isNotEmpty && snap.ipAddress != '0.0.0.0';
+        final present = snap.isPersonPresent;
+        final hits = (_presenceHits[room.id] ?? 0);
+        final absences = (_absenceHits[room.id] ?? 0);
+        final confirmedPresent = present ? hits + 1 >= 2 : false;
+        final confirmedEmpty = present ? false : absences + 1 >= 3;
+        if (present) {
+          _presenceHits[room.id] = hits + 1;
+          _absenceHits[room.id] = 0;
+        } else {
+          _absenceHits[room.id] = absences + 1;
+          _presenceHits[room.id] = 0;
+        }
+        final liveStatus = confirmedPresent
+            ? RoomStatus.occupied
+            : (confirmedEmpty ? RoomStatus.empty : room.status);
+        final newStatus = !hasWifi ? RoomStatus.offline : liveStatus;
         _rooms[targetIdx] = room.copyWith(
           status: newStatus,
           lastCheckedAt: DateTime.now(),
-          lastMovementAt: snap.isPersonPresent ? DateTime.now() : room.lastMovementAt,
+          lastMovementAt: present ? DateTime.now() : room.lastMovementAt,
           wifiRssi: snap.rssi != 0 ? snap.rssi : room.wifiRssi,
           lanIp: snap.ipAddress != '0.0.0.0' ? snap.ipAddress : room.lanIp,
           firmwareVersion: snap.firmwareVersion,
           sensorId: snap.deviceId.isNotEmpty ? snap.deviceId : room.sensorId,
           latestTelemetry: snap,
-          clearOfflineSince: true,
+          clearOfflineSince: hasWifi,
         );
 
         // Automatically trigger S7 Fall Alert unless Guest/Privacy Pause Mode is active
@@ -218,6 +254,9 @@ class HearthController extends ChangeNotifier {
 
     _statusSub = hardware.statusStream.listen((msg) {
       _lastHardwareStatus = msg;
+      if (msg == 'BLE_DISCONNECTED' && !hardware.isLanConnected) {
+        _expireStaleHardware();
+      }
       notifyListeners();
     });
 
@@ -279,7 +318,13 @@ class HearthController extends ChangeNotifier {
     if (roomsRaw != null) {
       try {
         final decoded = jsonDecode(roomsRaw) as List;
-        _rooms = decoded.whereType<Map<String, dynamic>>().map(HearthRoom.fromJson).toList();
+        // Persisted occupancy is historical data. Require a fresh live packet
+        // before showing a room as online or occupied after app restart.
+        _rooms = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(HearthRoom.fromJson)
+            .map((room) => room.copyWith(status: RoomStatus.offline))
+            .toList();
       } catch (_) {}
     }
 
@@ -1132,6 +1177,7 @@ class HearthController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _heartbeatWatchdog.cancel();
     _escalationTimer?.cancel();
     _telemSub?.cancel();
     _statusSub?.cancel();

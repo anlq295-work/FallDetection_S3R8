@@ -50,6 +50,7 @@ class Esp32HardwareService {
   StreamSubscription<List<int>>? _telemetrySub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
   Timer? _lanPollTimer;
+  int _lanPollFailures = 0;
 
   String? _activeLanIp;
   ConnectionTransport _transport = ConnectionTransport.disconnected;
@@ -229,6 +230,12 @@ class Esp32HardwareService {
           final snap = TelemetrySnapshot.fromJson(decoded);
           if (snap.ipAddress.isNotEmpty && snap.ipAddress != '0.0.0.0') {
             _activeLanIp = snap.ipAddress;
+          } else {
+            // Do not keep an old IP after the ESP32 loses Wi-Fi.
+            _activeLanIp = null;
+            if (!isBleConnected) {
+              _transport = ConnectionTransport.disconnected;
+            }
           }
           _telemetryStream.add(snap);
         }
@@ -412,13 +419,21 @@ class Esp32HardwareService {
   /// Starts periodic Wi-Fi LAN HTTP telemetry polling when operating away from BLE range.
   void startLanPolling(String ip) {
     _activeLanIp = ip;
+    _lanPollFailures = 0;
     _lanPollTimer?.cancel();
     if (ip.isEmpty || ip == '0.0.0.0') return;
     _lanPollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       final snap = await fetchLanTelemetry(ip);
       if (snap != null) {
+        _lanPollFailures = 0;
         if (!isBleConnected) _transport = ConnectionTransport.wifiLan;
         _telemetryStream.add(snap);
+      } else {
+        _lanPollFailures++;
+        if (_lanPollFailures >= 3) {
+          _activeLanIp = null;
+          if (!isBleConnected) _transport = ConnectionTransport.disconnected;
+        }
       }
     });
   }

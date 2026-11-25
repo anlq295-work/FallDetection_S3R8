@@ -118,12 +118,12 @@ String getSystemTelemetryJson() {
   String sensorId = WiFi.macAddress();
   sensorId.replace(":", "");
 
-  char telemBuf[256];
+  char telemBuf[384];
   snprintf(telemBuf, sizeof(telemBuf),
-    "{\"sid\":\"%s\",\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"hb\":%lu,\"ver\":\"%s\"}",
+    "{\"sid\":\"%s\",\"st\":\"%s\",\"cls\":\"%s\",\"cf\":%.2f,\"h\":%d,\"m\":%d,\"s\":%d,\"rd\":%d,\"dr\":%.0f,\"pir\":%d,\"ip\":\"%s\",\"rssi\":%d,\"uptime\":%lu,\"hb\":%lu,\"ver\":\"%s\"}",
     sensorId.c_str(),
     stateNames[currentState], classNames[lastPredictedClass], lastConfidence,
-    h, m, s, lastFeatures[5],
+    h, m, s, (int)sensorMgr.getLatestSample().radar_target_dist_cm, lastFeatures[5],
     (int)lastPirState, (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString().c_str() : "0.0.0.0",
     (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : 0, (millis() / 1000), (millis() / 1000), FIRMWARE_VERSION);
   return String(telemBuf);

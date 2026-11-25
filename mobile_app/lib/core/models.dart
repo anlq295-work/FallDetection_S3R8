@@ -157,6 +157,7 @@ class TelemetrySnapshot {
   final int tofHeightMm;
   final int radarMotion;
   final int radarStatic;
+  final int radarTargetDistanceCm;
   final double dropRateMmS;
   final bool pirActive;
   final String ipAddress;
@@ -174,6 +175,7 @@ class TelemetrySnapshot {
     this.tofHeightMm = 1480,
     this.radarMotion = 8,
     this.radarStatic = 24,
+    this.radarTargetDistanceCm = 0,
     this.dropRateMmS = 0,
     this.pirActive = false,
     this.ipAddress = '0.0.0.0',
@@ -193,6 +195,7 @@ class TelemetrySnapshot {
       tofHeightMm: ((json['h'] as num?) ?? 0).toInt(),
       radarMotion: ((json['m'] as num?) ?? 0).toInt(),
       radarStatic: ((json['s'] as num?) ?? 0).toInt(),
+      radarTargetDistanceCm: ((json['rd'] as num?) ?? 0).toInt(),
       dropRateMmS: ((json['dr'] as num?) ?? 0).toDouble(),
       pirActive: (json['pir'] == 1 || json['pir'] == true),
       ipAddress: (json['ip'] ?? '0.0.0.0').toString(),
@@ -205,7 +208,9 @@ class TelemetrySnapshot {
 
   bool get isFallAlert => state == 'ALERT' || state == 'PRE_ALARM';
   bool get isPersonPresent =>
-      pirActive || radarMotion >= 12 || radarStatic >= 15 || (tofHeightMm > 80 && tofHeightMm < 2400);
+      pirActive ||
+      radarMotion >= 12 ||
+      (radarStatic >= 15 && radarTargetDistanceCm > 0 && radarTargetDistanceCm < 400);
 }
 
 class BlackboxEvent {
