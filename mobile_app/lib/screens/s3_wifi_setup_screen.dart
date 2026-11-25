@@ -63,13 +63,20 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
       _errorText = null;
     });
 
-    final ok = await widget.ctrl.hardware.provisionWifi(ssid, pass);
+    final ok = await widget.ctrl.hardware.provisionWifi(
+      ssid,
+      pass,
+      sensor: widget.sensor,
+    );
     if (!mounted) return;
     if (!ok) {
+      final detail = widget.ctrl.hardware.lastBleError;
       setState(() {
         _connecting = false;
         _progressStage = 0;
-        _errorText = s.s3WrongPassword(ssid);
+        _errorText = detail != null && detail.isNotEmpty
+            ? '${s.s3WrongPassword(ssid)} ($detail)'
+            : s.s3WrongPassword(ssid);
       });
       _passFocus.requestFocus();
       return;

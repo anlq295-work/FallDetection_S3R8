@@ -30,6 +30,9 @@ static uint32_t telemetryConsoleCount = 0;
 static bool rebootFlag = false;
 static bool contactConfigChanged = false;
 static String pendingCommand = "";
+static bool pendingWifiUpdate = false;
+static String pendingWifiSsid = "";
+static String pendingWifiPass = "";
 static portMUX_TYPE cmdMux = portMUX_INITIALIZER_UNLOCKED;
 
 BleProvisioning bleProvision;
@@ -51,17 +54,22 @@ class ServerCB: public BLEServerCallbacks {
 class WifiCB: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pChar) {
     String val = pChar->getValue().c_str();
+    val.trim();
     if (val.length() > 0) {
       StaticJsonDocument<256> doc;
       DeserializationError err = deserializeJson(doc, val);
-      if (!err) {
-        prefs.begin("sys_cfg", false);
-        if (doc.containsKey("ssid")) prefs.putString("wifi_ssid", doc["ssid"].as<String>());
-        if (doc.containsKey("pass")) prefs.putString("wifi_pass", doc["pass"].as<String>());
-        prefs.end();
-
-        bleProvision.updateStatus("WIFI_SAVED_REBOOTING");
-        rebootFlag = true;
+      if (!err && doc.containsKey("ssid")) {
+        String newSsid = doc["ssid"].as<String>();
+        String newPass = doc.containsKey("pass") ? doc["pass"].as<String>() : "";
+        portENTER_CRITICAL(&cmdMux);
+        pendingWifiSsid = newSsid;
+        pendingWifiPass = newPass;
+        pendingWifiUpdate = true;
+        portEXIT_CRITICAL(&cmdMux);
+        Serial.printf("[BLE] Da nhan cau hinh Wi-Fi tu App (SSID=%s)\n", newSsid.c_str());
+      } else {
+        Serial.printf("[BLE] Loi parse JSON Wi-Fi (%u bytes): %s\n",
+                      (unsigned)val.length(), err ? err.c_str() : "missing ssid");
       }
     }
   }
@@ -121,12 +129,13 @@ void BleProvisioning::init(const char* deviceName) {
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
   BLECharacteristic* pWifiChar = pService->createCharacteristic(
-                      CHAR_WIFI_UUID, BLECharacteristic::PROPERTY_WRITE);
+                      CHAR_WIFI_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pWifiChar->setCallbacks(new WifiCB());
 
   pContactChar = pService->createCharacteristic(
                       CHAR_CONTACT_UUID, 
-                      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+                      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pContactChar->setCallbacks(new ContactCB());
 
   pStatusChar = pService->createCharacteristic(
@@ -202,6 +211,30 @@ bool BleProvisioning::checkAndClearCommand(String& cmdOut) {
     cmdOut = pendingCommand;
     pendingCommand = "";
     portEXIT_CRITICAL(&cmdMux);
+    return true;
+  }
+  portEXIT_CRITICAL(&cmdMux);
+  return false;
+}
+
+bool BleProvisioning::checkAndClearPendingWifi(String& ssidOut, String& passOut) {
+  portENTER_CRITICAL(&cmdMux);
+  if (pendingWifiUpdate) {
+    ssidOut = pendingWifiSsid;
+    passOut = pendingWifiPass;
+    pendingWifiUpdate = false;
+    pendingWifiSsid = "";
+    pendingWifiPass = "";
+    portEXIT_CRITICAL(&cmdMux);
+
+    prefs.begin("sys_cfg", false);
+    prefs.putString("wifi_ssid", ssidOut);
+    prefs.putString("wifi_pass", passOut);
+    prefs.end();
+
+    updateStatus("WIFI_SAVED_REBOOTING");
+    rebootFlag = true;
+    Serial.printf("[WIFI] Da luu SSID=%s vao NVS Flash, chuan bi khoi dong lai...\n", ssidOut.c_str());
     return true;
   }
   portEXIT_CRITICAL(&cmdMux);

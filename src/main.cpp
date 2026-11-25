@@ -347,6 +347,12 @@ void processBleCommands() {
     reloadAllCredentials();
   }
 
+  String newSsid, newPass;
+  if (bleProvision.checkAndClearPendingWifi(newSsid, newPass)) {
+    wifiSSID = newSsid;
+    wifiPass = newPass;
+  }
+
   String cmd;
   if (bleProvision.checkAndClearCommand(cmd)) {
     executeSystemCommand(cmd);
@@ -354,7 +360,8 @@ void processBleCommands() {
 
   if (bleProvision.isRebootRequested()) {
     Serial.println("[SYSTEM] Nhan yeu cau khoi dong lai tu BLE...");
-    delay(800);
+    esp_task_wdt_reset();
+    delay(1200);
     ESP.restart();
   }
 }
@@ -567,7 +574,10 @@ void loop() {
   handleSerialCommands();
 
   // 3. Duy trì kết nối Wi-Fi ngầm (non-blocking) & Web Server API
-  alertSys.maintainWiFi(wifiSSID, wifiPass);
+  // Tạm dừng quét lại Wi-Fi khi điện thoại đang kết nối BLE để tránh xung đột anten 2.4 GHz làm rớt BLE.
+  if (!bleProvision.isClientConnected()) {
+    alertSys.maintainWiFi(wifiSSID, wifiPass);
+  }
   static bool lastWifiConnectedState = false;
   bool isWifiNow = (WiFi.status() == WL_CONNECTED);
   if (isWifiNow) {

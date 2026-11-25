@@ -37,6 +37,8 @@ class GitHubReleaseInfo {
 /// Manages real BLE GATT + Wi-Fi LAN HTTP API + 3-way OTA for ESP32-S3 FallDetection_S3R8.
 class Esp32HardwareService {
   BluetoothDevice? _connectedDevice;
+  DiscoveredSensor? _lastSensor;
+  String? _lastBleError;
   BluetoothCharacteristic? _wifiChar;
   BluetoothCharacteristic? _contactChar;
   BluetoothCharacteristic? _statusChar;
@@ -65,6 +67,7 @@ class Esp32HardwareService {
   bool get isLanConnected => _activeLanIp != null && _activeLanIp!.isNotEmpty && _activeLanIp != '0.0.0.0';
   String? get activeLanIp => _activeLanIp;
   String? get connectedDeviceId => _connectedDevice?.remoteId.str;
+  String? get lastBleError => _lastBleError;
 
   bool get isMobileBleSupported {
     if (kIsWeb) return false;
@@ -129,6 +132,8 @@ class Esp32HardwareService {
 
   /// Pairs and discovers all 6 GATT characteristics on ESP32-S3.
   Future<bool> connectBleSensor(DiscoveredSensor sensor) async {
+    _lastSensor = sensor;
+    _lastBleError = null;
     if (sensor.isSimulated || sensor.rawBleDevice is! BluetoothDevice) {
       _transport = ConnectionTransport.simulated;
       return true;
@@ -138,9 +143,11 @@ class Esp32HardwareService {
     try {
       await disconnectBle();
       await device.connect(license: License.nonprofit, timeout: const Duration(seconds: 12), autoConnect: false);
-      try {
-        await device.requestMtu(512);
-      } catch (_) {}
+      if (Platform.isAndroid) {
+        try {
+          await device.requestMtu(512);
+        } catch (_) {}
+      }
 
       final services = await device.discoverServices();
       _wifiChar = null;
@@ -248,16 +255,69 @@ class Esp32HardwareService {
   }
 
   /// Writes Wi-Fi SSID & Password to ESP32-S3 via BLE CHAR_WIFI_UUID.
-  Future<bool> provisionWifi(String ssid, String password) async {
-    if (_wifiChar == null) {
+  Future<bool> provisionWifi(String ssid, String password, {DiscoveredSensor? sensor}) async {
+    _lastBleError = null;
+    final targetSensor = sensor ?? _lastSensor;
+    if (targetSensor != null && targetSensor.isSimulated) {
       await Future<void>.delayed(const Duration(milliseconds: 450));
       return true;
     }
+
+    // Auto-reconnect BLE if it dropped while user was typing Wi-Fi credentials.
+    if ((!isBleConnected || _wifiChar == null) && targetSensor != null && !targetSensor.isSimulated) {
+      final reconnected = await connectBleSensor(targetSensor);
+      if (!reconnected) {
+        _lastBleError = 'BLE disconnected and reconnect failed';
+        return false;
+      }
+    }
+
+    if (_wifiChar == null) {
+      if (targetSensor == null) {
+        await Future<void>.delayed(const Duration(milliseconds: 450));
+        return true;
+      }
+      _lastBleError = 'BLE Wi-Fi characteristic not found';
+      return false;
+    }
+
+    final payloadBytes = utf8.encode(jsonEncode({'ssid': ssid, 'pass': password}));
     try {
-      final payload = jsonEncode({'ssid': ssid, 'pass': password});
-      await _wifiChar!.write(utf8.encode(payload), withoutResponse: false);
+      await _wifiChar!.write(
+        payloadBytes,
+        withoutResponse: false,
+        allowLongWrite: true,
+      );
       return true;
-    } catch (_) {
+    } catch (e) {
+      _lastBleError = e.toString();
+      // Fallback 1: retry once after reconnecting BLE (handles transient 2.4 GHz drop).
+      if (targetSensor != null && !targetSensor.isSimulated) {
+        final reconnected = await connectBleSensor(targetSensor);
+        if (reconnected && _wifiChar != null) {
+          try {
+            await _wifiChar!.write(
+              payloadBytes,
+              withoutResponse: false,
+              allowLongWrite: true,
+            );
+            _lastBleError = null;
+            return true;
+          } catch (e2) {
+            _lastBleError = e2.toString();
+            // Fallback 2: write without response if characteristic supports it.
+            if (_wifiChar!.properties.writeWithoutResponse) {
+              try {
+                await _wifiChar!.write(payloadBytes, withoutResponse: true);
+                _lastBleError = null;
+                return true;
+              } catch (e3) {
+                _lastBleError = e3.toString();
+              }
+            }
+          }
+        }
+      }
       return false;
     }
   }
@@ -294,7 +354,11 @@ class Esp32HardwareService {
 
     if (_contactChar != null && isBleConnected) {
       try {
-        await _contactChar!.write(utf8.encode(encoded), withoutResponse: false);
+        await _contactChar!.write(
+          utf8.encode(encoded),
+          withoutResponse: false,
+          allowLongWrite: true,
+        );
         return true;
       } catch (_) {}
     }

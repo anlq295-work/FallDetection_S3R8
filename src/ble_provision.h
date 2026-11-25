@@ -27,6 +27,7 @@ public:
   bool isClientConnected();
   bool isRebootRequested();
   bool checkAndClearCommand(String& cmdOut);
+  bool checkAndClearPendingWifi(String& ssidOut, String& passOut);
 
   // Ghi nhật ký sự kiện vào bộ nhớ Flash NVS (Hộp đen sự kiện)
   void logFallEvent(FallEventType type, float velocity, uint8_t motion, uint16_t dist);
