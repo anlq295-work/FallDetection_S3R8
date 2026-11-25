@@ -234,6 +234,11 @@ void BleProvisioning::loadAlertBotConfig(String& botUrl, String& botApiKey, Stri
   telegramUsers = prefs.isKey("tg_user") ? prefs.getString("tg_user") : "";
   channelMask   = prefs.getUChar("ch_mask", CH_MASK_ALL);
   prefs.end();
+
+  // Auto-migrate legacy local LAN dev URL to the cloud production default.
+  if (botUrl.length() == 0 || botUrl == "http://192.168.80.123:8080") {
+    botUrl = String(DEFAULT_ALERT_BOT_URL);
+  }
 }
 
 bool BleProvisioning::applyContactConfigJson(const String& jsonStr) {

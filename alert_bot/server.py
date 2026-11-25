@@ -55,7 +55,10 @@ def create_app(
         if cfg.has_telegram and cfg.telegram_webhook_base_url:
             wh_url = f"{cfg.telegram_webhook_base_url}/api/telegram/webhook"
             res = await disp.telegram.set_webhook(wh_url, secret_token=cfg.telegram_webhook_secret)
-            logger.info("Telegram webhook mode configured (%s): ok=%s", wh_url, res.get("ok"))
+            if res.get("ok"):
+                logger.info("Telegram webhook mode configured (%s): ok=True", wh_url)
+            else:
+                logger.error("Telegram setWebhook failed (%s): %s", wh_url, res)
         elif should_poll:
             if cfg.has_telegram:
                 await disp.telegram.delete_webhook()
@@ -186,8 +189,14 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, Any]:
         settings = st.get_settings()
+        tg_mode = (
+            "webhook"
+            if (cfg.has_telegram and cfg.telegram_webhook_base_url)
+            else ("polling" if (cfg.has_telegram and should_poll) else "disabled")
+        )
         return {
             "status": "ok",
+            "telegram_mode": tg_mode,
             "providers": cfg.active_providers(),
             "dispatch_mode": settings.dispatch_mode,
             "channels": settings.channels.model_dump(),

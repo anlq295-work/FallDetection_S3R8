@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
@@ -81,6 +83,12 @@ class BotConfig:
             or os.getenv("RENDER_EXTERNAL_URL")
             or ""
         ).strip().rstrip("/")
+        raw_webhook_secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+        if raw_webhook_secret and not re.fullmatch(r"[A-Za-z0-9_-]{1,256}", raw_webhook_secret):
+            # Render generateValue: true emits base64 (+, /, =), which Telegram setWebhook rejects.
+            webhook_secret = hashlib.sha256(raw_webhook_secret.encode("utf-8")).hexdigest()
+        else:
+            webhook_secret = raw_webhook_secret
         return cls(
             host=os.getenv("ALERT_BOT_HOST", "0.0.0.0"),
             port=int(port_raw),
@@ -93,7 +101,7 @@ class BotConfig:
             telegram_polling_enabled=os.getenv("TELEGRAM_POLLING_ENABLED", "true").lower()
             not in ("0", "false", "no"),
             telegram_webhook_base_url=webhook_base,
-            telegram_webhook_secret=os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip(),
+            telegram_webhook_secret=webhook_secret,
             callmebot_enabled=os.getenv("CALLMEBOT_ENABLED", "true").lower()
             not in ("0", "false", "no"),
             callmebot_default_users=tuple(_split_csv(os.getenv("CALLMEBOT_DEFAULT_USERS", ""))),

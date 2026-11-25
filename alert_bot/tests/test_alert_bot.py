@@ -505,3 +505,13 @@ def test_telegram_webhook_mode_for_render(tmp_path: Path) -> None:
         )
         assert ok.status_code == 200
         assert any(r.telegram_chat_id == "777888" and r.phone == "0912345678" for r in store.enabled_recipients())
+
+
+def test_render_base64_webhook_secret_sanitized(monkeypatch) -> None:
+    import re
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "abc+def/ghi===")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://hearth-alert-bot.onrender.com/")
+    cfg = BotConfig.from_env()
+    assert cfg.telegram_webhook_base_url == "https://hearth-alert-bot.onrender.com"
+    assert re.fullmatch(r"[A-Za-z0-9_-]{1,256}", cfg.telegram_webhook_secret)
+    assert cfg.telegram_webhook_secret != "abc+def/ghi==="

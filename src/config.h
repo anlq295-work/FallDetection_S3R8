@@ -73,7 +73,7 @@
 // Cấu hình SMS Gateway & Multi-Channel Alert Bot qua Wi-Fi
 #define DEFAULT_SMS_GATEWAY_URL     "https://api.speedsms.vn/index.php/sms/send"
 #define DEFAULT_SMS_TOKEN           "YOUR_DEFAULT_SMS_ACCESS_TOKEN"
-#define DEFAULT_ALERT_BOT_URL       "http://192.168.80.123:8080"
+#define DEFAULT_ALERT_BOT_URL       "https://hearth-alert-bot.onrender.com"
 #define DEFAULT_ALERT_BOT_API_KEY   ""
 
 // Bitmask bật/tắt kênh cảnh báo từ xa (Telegram + Call, không dùng SMS)

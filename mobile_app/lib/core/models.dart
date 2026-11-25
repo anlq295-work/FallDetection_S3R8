@@ -8,7 +8,7 @@ const String kAppReleaseLabel = 'pre-release1.3.0';
 const String kFirmwareDefaultVersion = 'pre-release1.3.0';
 const String kDefaultAlertBotUrl = String.fromEnvironment(
   'ALERT_BOT_URL',
-  defaultValue: 'http://192.168.80.123:8080',
+  defaultValue: 'https://hearth-alert-bot.onrender.com',
 );
 const String kDefaultAlertBotApiKey = String.fromEnvironment(
   'ALERT_BOT_API_KEY',

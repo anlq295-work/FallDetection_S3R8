@@ -250,7 +250,15 @@ class HearthController extends ChangeNotifier {
     _telegramBotToken = prefs.getString('hearth_tg_token') ?? '';
     _telegramChatId = prefs.getString('hearth_tg_chat') ?? '';
     final savedBotUrl = (prefs.getString('hearth_bot_url') ?? '').trim();
-    _alertBotUrl = savedBotUrl.isNotEmpty ? savedBotUrl : kDefaultAlertBotUrl;
+    // Auto-migrate legacy local LAN dev URL to the cloud production default.
+    if (savedBotUrl.isEmpty ||
+        savedBotUrl == 'http://192.168.80.123:8080' ||
+        savedBotUrl == 'http://127.0.0.1:8080') {
+      _alertBotUrl = kDefaultAlertBotUrl;
+      await prefs.setString('hearth_bot_url', _alertBotUrl);
+    } else {
+      _alertBotUrl = savedBotUrl;
+    }
     final savedBotKey = (prefs.getString('hearth_bot_key') ?? '').trim();
     _alertBotApiKey = savedBotKey.isNotEmpty ? savedBotKey : kDefaultAlertBotApiKey;
     _emergencyServiceNumber =
