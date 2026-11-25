@@ -654,28 +654,42 @@ class HearthBrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = HearthPalette.of(context);
+    final radius = BorderRadius.circular(size * 0.24);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.30),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            p.accent,
-            Color.lerp(p.accent, const Color(0xFF2FA8A2), 0.35)!,
-          ],
-        ),
+        borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: p.accent.withValues(alpha: 0.32),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: p.accent.withValues(alpha: 0.28),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Icon(Icons.home_rounded, color: Colors.white, size: size * 0.56),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Image.asset(
+          'assets/images/app_icon.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  p.accent,
+                  Color.lerp(p.accent, const Color(0xFF2FA8A2), 0.35)!,
+                ],
+              ),
+            ),
+            child: Icon(Icons.home_rounded, color: Colors.white, size: size * 0.56),
+          ),
+        ),
+      ),
     );
   }
 }

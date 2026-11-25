@@ -167,7 +167,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 Text(s.appUpdatesTitle, style: Theme.of(c).textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  'Installed App: $kAppReleaseLabel (v${pkg.version} · Build ${pkg.buildNumber})',
+                  'Release: $kAppReleaseLabel\nInstalled version: ${pkg.version} · Build ${pkg.buildNumber}',
                   style: TextStyle(fontSize: 15, color: p.textMuted),
                 ),
                 const SizedBox(height: 12),
@@ -990,7 +990,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     minTileHeight: 60,
                     leading: Icon(Icons.system_update_rounded, color: p.accent),
                     title: Text(s.appUpdatesTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('$kAppReleaseLabel · GitHub Releases OTA'),
+                    subtitle: const Text('Release $kAppReleaseLabel · GitHub Releases OTA'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _checkUpdatesModal,
                   ),

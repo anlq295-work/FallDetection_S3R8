@@ -17,6 +17,10 @@ public:
   BleProvisioning();
   void init(const char* deviceName);
   bool loadCredentials(String& ssid, String& pass, String& phone, String& chatId, String& botToken, uint16_t& floorThresh);
+  void loadAlertBotConfig(String& botUrl, String& botApiKey, String& telegramUsers, uint8_t& channelMask);
+  bool applyContactConfigJson(const String& jsonStr);
+  String getContactConfigJson();
+  bool hasContactConfigChanged();
   void saveFloorThreshold(uint16_t floorMm);
   void updateStatus(const String& statusMsg);
   void sendTelemetry(const String& telemetryJson);

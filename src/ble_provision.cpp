@@ -28,6 +28,7 @@ static bool bleConnected = false;
 static uint32_t telemetryNotifyCount = 0;
 static uint32_t telemetryConsoleCount = 0;
 static bool rebootFlag = false;
+static bool contactConfigChanged = false;
 static String pendingCommand = "";
 static portMUX_TYPE cmdMux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -70,18 +71,7 @@ class ContactCB: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pChar) {
     String val = pChar->getValue().c_str();
     if (val.length() > 0) {
-      StaticJsonDocument<512> doc;
-      DeserializationError err = deserializeJson(doc, val);
-      if (!err) {
-        prefs.begin("sys_cfg", false);
-        if (doc.containsKey("phone")) prefs.putString("emg_phone", doc["phone"].as<String>());
-        if (doc.containsKey("chat_id")) prefs.putString("emg_chat_id", doc["chat_id"].as<String>());
-        if (doc.containsKey("bot_token")) prefs.putString("bot_token", doc["bot_token"].as<String>());
-        if (doc.containsKey("floor_mm")) prefs.putUShort("floor_thresh", doc["floor_mm"].as<uint16_t>());
-        prefs.end();
-
-        bleProvision.updateStatus("CONFIG_UPDATED_OK");
-      }
+      bleProvision.applyContactConfigJson(val);
     }
   }
 };
@@ -158,15 +148,7 @@ void BleProvisioning::init(const char* deviceName) {
                       BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pOtaChar->setCallbacks(new OtaCB());
 
-  prefs.begin("sys_cfg", true);
-  StaticJsonDocument<512> doc;
-  doc["phone"] = prefs.isKey("emg_phone") ? prefs.getString("emg_phone") : "";
-  doc["chat_id"] = prefs.isKey("emg_chat_id") ? prefs.getString("emg_chat_id") : "";
-  doc["floor_mm"] = prefs.getUShort("floor_thresh", FLOOR_HEIGHT_DEFAULT_MM);
-  prefs.end();
-
-  String payload;
-  serializeJson(doc, payload);
+  String payload = getContactConfigJson();
   pContactChar->setValue(payload.c_str());
 
   pService->start();
@@ -243,6 +225,74 @@ bool BleProvisioning::loadCredentials(String& ssid, String& pass, String& phone,
   prefs.end();
 
   return (ssid.length() > 0);
+}
+
+void BleProvisioning::loadAlertBotConfig(String& botUrl, String& botApiKey, String& telegramUsers, uint8_t& channelMask) {
+  prefs.begin("sys_cfg", true);
+  botUrl        = prefs.isKey("bot_url") ? prefs.getString("bot_url") : String(DEFAULT_ALERT_BOT_URL);
+  botApiKey     = prefs.isKey("bot_key") ? prefs.getString("bot_key") : String(DEFAULT_ALERT_BOT_API_KEY);
+  telegramUsers = prefs.isKey("tg_user") ? prefs.getString("tg_user") : "";
+  channelMask   = prefs.getUChar("ch_mask", CH_MASK_ALL);
+  prefs.end();
+}
+
+bool BleProvisioning::applyContactConfigJson(const String& jsonStr) {
+  StaticJsonDocument<1024> doc;
+  DeserializationError err = deserializeJson(doc, jsonStr);
+  if (err) {
+    Serial.printf("[CONFIG] Loi parse JSON cau hinh lien he: %s\n", err.c_str());
+    return false;
+  }
+
+  prefs.begin("sys_cfg", false);
+  if (doc.containsKey("phone"))     prefs.putString("emg_phone", doc["phone"].as<String>());
+  if (doc.containsKey("chat_id"))   prefs.putString("emg_chat_id", doc["chat_id"].as<String>());
+  if (doc.containsKey("bot_token")) prefs.putString("bot_token", doc["bot_token"].as<String>());
+  if (doc.containsKey("bot_url"))   prefs.putString("bot_url", doc["bot_url"].as<String>());
+  if (doc.containsKey("bot_key"))   prefs.putString("bot_key", doc["bot_key"].as<String>());
+  if (doc.containsKey("tg_user"))   prefs.putString("tg_user", doc["tg_user"].as<String>());
+  if (doc.containsKey("ch_mask"))   prefs.putUChar("ch_mask", doc["ch_mask"].as<uint8_t>());
+  if (doc.containsKey("floor_mm"))  prefs.putUShort("floor_thresh", doc["floor_mm"].as<uint16_t>());
+  prefs.end();
+
+  portENTER_CRITICAL(&cmdMux);
+  contactConfigChanged = true;
+  portEXIT_CRITICAL(&cmdMux);
+
+  if (pContactChar) {
+    String refreshed = getContactConfigJson();
+    pContactChar->setValue(refreshed.c_str());
+  }
+
+  updateStatus("CONFIG_UPDATED_OK");
+  Serial.println("[CONFIG] Da cap nhat danh ba & cau hinh Alert Bot vao NVS (ap dung ngay).");
+  return true;
+}
+
+String BleProvisioning::getContactConfigJson() {
+  prefs.begin("sys_cfg", true);
+  StaticJsonDocument<768> doc;
+  doc["phone"] = prefs.isKey("emg_phone") ? prefs.getString("emg_phone") : "";
+  doc["chat_id"] = prefs.isKey("emg_chat_id") ? prefs.getString("emg_chat_id") : "";
+  doc["bot_url"] = prefs.isKey("bot_url") ? prefs.getString("bot_url") : String(DEFAULT_ALERT_BOT_URL);
+  doc["tg_user"] = prefs.isKey("tg_user") ? prefs.getString("tg_user") : "";
+  doc["ch_mask"] = prefs.getUChar("ch_mask", CH_MASK_ALL);
+  doc["floor_mm"] = prefs.getUShort("floor_thresh", FLOOR_HEIGHT_DEFAULT_MM);
+  doc["has_bot_token"] = prefs.isKey("bot_token") && prefs.getString("bot_token").length() > 0;
+  doc["has_bot_key"] = prefs.isKey("bot_key") && prefs.getString("bot_key").length() > 0;
+  prefs.end();
+
+  String payload;
+  serializeJson(doc, payload);
+  return payload;
+}
+
+bool BleProvisioning::hasContactConfigChanged() {
+  portENTER_CRITICAL(&cmdMux);
+  bool changed = contactConfigChanged;
+  contactConfigChanged = false;
+  portEXIT_CRITICAL(&cmdMux);
+  return changed;
 }
 
 void BleProvisioning::logFallEvent(FallEventType type, float velocity, uint8_t motion, uint16_t dist) {

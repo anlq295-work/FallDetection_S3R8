@@ -21,6 +21,8 @@ SystemState currentState = STATE_NORMAL;
 FallEventType currentEventType = EVENT_NONE;
 
 String wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken;
+String alertBotUrl, alertBotApiKey, telegramCallUsers;
+uint8_t alertChannelMask = CH_MASK_ALL;
 uint16_t configuredFloorMm = FLOOR_HEIGHT_DEFAULT_MM;
 
 // Cảnh báo từ xa được giữ lại cho tới khi có mạng và gửi thành công.
@@ -30,6 +32,73 @@ unsigned long nextEmergencyDispatchAttempt = 0;
 uint8_t emergencyDispatchAttempts = 0;
 String emergencyTelegramMessage;
 String emergencySmsMessage;
+String emergencyCallMessage;
+String emergencyBotPayloadJson;
+
+static void addCsvToJsonArray(JsonArray arr, const String& csv) {
+  int startIdx = 0;
+  while (startIdx < (int)csv.length()) {
+    int commaIdx = csv.indexOf(',', startIdx);
+    int semiIdx = csv.indexOf(';', startIdx);
+    int nextDelim = -1;
+    if (commaIdx != -1 && semiIdx != -1) nextDelim = min(commaIdx, semiIdx);
+    else if (commaIdx != -1) nextDelim = commaIdx;
+    else nextDelim = semiIdx;
+
+    String item = (nextDelim == -1) ? csv.substring(startIdx) : csv.substring(startIdx, nextDelim);
+    item.trim();
+    if (item.length() > 0) arr.add(item);
+
+    if (nextDelim == -1) break;
+    startIdx = nextDelim + 1;
+  }
+}
+
+static String buildAlertBotPayloadJson(FallEventType evType, float vel, uint8_t mot, uint16_t dist, bool simulated) {
+  StaticJsonDocument<1024> doc;
+  const char* typeStr = "fall_impact";
+  if (simulated) typeStr = "test";
+  else if (evType == EVENT_SLOW_FALL) typeStr = "slow_fall";
+  else if (evType == EVENT_MANUAL_SOS) typeStr = "manual_sos";
+
+  String sensorId = WiFi.macAddress();
+  sensorId.replace(":", "");
+
+  doc["event_type"] = typeStr;
+  doc["room_name"] = "ESP32-S3 Sensor";
+  doc["velocity_mm_s"] = vel;
+  doc["motion_peak"] = mot;
+  doc["target_dist_cm"] = dist;
+  doc["tof_height_mm"] = (int)sensorMgr.getPrimaryTofDistance();
+  doc["device_id"] = sensorId;
+  doc["device_ip"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : "0.0.0.0";
+  doc["uptime_sec"] = (uint32_t)(millis() / 1000);
+  doc["simulated"] = simulated;
+
+  JsonArray phones = doc.createNestedArray("fallback_phones");
+  addCsvToJsonArray(phones, emergencyPhone);
+  JsonArray chats = doc.createNestedArray("fallback_chat_ids");
+  addCsvToJsonArray(chats, telegramChatId);
+  JsonArray users = doc.createNestedArray("fallback_telegram_users");
+  addCsvToJsonArray(users, telegramCallUsers);
+
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
+
+static void reloadAllCredentials() {
+  bleProvision.loadCredentials(wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken, configuredFloorMm);
+  bleProvision.loadAlertBotConfig(alertBotUrl, alertBotApiKey, telegramCallUsers, alertChannelMask);
+  sensorMgr.setFloorThreshold(configuredFloorMm);
+  Serial.printf("[SYSTEM] Da tai cau hinh: Wi-Fi=%s | SDT=%s | TG_ID=%s | BotURL=%s | Mask=0x%02X | San=%d mm\n",
+                wifiSSID.c_str(),
+                emergencyPhone.c_str(),
+                telegramChatId.c_str(),
+                alertBotUrl.length() > 0 ? alertBotUrl.c_str() : "(direct)",
+                alertChannelMask,
+                configuredFloorMm);
+}
 
 // Dữ liệu Telemetry thời gian thực được cập nhật cho cả BLE và Wi-Fi Web Server
 AIClass lastPredictedClass = CLASS_STAND;
@@ -61,7 +130,7 @@ String getSystemTelemetryJson() {
 }
 
 String getSystemStatusJson() {
-  StaticJsonDocument<384> doc;
+  StaticJsonDocument<512> doc;
   doc["version"] = FIRMWARE_VERSION;
   doc["state"] = currentState;
   doc["ip"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : "DISCONNECTED";
@@ -75,6 +144,11 @@ String getSystemStatusJson() {
   doc["uptime_sec"] = millis() / 1000;
   doc["remote_alert_pending"] = emergencyDispatchPending;
   doc["remote_alert_attempts"] = emergencyDispatchAttempts;
+  doc["bot_url_configured"] = alertBotUrl.length() > 0;
+  doc["telegram_configured"] = (telegramBotToken.length() > 0 && telegramChatId.length() > 0);
+  doc["phone_configured"] = emergencyPhone.length() > 0;
+  doc["call_users_configured"] = telegramCallUsers.length() > 0;
+  doc["channel_mask"] = alertChannelMask;
   String out;
   serializeJson(doc, out);
   return out;
@@ -167,6 +241,18 @@ void executeSystemCommand(const String& cmd) {
     delay(450);
     alertSys.setIndicator(0x00FF00, false);
     bleProvision.updateStatus("TEST_ALARM_COMPLETED");
+  } else if (cmd == "TEST_REMOTE_ALERT") {
+    Serial.println("[CMD] Nhan lenh: Test gui canh bao tu xa (Bot/Telegram/SMS/Call)!");
+    emergencyTelegramMessage =
+        "🧪 <b>[TEST] KIEM TRA CANH BAO TE NGA (ESP32-S3)</b>\n"
+        "Thiet bi dang hoat dong binh thuong va da ket noi thanh cong toi kenh canh bao!";
+    emergencySmsMessage = "[TEST] HEARTH ESP32-S3: Kiem tra kenh tin nhan canh bao te nga thanh cong.";
+    emergencyCallMessage = "Day la cuoc goi kiem tra he thong canh bao te nga Hearth tu cam bien ESP32.";
+    emergencyBotPayloadJson = buildAlertBotPayloadJson(EVENT_NONE, 0.0f, 0, 0, true);
+    emergencyDispatchPending = true;
+    emergencyDispatchAttempts = 0;
+    nextEmergencyDispatchAttempt = millis();
+    bleProvision.updateStatus("TEST_REMOTE_ALERT_QUEUED");
   } else if (cmd == "PANIC_SOS") {
     Serial.println("[CMD] Nhan lenh SOS tu xa!");
     currentEventType = EVENT_MANUAL_SOS;
@@ -257,6 +343,10 @@ void executeSystemCommand(const String& cmd) {
 }
 
 void processBleCommands() {
+  if (bleProvision.hasContactConfigChanged()) {
+    reloadAllCredentials();
+  }
+
   String cmd;
   if (bleProvision.checkAndClearCommand(cmd)) {
     executeSystemCommand(cmd);
@@ -280,14 +370,37 @@ void retryEmergencyDispatch(unsigned long now) {
 
   emergencyDispatchAttempts++;
   Serial.printf("[REMOTE ALERT] Thu gui lan %u qua Internet...\n", emergencyDispatchAttempts);
-  const bool telegramSent = alertSys.sendTelegramAlert(telegramBotToken, telegramChatId, emergencyTelegramMessage);
-  const bool smsSent = alertSys.sendSmsGateway(emergencyPhone, emergencySmsMessage);
 
-  if (telegramSent || smsSent) {
+  bool botSent = false;
+  if (alertBotUrl.length() > 0 && emergencyBotPayloadJson.length() > 0) {
+    botSent = alertSys.sendAlertBotWebhook(alertBotUrl, alertBotApiKey, emergencyBotPayloadJson);
+  }
+
+  // Neu Alert Bot Server thanh cong, bot se xu ly dong thoi Telegram + SMS + Call + leo thang.
+  // Neu khong cau hinh Bot Server hoac Bot Server khong phan hoi -> fallback truc tiep tu ESP32!
+  bool telegramSent = false;
+  bool callSent = false;
+
+  if (!botSent) {
+    if (alertChannelMask & CH_MASK_TELEGRAM) {
+      telegramSent = alertSys.sendTelegramAlert(telegramBotToken, telegramChatId, emergencyTelegramMessage);
+    }
+    if (alertChannelMask & CH_MASK_CALL) {
+      callSent = alertSys.sendCallMeBotTelegramCall(telegramCallUsers, emergencyCallMessage);
+    }
+  }
+
+  if (botSent || telegramSent || callSent) {
     emergencyDispatchPending = false;
-    String channels = (telegramSent && smsSent) ? "TG+SMS" : (telegramSent ? "TG" : "SMS");
+    String channels = "";
+    if (botSent) {
+      channels = "ALERT_BOT";
+    } else {
+      if (telegramSent) channels += (channels.length() ? "+TG" : "TG");
+      if (callSent) channels += (channels.length() ? "+CALL" : "CALL");
+    }
     bleProvision.updateStatus("REMOTE_ALERT_SENT:" + channels);
-    Serial.printf("[REMOTE ALERT] Da gui canh bao dong thoi thanh cong qua Internet (%s).\n", channels.c_str());
+    Serial.printf("[REMOTE ALERT] Da gui canh bao thanh cong qua Internet (%s).\n", channels.c_str());
   } else {
     nextEmergencyDispatchAttempt = now + 30000;
     bleProvision.updateStatus("REMOTE_ALERT_RETRYING");
@@ -342,10 +455,13 @@ void setup() {
   Serial.println("[BOOT] BLE init xong, bat dau doc cau hinh...");
 
   // 4. Đọc cấu hình NVS Flash
+  bleProvision.loadAlertBotConfig(alertBotUrl, alertBotApiKey, telegramCallUsers, alertChannelMask);
   if (bleProvision.loadCredentials(wifiSSID, wifiPass, emergencyPhone, telegramChatId, telegramBotToken, configuredFloorMm)) {
     sensorMgr.setFloorThreshold(configuredFloorMm);
-    Serial.printf("[SYSTEM] Da tai cau hinh: Wi-Fi=%s | SDT=%s | Nguong san=%d mm\n", 
-                  wifiSSID.c_str(), emergencyPhone.c_str(), configuredFloorMm);
+    Serial.printf("[SYSTEM] Da tai cau hinh: Wi-Fi=%s | SDT=%s | BotURL=%s | Nguong san=%d mm\n",
+                  wifiSSID.c_str(), emergencyPhone.c_str(),
+                  alertBotUrl.length() > 0 ? alertBotUrl.c_str() : "(direct)",
+                  configuredFloorMm);
     
     if (alertSys.connectWiFi(wifiSSID, wifiPass)) {
       configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -355,7 +471,9 @@ void setup() {
         getSystemTelemetryJson,
         []() { return bleProvision.getEventHistoryJson(); },
         getSystemStatusJson,
-        executeSystemCommand
+        executeSystemCommand,
+        []() { return bleProvision.getContactConfigJson(); },
+        [](const String& body) { return bleProvision.applyContactConfigJson(body); }
       );
     } else {
       bleProvision.updateStatus("WIFI_CONNECT_FAILED");
@@ -458,7 +576,9 @@ void loop() {
         getSystemTelemetryJson,
         []() { return bleProvision.getEventHistoryJson(); },
         getSystemStatusJson,
-        executeSystemCommand
+        executeSystemCommand,
+        []() { return bleProvision.getContactConfigJson(); },
+        [](const String& body) { return bleProvision.applyContactConfigJson(body); }
       );
     }
     deviceWebServer.handle();
@@ -659,6 +779,11 @@ void loop() {
 
       emergencyTelegramMessage = String(msg);
       emergencySmsMessage = "CANH BAO KHAN CAP: Phat hien te nga hoac nut SOS da bam! Kiem tra ngay!";
+      emergencyCallMessage = (currentEventType == EVENT_MANUAL_SOS)
+                                 ? "Canh bao khan cap Hearth! Nguoi than vua bam nut cap cuu SOS. Vui long kiem tra ngay lap tuc!"
+                                 : "Canh bao khan cap Hearth! Phat hien te nga trong phong giam sat. Vui long kiem tra ngay lap tuc!";
+      emergencyBotPayloadJson = buildAlertBotPayloadJson(
+          currentEventType, recordedImpactVelocity, recordedImpactMotion, recordedTargetDist, false);
       emergencyDispatchPending = true;
       emergencyDispatchAttempts = 0;
       nextEmergencyDispatchAttempt = now;

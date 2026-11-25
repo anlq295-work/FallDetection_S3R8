@@ -403,8 +403,16 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                         if (ctrl.channelTelegramEnabled)
                           HearthStatusBadge(
                             icon: Icons.send_rounded,
-                            label: 'Telegram',
-                            color: ctrl.telegramChatId.isNotEmpty ? p.ok : p.textMuted,
+                            label: 'Telegram (${ctrl.allTelegramChatIds.length})',
+                            color: (ctrl.allTelegramChatIds.isNotEmpty || ctrl.alertBotUrl.isNotEmpty)
+                                ? p.ok
+                                : p.textMuted,
+                          ),
+                        if (alert.remoteDispatchSummary != null && alert.remoteDispatchSummary!.isNotEmpty)
+                          HearthStatusBadge(
+                            icon: Icons.smart_toy_rounded,
+                            label: alert.remoteDispatchSummary!,
+                            color: p.accent,
                           ),
                         if (alert.telemetry != null)
                           HearthStatusBadge(

@@ -13,6 +13,18 @@
 					<key>url</key>
 					<string>https://github.com/anlq295-work/FallDetection_S3R8/releases/download/pre-release1.0.1/Hearth-iOS-pre-release1.0.1-unsigned.ipa</string>
 				</dict>
+				<dict>
+					<key>kind</key>
+					<string>display-image</string>
+					<key>url</key>
+					<string>https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/icon-57.png</string>
+				</dict>
+				<dict>
+					<key>kind</key>
+					<string>full-size-image</string>
+					<key>url</key>
+					<string>https://raw.githubusercontent.com/anlq295-work/FallDetection_S3R8/main/ios_ota/icon-512.png</string>
+				</dict>
 			</array>
 			<key>metadata</key>
 			<dict>

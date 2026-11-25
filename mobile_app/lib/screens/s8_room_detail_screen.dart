@@ -325,48 +325,100 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
   }
 
   void _openRemoteChannelsModal() {
-    final tokenCtrl = TextEditingController(text: widget.ctrl.telegramBotToken);
-    final chatCtrl = TextEditingController(text: widget.ctrl.telegramChatId);
-
     showLiquidGlassAdaptiveModal(
       context: context,
       builder: (ctx) {
         final s = widget.ctrl.s;
+        final p = HearthPalette.of(ctx);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(s.s8RemoteChannels, style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tokenCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Telegram Bot Token',
-                hintText: '123456:ABC-DEF...',
-              ),
+            const SizedBox(height: 10),
+            HearthBanner(
+              tone: HearthBannerTone.ok,
+              icon: Icons.verified_user_rounded,
+              title: 'Telegram · Call (Twilio Voice / CallMeBot)',
+              subtitle: 'Hệ thống đã được cấu hình sẵn và tự đồng bộ theo danh bạ người thân.',
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                HearthSecondaryButton(
+                  label: s.s9TestTelegramBtn,
+                  expand: false,
+                  icon: Icons.send_rounded,
+                  onPressed: () async {
+                    final res = await widget.ctrl.sendTestAlertBot(channels: const ['telegram']);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      showHearthToast(
+                        context,
+                        res.ok ? 'Test Telegram thành công (${res.summary})' : 'Test Telegram thất bại (${res.summary})',
+                        critical: !res.ok,
+                      );
+                    }
+                  },
+                ),
+                HearthSecondaryButton(
+                  label: s.s9TestCallBtn,
+                  expand: false,
+                  icon: Icons.call_rounded,
+                  onPressed: () async {
+                    final res = await widget.ctrl.sendTestAlertBot(channels: const ['call']);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      showHearthToast(
+                        context,
+                        res.ok ? 'Test Gọi điện thành công (${res.summary})' : 'Test Gọi điện thất bại (${res.summary})',
+                        critical: !res.ok,
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: chatCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Telegram Chat / Group IDs',
-                helperText: 'Comma-separated (e.g. -100192837465, 512345678)',
-              ),
-            ),
-            const SizedBox(height: 16),
             HearthPrimaryButton(
-              label: s.save,
+              label: s.s9BotTestBtn,
+              icon: Icons.notifications_active_rounded,
               onPressed: () async {
-                await widget.ctrl.updateRemoteChannels(
-                  telegramBotToken: tokenCtrl.text,
-                  telegramChatId: chatCtrl.text,
+                await widget.ctrl.hardware.sendCommand('TEST_REMOTE_ALERT');
+                final res = await widget.ctrl.sendTestAlertBot(
+                  channels: const ['telegram', 'call'],
                 );
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
+                if (ctx.mounted) Navigator.pop(ctx);
                 if (mounted) {
-                  showHearthToast(context, 'Synced to ESP32-S3');
+                  showHearthToast(
+                    context,
+                    res.ok ? 'Đã gửi thử tất cả kênh (${res.summary})' : 'Đã gửi lệnh test tới ESP32-S3',
+                  );
                 }
               },
+            ),
+            const SizedBox(height: 10),
+            HearthSecondaryButton(
+              label: s.s9BotPullBtn,
+              icon: Icons.sync_rounded,
+              onPressed: () async {
+                final count = await widget.ctrl.pullContactsFromBot();
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  showHearthToast(
+                    context,
+                    count >= 0 ? 'Đã đồng bộ $count người nhận' : 'Không kết nối được máy chủ cảnh báo',
+                    critical: count < 0,
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Người nhận hiện tại: ${widget.ctrl.contacts.length} · SĐT: ${widget.ctrl.allEmergencyPhoneNumbers.length}',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: p.textMuted),
             ),
           ],
         );
@@ -710,7 +762,7 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               _SettingsRow(
                 icon: Icons.send_rounded,
                 title: s.s8RemoteChannels,
-                subtitle: ctrl.telegramChatId.isEmpty ? 'Telegram / SMS' : 'Telegram: ${ctrl.telegramChatId}',
+                subtitle: 'Telegram · Call (${ctrl.contacts.length})',
                 onTap: _openRemoteChannelsModal,
               ),
               const Divider(height: 1),

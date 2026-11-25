@@ -26,7 +26,6 @@ class S1WelcomeScreen extends StatefulWidget {
 class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
   final _emailCtrl = TextEditingController();
   final _carerNameCtrl = TextEditingController();
-  final _personNameCtrl = TextEditingController();
   final _personPhoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _codeFocus = FocusNode();
@@ -35,9 +34,9 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
   bool _loading = false;
   String? _emailError;
   String? _carerNameError;
-  String? _personNameError;
   String? _codeError;
   String? _networkError;
+  String? _otpProviderNotice;
   int _resendSec = 0;
   Timer? _resendTimer;
 
@@ -46,7 +45,6 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     super.initState();
     _emailCtrl.text = widget.ctrl.userEmail;
     _carerNameCtrl.text = widget.ctrl.carerName;
-    _personNameCtrl.text = widget.ctrl.personName;
     _personPhoneCtrl.text = widget.ctrl.medicalProfile.personPhone;
   }
 
@@ -55,7 +53,6 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     _resendTimer?.cancel();
     _emailCtrl.dispose();
     _carerNameCtrl.dispose();
-    _personNameCtrl.dispose();
     _personPhoneCtrl.dispose();
     _codeCtrl.dispose();
     _codeFocus.dispose();
@@ -74,7 +71,6 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     final s = widget.ctrl.s;
     String? emailErr;
     String? carerErr;
-    String? personErr;
 
     if (!_isValidEmail(_emailCtrl.text)) {
       emailErr = s.s1EmailError;
@@ -82,17 +78,12 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     if (_carerNameCtrl.text.trim().isEmpty) {
       carerErr = s.requiredFieldError;
     }
-    if (_personNameCtrl.text.trim().isEmpty) {
-      personErr = s.s4PersonRequiredError;
-    }
-
     setState(() {
       _emailError = emailErr;
       _carerNameError = carerErr;
-      _personNameError = personErr;
       _networkError = null;
     });
-    return emailErr == null && carerErr == null && personErr == null;
+    return emailErr == null && carerErr == null;
   }
 
   void _startResendCooldown() {
@@ -121,13 +112,41 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
       return;
     }
 
-    setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    if (!mounted) return;
     setState(() {
-      _loading = false;
-      _stepTwo = true;
+      _loading = true;
+      _networkError = null;
+      _codeError = null;
     });
+
+    if (widget.ctrl.alertBotUrl.trim().isNotEmpty) {
+      final res = await widget.ctrl.requestLoginEmailOtp(
+        email: _emailCtrl.text.trim(),
+        phone: _personPhoneCtrl.text.trim(),
+        carerName: _carerNameCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      if (!res.ok) {
+        setState(() {
+          _loading = false;
+          _networkError = res.message.isNotEmpty ? res.message : s.s1NetworkError;
+        });
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _stepTwo = true;
+        _otpProviderNotice = res.provider.isNotEmpty ? res.provider : null;
+      });
+    } else {
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _stepTwo = true;
+        _otpProviderNotice = null;
+      });
+    }
+
     _startResendCooldown();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _codeFocus.requestFocus();
@@ -157,11 +176,32 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     }
 
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 350));
+
+    if (!skipDirectToHome && widget.ctrl.alertBotUrl.trim().isNotEmpty) {
+      final res = await widget.ctrl.verifyLoginEmailOtp(
+        email: _emailCtrl.text.trim(),
+        phone: _personPhoneCtrl.text.trim(),
+        code: code,
+      );
+      if (!mounted) return;
+      if (!res.ok) {
+        setState(() {
+          _loading = false;
+          _codeError = res.message.isNotEmpty ? res.message : s.s1CodeError;
+        });
+        return;
+      }
+    } else {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+    }
+
     await widget.ctrl.signIn(
       email: _emailCtrl.text.trim(),
       carerName: _carerNameCtrl.text.trim(),
-      personName: _personNameCtrl.text.trim(),
+      // The monitored person's name is configured later in S4, after the
+      // sensor has been paired. Keep the initial sign-in form focused on the
+      // account and caregiver details.
+      personName: widget.ctrl.personName,
       personPhone: _personPhoneCtrl.text.trim(),
       skipDirectToHome: skipDirectToHome || widget.ctrl.rooms.isNotEmpty,
     );
@@ -275,19 +315,6 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _personNameCtrl,
-              readOnly: _loading,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: s.s1PersonNameLabel,
-                hintText: s.s1PersonNameHint,
-                errorText: _personNameError,
-                errorMaxLines: 2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
               controller: _personPhoneCtrl,
               readOnly: _loading,
               keyboardType: TextInputType.phone,
@@ -335,6 +362,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
               tone: HearthBannerTone.ok,
               icon: Icons.mark_email_read_rounded,
               title: s.s1CodeSentTo(_emailCtrl.text.trim()),
+              subtitle: _otpProviderNotice,
             ),
             const SizedBox(height: 16),
             TextField(
@@ -372,7 +400,7 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
                 ),
                 HearthTextLink(
                   label: _resendSec > 0 ? s.s1ResendCountdown(_resendSec) : s.s1ResendNow,
-                  onPressed: (_resendSec > 0 || _loading) ? null : _startResendCooldown,
+                  onPressed: (_resendSec > 0 || _loading) ? null : _sendCode,
                 ),
               ],
             ),

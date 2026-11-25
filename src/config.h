@@ -70,9 +70,17 @@
 #define NIGHTLIGHT_TIMEOUT_MS       40000   // 40 giây sáng đèn ngủ thông minh khi phát hiện bước chân
 #define WDT_TIMEOUT_SECONDS         10      // 10 giây Hardware Watchdog chống treo hệ thống
 
-// Cấu hình SMS Gateway qua Wi-Fi
-#define DEFAULT_SMS_GATEWAY_URL "https://api.speedsms.vn/index.php/sms/send"
-#define DEFAULT_SMS_TOKEN       "YOUR_DEFAULT_SMS_ACCESS_TOKEN"
+// Cấu hình SMS Gateway & Multi-Channel Alert Bot qua Wi-Fi
+#define DEFAULT_SMS_GATEWAY_URL     "https://api.speedsms.vn/index.php/sms/send"
+#define DEFAULT_SMS_TOKEN           "YOUR_DEFAULT_SMS_ACCESS_TOKEN"
+#define DEFAULT_ALERT_BOT_URL       "http://192.168.80.123:8080"
+#define DEFAULT_ALERT_BOT_API_KEY   ""
+
+// Bitmask bật/tắt kênh cảnh báo từ xa (Telegram + Call, không dùng SMS)
+#define CH_MASK_SMS                 0x01
+#define CH_MASK_TELEGRAM            0x02
+#define CH_MASK_CALL                0x04
+#define CH_MASK_ALL                 (CH_MASK_TELEGRAM | CH_MASK_CALL)
 
 // =========================================================================
 // 5. ĐỊNH NGHĨA KẾT QUẢ PHÂN LOẠI VÀ TRẠNG THÁI HỆ THỐNG

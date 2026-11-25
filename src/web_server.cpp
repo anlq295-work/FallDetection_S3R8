@@ -11,13 +11,17 @@ DeviceWebServer::DeviceWebServer() : server(80), running(false) {}
 void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
                            std::function<String()> eventsSupplier,
                            std::function<String()> statusSupplier,
-                           std::function<void(const String&)> commandHandler) {
+                           std::function<void(const String&)> commandHandler,
+                           std::function<String()> configGetter,
+                           std::function<bool(const String&)> configSetter) {
   if (running) return;
 
   getTelemetry = telemetrySupplier;
   getEvents = eventsSupplier;
   getStatus = statusSupplier;
   onCommand = commandHandler;
+  getConfig = configGetter;
+  setConfig = configSetter;
 
   // Endpoint 1: GET /api/telemetry (hoặc /telemetry)
   auto handleTelemetry = [this]() {
@@ -86,6 +90,32 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
   server.on("/api/command", HTTP_GET, handleCommand);
   server.on("/api/command", HTTP_POST, handleCommand);
   server.on("/api/command", HTTP_OPTIONS, handleCommand);
+
+  // Endpoint 4b: GET / POST / OPTIONS /api/config (Dong bo danh ba, Bot URL, Telegram, CallMeBot qua Wi-Fi LAN)
+  auto handleConfig = [this]() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+
+    if (server.method() == HTTP_OPTIONS) {
+      server.send(204);
+      return;
+    }
+    if (server.method() == HTTP_GET) {
+      String cfg = getConfig ? getConfig() : "{}";
+      server.send(200, "application/json", cfg);
+      return;
+    }
+    String body = server.hasArg("plain") ? server.arg("plain") : "";
+    if (body.length() > 0 && setConfig && setConfig(body)) {
+      server.send(200, "application/json", "{\"status\":\"ok\"}");
+    } else {
+      server.send(400, "application/json", "{\"error\":\"Invalid JSON config\"}");
+    }
+  };
+  server.on("/api/config", HTTP_GET, handleConfig);
+  server.on("/api/config", HTTP_POST, handleConfig);
+  server.on("/api/config", HTTP_OPTIONS, handleConfig);
 
   // Endpoint 5: Web OTA trực tiếp qua trình duyệt trên cùng mạng Wi-Fi
   server.on("/update", HTTP_GET, [this]() {

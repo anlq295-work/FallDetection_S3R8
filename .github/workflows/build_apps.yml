@@ -251,6 +251,36 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Sync release label into the app
+        env:
+          RELEASE_TAG: ${{ needs.prepare-version.outputs.release_tag }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          path = Path('mobile_app/lib/core/models.dart')
+          text = path.read_text(encoding='utf-8')
+          tag = os.environ['RELEASE_TAG']
+          text, count = re.subn(
+              r"const String kAppReleaseLabel = '[^']*';",
+              f"const String kAppReleaseLabel = '{tag}';",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('kAppReleaseLabel declaration was not found')
+          text = re.sub(
+              r"const String kFirmwareDefaultVersion = '[^']*';",
+              f"const String kFirmwareDefaultVersion = '{tag}';",
+              text,
+              count=1,
+          )
+          path.write_text(text, encoding='utf-8')
+          print(f'Synced app release label: {tag}')
+          PY
+
       - name: Install dependencies & verify quality
         run: |
           cd mobile_app
@@ -332,6 +362,36 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: Sync release label into the app
+        env:
+          RELEASE_TAG: ${{ needs.prepare-version.outputs.release_tag }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          path = Path('mobile_app/lib/core/models.dart')
+          text = path.read_text(encoding='utf-8')
+          tag = os.environ['RELEASE_TAG']
+          text, count = re.subn(
+              r"const String kAppReleaseLabel = '[^']*';",
+              f"const String kAppReleaseLabel = '{tag}';",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('kAppReleaseLabel declaration was not found')
+          text = re.sub(
+              r"const String kFirmwareDefaultVersion = '[^']*';",
+              f"const String kFirmwareDefaultVersion = '{tag}';",
+              text,
+              count=1,
+          )
+          path.write_text(text, encoding='utf-8')
+          print(f'Synced app release label: {tag}')
+          PY
 
       - name: Install dependencies
         run: |

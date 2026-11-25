@@ -492,3 +492,113 @@ bool AlertSystem::sendSmsGateway(const String& phone, const String& content) {
   http.end();
   return success;
 }
+
+static String urlEncodeQuery(const String& input) {
+  String out;
+  out.reserve(input.length() * 2);
+  const char* hex = "0123456789ABCDEF";
+  for (size_t i = 0; i < input.length(); i++) {
+    uint8_t c = (uint8_t)input[i];
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') {
+      out += (char)c;
+    } else if (c == ' ') {
+      out += "%20";
+    } else {
+      out += '%';
+      out += hex[(c >> 4) & 0x0F];
+      out += hex[c & 0x0F];
+    }
+  }
+  return out;
+}
+
+bool AlertSystem::sendCallMeBotTelegramCall(const String& usernames, const String& spokenMessage) {
+  if (WiFi.status() != WL_CONNECTED || usernames.length() == 0) {
+    Serial.println("[CALLMEBOT] Bo qua: Wi-Fi chua ket noi hoac chua cau hinh @username Telegram.");
+    return false;
+  }
+
+  int startIdx = 0;
+  bool anySuccess = false;
+  int callCount = 0;
+  String encodedMsg = urlEncodeQuery(spokenMessage);
+
+  while (startIdx < (int)usernames.length()) {
+    int commaIdx = usernames.indexOf(',', startIdx);
+    int semiIdx = usernames.indexOf(';', startIdx);
+    int nextDelim = -1;
+    if (commaIdx != -1 && semiIdx != -1) nextDelim = min(commaIdx, semiIdx);
+    else if (commaIdx != -1) nextDelim = commaIdx;
+    else nextDelim = semiIdx;
+
+    String singleUser = (nextDelim == -1)
+                            ? usernames.substring(startIdx)
+                            : usernames.substring(startIdx, nextDelim);
+    singleUser.trim();
+
+    if (singleUser.length() > 0) {
+      if (!singleUser.startsWith("@")) {
+        singleUser = "@" + singleUser;
+      }
+      callCount++;
+      esp_task_wdt_reset();
+
+      HTTPClient http;
+      String url = "http://api.callmebot.com/start.php?user=" + urlEncodeQuery(singleUser) +
+                   "&text=" + encodedMsg + "&lang=vi-VN-Standard-A&rpt=3";
+      http.begin(url);
+      http.setTimeout(7000);
+
+      int httpCode = http.GET();
+      if (httpCode == HTTP_CODE_OK || httpCode == 200) {
+        Serial.printf("[CALLMEBOT] (#%d) Da kich hoat cuoc goi Telegram toi %s!\n", callCount, singleUser.c_str());
+        anySuccess = true;
+      } else {
+        Serial.printf("[CALLMEBOT] (#%d) Goi that bai toi %s! Ma loi HTTP: %d\n", callCount, singleUser.c_str(), httpCode);
+      }
+      http.end();
+    }
+
+    if (nextDelim == -1) break;
+    startIdx = nextDelim + 1;
+  }
+
+  return anySuccess;
+}
+
+bool AlertSystem::sendAlertBotWebhook(const String& botBaseUrl, const String& apiKey, const String& payloadJson) {
+  if (WiFi.status() != WL_CONNECTED || botBaseUrl.length() == 0) {
+    return false;
+  }
+
+  String url = botBaseUrl;
+  url.trim();
+  while (url.endsWith("/")) {
+    url.remove(url.length() - 1);
+  }
+  if (!url.endsWith("/api/alerts/fall")) {
+    url += "/api/alerts/fall";
+  }
+
+  esp_task_wdt_reset();
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(7000);
+  http.addHeader("Content-Type", "application/json");
+  if (apiKey.length() > 0) {
+    http.addHeader("X-API-Key", apiKey);
+  }
+
+  int httpCode = http.POST(payloadJson);
+  bool success = (httpCode == HTTP_CODE_OK || httpCode == 201);
+  if (success) {
+    Serial.printf("[ALERT_BOT] Da gui su kien te nga len Bot Server thanh cong (%s, HTTP %d)!\n",
+                  url.c_str(), httpCode);
+  } else {
+    Serial.printf("[ALERT_BOT] Gui len Bot Server that bai (%s, HTTP %d)!\n",
+                  url.c_str(), httpCode);
+  }
+  http.end();
+  return success;
+}

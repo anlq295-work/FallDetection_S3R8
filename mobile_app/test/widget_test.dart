@@ -84,7 +84,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('ĐỒNG THỜI'), findsOneWidget);
-    expect(find.textContaining('Gửi SMS khẩn cấp đồng loạt ngay'), findsOneWidget);
     expect(find.textContaining('Chị Hoa'), findsOneWidget);
 
     await tester.tap(find.text('Tôi đang xử lý (Nhận trách nhiệm)'));

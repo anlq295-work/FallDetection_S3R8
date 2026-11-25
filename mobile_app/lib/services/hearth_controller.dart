@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models.dart';
 import '../l10n/app_strings.dart';
+import 'alert_bot_service.dart';
 import 'hardware_service.dart';
 
 class HearthController extends ChangeNotifier {
   final Esp32HardwareService hardware = Esp32HardwareService();
+  final AlertBotService alertBot = AlertBotService();
 
   bool _initialized = false;
   AppLanguage _language = AppLanguage.vi; // Default Vietnamese
@@ -26,10 +28,10 @@ class HearthController extends ChangeNotifier {
   List<AlertContact> _contacts = [];
   List<MedicationReminder> _medications = [];
 
-  // Simultaneous alert configuration (DEFAULT: simultaneous to ALL contacts & channels)
+  // Simultaneous alert configuration (DEFAULT: simultaneous to ALL contacts via Telegram & Call)
   AlertDispatchMode _dispatchMode = AlertDispatchMode.simultaneous;
   int _escalationMinutes = 2; // Used only if user switches to sequential mode
-  bool _channelSmsEnabled = true;
+  bool _channelSmsEnabled = false;
   bool _channelTelegramEnabled = true;
   bool _channelCallEnabled = true;
 
@@ -37,9 +39,12 @@ class HearthController extends ChangeNotifier {
   bool _guestModeActive = false;
   DateTime? _lastSafeCheckIn;
 
-  // Remote ESP32 channels (Telegram & SMS)
+  // Remote ESP32 & Multi-Channel Alert Bot (pre-wired automatically; no user setup required)
   String _telegramBotToken = '';
   String _telegramChatId = '';
+  String _alertBotUrl = kDefaultAlertBotUrl;
+  String _alertBotApiKey = kDefaultAlertBotApiKey;
+  String _lastBotSyncStatus = '';
   String _emergencyServiceNumber = '115';
   bool _heightInCm = false;
 
@@ -88,6 +93,9 @@ class HearthController extends ChangeNotifier {
   DateTime? get lastSafeCheckIn => _lastSafeCheckIn;
   String get telegramBotToken => _telegramBotToken;
   String get telegramChatId => _telegramChatId;
+  String get alertBotUrl => _alertBotUrl;
+  String get alertBotApiKey => _alertBotApiKey;
+  String get lastBotSyncStatus => _lastBotSyncStatus;
   String get emergencyServiceNumber => _emergencyServiceNumber;
   bool get heightInCm => _heightInCm;
   ElderlyMedicalProfile get medicalProfile => _medicalProfile;
@@ -107,9 +115,47 @@ class HearthController extends ChangeNotifier {
       backupContacts.isNotEmpty ? backupContacts.first : null;
 
   List<String> get allEmergencyPhoneNumbers => _contacts
+      .where((c) => c.notifySms || c.notifyCall)
       .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
       .where((p) => p.length >= 9)
+      .toSet()
       .toList(growable: false);
+
+  List<String> get allTelegramChatIds {
+    final ids = <String>{};
+    for (final raw in _telegramChatId.replaceAll(';', ',').split(',')) {
+      final clean = raw.trim();
+      if (clean.isNotEmpty) ids.add(clean);
+    }
+    for (final c in _contacts) {
+      if (c.notifyTelegram && c.telegramChatId.trim().isNotEmpty) {
+        ids.add(c.telegramChatId.trim());
+      }
+    }
+    return ids.toList(growable: false);
+  }
+
+  List<String> get allTelegramUsernames {
+    final users = <String>{};
+    for (final c in _contacts) {
+      if (c.notifyCall && c.telegramUsername.trim().isNotEmpty) {
+        var u = c.telegramUsername.trim();
+        if (!u.startsWith('@')) u = '@$u';
+        users.add(u);
+      }
+    }
+    return users.toList(growable: false);
+  }
+
+  int get alertChannelMask =>
+      (_channelSmsEnabled ? 0x01 : 0) |
+      (_channelTelegramEnabled ? 0x02 : 0) |
+      (_channelCallEnabled ? 0x04 : 0);
+
+  bool get hasRemoteAlertConfigured =>
+      _alertBotUrl.trim().isNotEmpty ||
+      (_telegramBotToken.trim().isNotEmpty && allTelegramChatIds.isNotEmpty) ||
+      allTelegramUsernames.isNotEmpty;
 
   HearthRoom? get offlineRoom {
     for (final r in _rooms) {
@@ -194,7 +240,7 @@ class HearthController extends ChangeNotifier {
     _personName = prefs.getString('hearth_person_name') ?? '';
     _dispatchMode = AlertDispatchMode.fromName(prefs.getString('hearth_dispatch_mode'));
     _escalationMinutes = prefs.getInt('hearth_escalation_min') ?? 2;
-    _channelSmsEnabled = prefs.getBool('hearth_ch_sms') ?? true;
+    _channelSmsEnabled = false;
     _channelTelegramEnabled = prefs.getBool('hearth_ch_tg') ?? true;
     _channelCallEnabled = prefs.getBool('hearth_ch_call') ?? true;
     _guestModeActive = prefs.getBool('hearth_guest_mode') ?? false;
@@ -203,6 +249,10 @@ class HearthController extends ChangeNotifier {
 
     _telegramBotToken = prefs.getString('hearth_tg_token') ?? '';
     _telegramChatId = prefs.getString('hearth_tg_chat') ?? '';
+    final savedBotUrl = (prefs.getString('hearth_bot_url') ?? '').trim();
+    _alertBotUrl = savedBotUrl.isNotEmpty ? savedBotUrl : kDefaultAlertBotUrl;
+    final savedBotKey = (prefs.getString('hearth_bot_key') ?? '').trim();
+    _alertBotApiKey = savedBotKey.isNotEmpty ? savedBotKey : kDefaultAlertBotApiKey;
     _emergencyServiceNumber =
         prefs.getString('hearth_emg_num') ?? _defaultEmergencyNumber(_language);
     _heightInCm = prefs.getBool('hearth_height_cm') ?? false;
@@ -311,6 +361,8 @@ class HearthController extends ChangeNotifier {
     }
     await prefs.setString('hearth_tg_token', _telegramBotToken);
     await prefs.setString('hearth_tg_chat', _telegramChatId);
+    await prefs.setString('hearth_bot_url', _alertBotUrl);
+    await prefs.setString('hearth_bot_key', _alertBotApiKey);
     await prefs.setString('hearth_emg_num', _emergencyServiceNumber);
     await prefs.setBool('hearth_height_cm', _heightInCm);
     await prefs.setInt('hearth_steadi_score', _steadiScore);
@@ -557,6 +609,7 @@ class HearthController extends ChangeNotifier {
   // Alert Dispatch Mode & Multi-Channel Contacts (S9)
   Future<void> setDispatchMode(AlertDispatchMode mode) async {
     _dispatchMode = mode;
+    await _syncRemoteChannelsToHardware();
     await _persist();
     notifyListeners();
   }
@@ -565,19 +618,66 @@ class HearthController extends ChangeNotifier {
     if (sms != null) _channelSmsEnabled = sms;
     if (telegram != null) _channelTelegramEnabled = telegram;
     if (call != null) _channelCallEnabled = call;
+    await _syncRemoteChannelsToHardware();
     await _persist();
     notifyListeners();
   }
 
-  Future<void> addContact(String name, String phone) async {
+  Future<void> addContact(
+    String name,
+    String phone, {
+    String telegramPhone = '',
+    String telegramChatId = '',
+    String telegramUsername = '',
+    bool notifyTelegram = true,
+    bool notifySms = true,
+    bool notifyCall = true,
+  }) async {
     _contacts.add(
       AlertContact(
         id: 'c_${DateTime.now().millisecondsSinceEpoch}',
         name: name.trim(),
         phone: phone.trim(),
+        telegramPhone: telegramPhone.trim(),
+        telegramChatId: telegramChatId.trim(),
+        telegramUsername: telegramUsername.trim(),
         isPrimaryUser: false,
-        joined: false,
+        joined: telegramChatId.trim().isNotEmpty,
+        notifyTelegram: notifyTelegram,
+        notifySms: notifySms,
+        notifyCall: notifyCall,
       ),
+    );
+    await _syncRemoteChannelsToHardware();
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> updateContact(
+    String id,
+    String name,
+    String phone, {
+    String telegramPhone = '',
+    String? telegramChatId,
+    String? telegramUsername,
+    bool? notifyTelegram,
+    bool? notifySms,
+    bool? notifyCall,
+  }) async {
+    final index = _contacts.indexWhere((c) => c.id == id);
+    if (index < 0) return;
+    final cur = _contacts[index];
+    final nextChatId = telegramChatId != null ? telegramChatId.trim() : cur.telegramChatId;
+    _contacts[index] = cur.copyWith(
+      name: name.trim(),
+      phone: phone.trim(),
+      telegramPhone: telegramPhone.trim(),
+      telegramChatId: nextChatId,
+      telegramUsername: telegramUsername != null ? telegramUsername.trim() : cur.telegramUsername,
+      joined: cur.joined || nextChatId.isNotEmpty,
+      notifyTelegram: notifyTelegram ?? cur.notifyTelegram,
+      notifySms: notifySms ?? cur.notifySms,
+      notifyCall: notifyCall ?? cur.notifyCall,
     );
     await _syncRemoteChannelsToHardware();
     await _persist();
@@ -614,29 +714,177 @@ class HearthController extends ChangeNotifier {
 
   Future<void> setEscalationMinutes(int minutes) async {
     _escalationMinutes = minutes;
-    await _persist();
-    notifyListeners();
-  }
-
-  Future<void> updateRemoteChannels({
-    required String telegramBotToken,
-    required String telegramChatId,
-  }) async {
-    _telegramBotToken = telegramBotToken.trim();
-    _telegramChatId = telegramChatId.trim();
     await _syncRemoteChannelsToHardware();
     await _persist();
     notifyListeners();
   }
 
+  Future<void> updateBotServerConnection({
+    required String botUrl,
+    String apiKey = '',
+  }) async {
+    _alertBotUrl = botUrl.trim();
+    _alertBotApiKey = apiKey.trim();
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<OtpApiResult> requestLoginEmailOtp({
+    required String email,
+    String phone = '',
+    required String carerName,
+  }) {
+    return alertBot.sendEmailOtp(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+      email: email,
+      phone: phone,
+      carerName: carerName,
+      language: _language.code,
+    );
+  }
+
+  Future<OtpApiResult> verifyLoginEmailOtp({
+    required String email,
+    String phone = '',
+    required String code,
+  }) {
+    return alertBot.verifyEmailOtp(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+      email: email,
+      phone: phone,
+      code: code,
+    );
+  }
+
+  Future<void> updateRemoteChannels({
+    required String telegramBotToken,
+    required String telegramChatId,
+    String? alertBotUrl,
+    String? alertBotApiKey,
+  }) async {
+    _telegramBotToken = telegramBotToken.trim();
+    _telegramChatId = telegramChatId.trim();
+    if (alertBotUrl != null) _alertBotUrl = alertBotUrl.trim();
+    if (alertBotApiKey != null) _alertBotApiKey = alertBotApiKey.trim();
+    await _syncRemoteChannelsToHardware();
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<AlertBotHealthResult> checkAlertBotHealth() async {
+    final res = await alertBot.checkHealth(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+    );
+    _lastBotSyncStatus = res.ok ? 'Connected (${res.enabledRecipients})' : res.message;
+    notifyListeners();
+    return res;
+  }
+
+  /// Pulls contacts who registered via Telegram /start or /register into Hearth App contacts.
+  Future<int> pullContactsFromBot() async {
+    final remote = await alertBot.fetchRecipientsFromBot(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+    );
+    if (remote == null) return -1;
+
+    var addedOrUpdated = 0;
+    for (final r in remote) {
+      if (r.id.startsWith('tg_group_')) continue;
+      final existingIdx = _contacts.indexWhere((c) =>
+          c.id == r.id ||
+          (r.telegramChatId.isNotEmpty && c.telegramChatId == r.telegramChatId) ||
+          (r.phone.isNotEmpty && c.phone == r.phone));
+      if (existingIdx >= 0) {
+        final cur = _contacts[existingIdx];
+        _contacts[existingIdx] = cur.copyWith(
+          name: r.name.isNotEmpty ? r.name : cur.name,
+          phone: r.phone.isNotEmpty ? r.phone : cur.phone,
+          telegramChatId: r.telegramChatId.isNotEmpty ? r.telegramChatId : cur.telegramChatId,
+          telegramUsername: r.telegramUsername.isNotEmpty ? r.telegramUsername : cur.telegramUsername,
+          joined: true,
+        );
+      } else {
+        _contacts.add(r.copyWith(joined: true));
+      }
+      addedOrUpdated++;
+    }
+    await _persist();
+    notifyListeners();
+    return addedOrUpdated;
+  }
+
+  Future<AlertBotDispatchResult> sendTestAlertBot({
+    List<String>? channels,
+    String? targetContactId,
+  }) async {
+    await _syncRemoteChannelsToHardware();
+    final roomName = _rooms.isNotEmpty ? _rooms.first.name : 'Hearth Test';
+    final channelLabel = (channels != null && channels.isNotEmpty)
+        ? channels.map((e) => e.toUpperCase()).join('+')
+        : 'ALL';
+    final res = await alertBot.dispatchFallAlert(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+      eventType: 'test',
+      roomName: roomName,
+      personName: _personName.isNotEmpty ? _personName : s.personOrGeneric(''),
+      simulated: true,
+      note: 'Kiểm tra kênh $channelLabel từ ứng dụng Hearth',
+      telegramBotToken: _telegramBotToken,
+      telegramChatIds: allTelegramChatIds,
+      telegramUsernames: allTelegramUsernames,
+      phones: allEmergencyPhoneNumbers,
+      telegramEnabled: channels == null ? _channelTelegramEnabled : channels.contains('telegram'),
+      callEnabled: channels == null ? _channelCallEnabled : channels.contains('call'),
+      fallbackMessage: '🧪 [TEST $channelLabel] HEARTH: Kiểm tra hệ thống cảnh báo té ngã thành công!',
+      channelsOverride: channels,
+      targetRecipientIds: targetContactId != null ? [targetContactId] : null,
+    );
+    _lastBotSyncStatus = res.summary;
+    notifyListeners();
+    return res;
+  }
+
   Future<void> _syncRemoteChannelsToHardware() async {
-    // Sends ALL configured phone numbers comma-separated so ESP32 SpeedSMS Gateway alerts everyone simultaneously!
     final phones = allEmergencyPhoneNumbers.join(',');
+    final chatIds = allTelegramChatIds.join(',');
+    final tgUsers = allTelegramUsernames.join(',');
+    final lanIp = _rooms.isNotEmpty ? (_rooms.first.lanIp ?? hardware.activeLanIp) : hardware.activeLanIp;
+
     await hardware.writeContactConfig(
       phoneList: phones,
       telegramBotToken: _telegramBotToken,
-      telegramChatId: _telegramChatId,
+      telegramChatId: chatIds,
+      alertBotUrl: _alertBotUrl,
+      alertBotApiKey: _alertBotApiKey,
+      telegramUsers: tgUsers,
+      channelMask: alertChannelMask,
+      overrideLanIp: lanIp,
     );
+
+    if (_alertBotUrl.trim().isNotEmpty) {
+      final ok = await alertBot.syncSettingsToBot(
+        botUrl: _alertBotUrl,
+        apiKey: _alertBotApiKey,
+        dispatchMode: _dispatchMode,
+        escalationMinutes: _escalationMinutes,
+        telegramEnabled: _channelTelegramEnabled,
+        smsEnabled: _channelSmsEnabled,
+        callEnabled: _channelCallEnabled,
+        personName: _personName,
+        homeAddress: _medicalProfile.homeAddress,
+        doorCode: _medicalProfile.doorLockboxCode,
+        emergencyNumber: _emergencyServiceNumber,
+        esp32LanIp: lanIp ?? '',
+        contacts: _contacts,
+        defaultTelegramChatIds: _telegramChatId,
+      );
+      _lastBotSyncStatus = ok ? 'Synced to Alert Bot' : 'Bot offline (saved locally)';
+    }
   }
 
   Future<void> updateEmergencyNumber(String number) async {
@@ -722,7 +970,7 @@ class HearthController extends ChangeNotifier {
       dispatchMode: _dispatchMode,
       notifiedContactIds: notifiedIds,
       smsBroadcastReady: _channelSmsEnabled && allEmergencyPhoneNumbers.isNotEmpty,
-      telegramBroadcastReady: _channelTelegramEnabled && _telegramChatId.isNotEmpty,
+      telegramBroadcastReady: _channelTelegramEnabled && (allTelegramChatIds.isNotEmpty || _alertBotUrl.isNotEmpty),
       simulated: simulated,
       telemetry: telemetry ??
           TelemetrySnapshot(
@@ -765,18 +1013,60 @@ class HearthController extends ChangeNotifier {
       ),
     );
     notifyListeners();
+
+    // Dispatch to Alert Bot Server (Telegram + SMS + Voice Call) or direct Telegram/CallMeBot if configured
+    if (hasRemoteAlertConfigured && _activeAlert != null) {
+      final alertSnapshot = _activeAlert!;
+      unawaited(_dispatchRemoteFallAlert(alertSnapshot));
+    }
+  }
+
+  Future<void> _dispatchRemoteFallAlert(ActiveFallAlert alert) async {
+    final res = await alertBot.dispatchFallAlert(
+      botUrl: _alertBotUrl,
+      apiKey: _alertBotApiKey,
+      eventType: alert.simulated ? 'test' : 'fall_impact',
+      roomName: alert.roomName,
+      personName: alert.personName,
+      simulated: alert.simulated,
+      telemetry: alert.telemetry,
+      telegramBotToken: _telegramBotToken,
+      telegramChatIds: allTelegramChatIds,
+      telegramUsernames: allTelegramUsernames,
+      phones: allEmergencyPhoneNumbers,
+      telegramEnabled: _channelTelegramEnabled,
+      callEnabled: _channelCallEnabled,
+      fallbackMessage: buildEmergencySmsBody(alert),
+    );
+    if (_activeAlert?.id == alert.id) {
+      _activeAlert = _activeAlert!.copyWith(
+        remoteAlertId: res.alertId,
+        remoteDispatchSummary: res.summary,
+      );
+      notifyListeners();
+    }
   }
 
   Future<bool> acknowledgeActiveAlert() async {
     if (_activeAlert == null) return false;
     if (_phoneOfflineSimulation) return false;
     _escalationTimer?.cancel();
+    final ackBy = _carerName.isNotEmpty ? _carerName : _userEmail;
+    final remoteId = _activeAlert!.remoteAlertId;
     _activeAlert = _activeAlert!.copyWith(
       isAcknowledged: true,
-      acknowledgedBy: _carerName.isNotEmpty ? _carerName : _userEmail,
+      acknowledgedBy: ackBy,
       acknowledgedAt: DateTime.now(),
     );
     notifyListeners();
+    if (remoteId != null && _alertBotUrl.trim().isNotEmpty) {
+      unawaited(alertBot.acknowledgeAlert(
+        botUrl: _alertBotUrl,
+        apiKey: _alertBotApiKey,
+        alertId: remoteId,
+        by: ackBy,
+      ));
+    }
     return true;
   }
 
@@ -797,6 +1087,23 @@ class HearthController extends ChangeNotifier {
     _escalationTimer?.cancel();
     await hardware.sendCommand('CANCEL_ALARM');
 
+    final resolvedBy = _carerName.isNotEmpty ? _carerName : _userEmail;
+    if (alert.remoteAlertId != null && _alertBotUrl.trim().isNotEmpty) {
+      final outcomeKey = switch (outcome) {
+        FallResolutionOutcome.personOk => 'person_ok',
+        FallResolutionOutcome.neededHelp => 'needed_help',
+        FallResolutionOutcome.falseAlarm => 'false_alarm',
+      };
+      unawaited(alertBot.resolveAlert(
+        botUrl: _alertBotUrl,
+        apiKey: _alertBotApiKey,
+        alertId: alert.remoteAlertId!,
+        by: resolvedBy,
+        outcome: outcomeKey,
+        note: note ?? '',
+      ));
+    }
+
     await logEvent(
       HearthEvent(
         id: 'ev_res_${DateTime.now().millisecondsSinceEpoch}',
@@ -806,7 +1113,7 @@ class HearthController extends ChangeNotifier {
         at: DateTime.now(),
         outcome: outcome,
         falseAlarmReason: falseAlarmReason,
-        resolvedBy: _carerName.isNotEmpty ? _carerName : _userEmail,
+        resolvedBy: resolvedBy,
         note: (note != null && note.trim().isNotEmpty) ? note.trim() : null,
       ),
     );

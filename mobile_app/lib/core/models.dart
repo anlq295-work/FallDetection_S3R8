@@ -1,8 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
-const String kAppReleaseLabel = 'pre-release1.0.1';
-const String kFirmwareDefaultVersion = 'pre-release1.0.1';
+// The release label is deliberately separate from the numeric native app
+// version. Android/iOS receive a SemVer value (for example 1.2.0), while this
+// label is the GitHub release/OTA identifier (for example pre-release1.2.0).
+const String kAppReleaseLabel = 'pre-release1.2.0';
+const String kFirmwareDefaultVersion = 'pre-release1.2.0';
+const String kDefaultAlertBotUrl = String.fromEnvironment(
+  'ALERT_BOT_URL',
+  defaultValue: 'http://192.168.80.123:8080',
+);
+const String kDefaultAlertBotApiKey = String.fromEnvironment(
+  'ALERT_BOT_API_KEY',
+  defaultValue: '',
+);
 
 enum AppLanguage {
   vi('vi', 'Tiếng Việt', 'VI'),
@@ -433,8 +444,12 @@ class AlertContact {
   final String id;
   final String name;
   final String phone;
+  final String telegramPhone;
+  final String telegramChatId;
+  final String telegramUsername;
   final bool isPrimaryUser;
   final bool joined;
+  final bool notifyTelegram;
   final bool notifySms;
   final bool notifyCall;
   final bool notifyApp;
@@ -443,8 +458,12 @@ class AlertContact {
     required this.id,
     required this.name,
     required this.phone,
+    this.telegramPhone = '',
+    this.telegramChatId = '',
+    this.telegramUsername = '',
     this.isPrimaryUser = false,
     this.joined = false,
+    this.notifyTelegram = true,
     this.notifySms = true,
     this.notifyCall = true,
     this.notifyApp = true,
@@ -453,7 +472,11 @@ class AlertContact {
   AlertContact copyWith({
     String? name,
     String? phone,
+    String? telegramPhone,
+    String? telegramChatId,
+    String? telegramUsername,
     bool? joined,
+    bool? notifyTelegram,
     bool? notifySms,
     bool? notifyCall,
     bool? notifyApp,
@@ -462,8 +485,12 @@ class AlertContact {
       id: id,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      telegramPhone: telegramPhone ?? this.telegramPhone,
+      telegramChatId: telegramChatId ?? this.telegramChatId,
+      telegramUsername: telegramUsername ?? this.telegramUsername,
       isPrimaryUser: isPrimaryUser,
       joined: joined ?? this.joined,
+      notifyTelegram: notifyTelegram ?? this.notifyTelegram,
       notifySms: notifySms ?? this.notifySms,
       notifyCall: notifyCall ?? this.notifyCall,
       notifyApp: notifyApp ?? this.notifyApp,
@@ -474,8 +501,12 @@ class AlertContact {
         'id': id,
         'name': name,
         'phone': phone,
+        'telegramPhone': telegramPhone,
+        'telegramChatId': telegramChatId,
+        'telegramUsername': telegramUsername,
         'isPrimaryUser': isPrimaryUser,
         'joined': joined,
+        'notifyTelegram': notifyTelegram,
         'notifySms': notifySms,
         'notifyCall': notifyCall,
         'notifyApp': notifyApp,
@@ -486,10 +517,14 @@ class AlertContact {
       id: json['id']?.toString() ?? 'c_${DateTime.now().millisecondsSinceEpoch}',
       name: json['name']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
-      isPrimaryUser: json['isPrimaryUser'] == true,
-      joined: json['joined'] == true,
-      notifySms: json['notifySms'] != false,
-      notifyCall: json['notifyCall'] != false,
+      telegramPhone: json['telegramPhone']?.toString() ?? '',
+      telegramChatId: (json['telegramChatId'] ?? json['telegram_chat_id'] ?? '').toString(),
+      telegramUsername: (json['telegramUsername'] ?? json['telegram_username'] ?? '').toString(),
+      isPrimaryUser: json['isPrimaryUser'] == true || json['is_primary'] == true,
+      joined: json['joined'] == true || json['enabled'] == true,
+      notifyTelegram: json['notifyTelegram'] != false && json['notify_telegram'] != false,
+      notifySms: json['notifySms'] != false && json['notify_sms'] != false,
+      notifyCall: json['notifyCall'] != false && json['notify_call'] != false,
       notifyApp: json['notifyApp'] != false,
     );
   }
@@ -560,6 +595,8 @@ class ActiveFallAlert {
   final bool telegramBroadcastReady;
   final bool simulated;
   final TelemetrySnapshot? telemetry;
+  final String? remoteAlertId;
+  final String? remoteDispatchSummary;
 
   const ActiveFallAlert({
     required this.id,
@@ -579,6 +616,8 @@ class ActiveFallAlert {
     this.telegramBroadcastReady = false,
     this.simulated = false,
     this.telemetry,
+    this.remoteAlertId,
+    this.remoteDispatchSummary,
   });
 
   ActiveFallAlert copyWith({
@@ -589,6 +628,8 @@ class ActiveFallAlert {
     String? acknowledgedBy,
     DateTime? acknowledgedAt,
     TelemetrySnapshot? telemetry,
+    String? remoteAlertId,
+    String? remoteDispatchSummary,
   }) {
     return ActiveFallAlert(
       id: id,
@@ -608,6 +649,8 @@ class ActiveFallAlert {
       telegramBroadcastReady: telegramBroadcastReady,
       simulated: simulated,
       telemetry: telemetry ?? this.telemetry,
+      remoteAlertId: remoteAlertId ?? this.remoteAlertId,
+      remoteDispatchSummary: remoteDispatchSummary ?? this.remoteDispatchSummary,
     );
   }
 }

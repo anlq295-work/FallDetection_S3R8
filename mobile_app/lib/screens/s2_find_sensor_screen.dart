@@ -198,7 +198,7 @@ class _S2FindSensorScreenState extends State<S2FindSensorScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'ESP32-S3 · VL53L1X + LD2410B',
+                      'HEARTH',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: p.accent),
                     ),
                   ),

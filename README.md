@@ -111,6 +111,12 @@ FallDetection_S3R8/
 │   ├── ble_provision.h / .cpp     # BLE GATT Server (6 characteristics), NVS config & Hộp đen 5 sự kiện
 │   ├── web_server.h / .cpp        # HTTP Server cổng 80 (REST API + trang Web OTA /update)
 │   └── ota_manager.h / .cpp       # Quản lý HTTP/HTTPS OTA và BLE OTA chunk stream
+├── alert_bot/                     # Bot cảnh báo đa kênh (Telegram tương tác + SMS + CallMeBot/Twilio Voice)
+│   ├── server.py                  # FastAPI REST API + Webhook nhận sự kiện ngã (/api/alerts/fall)
+│   ├── dispatcher.py              # Phát cảnh báo đồng thời / leo thang tuần tự + xác nhận/đóng sự cố
+│   ├── telegram_poller.py         # Telegram Bot (/start, /register, /settings, /contacts, /test, nút bấm)
+│   ├── providers/                 # Telegram Bot API, SpeedSMS VN, Twilio SMS/Voice, CallMeBot Telegram Call
+│   └── tests/                     # Unit & integration tests (pytest)
 ├── mobile_app/                    # Ứng dụng Flutter (Android & iOS)
 │   ├── pubspec.yaml               # Dependencies: flutter_blue_plus, url_launcher, shared_preferences, ...
 │   ├── README.md                  # Tài liệu riêng cho ứng dụng di động
@@ -292,6 +298,7 @@ Khi ESP32 kết nối Wi-Fi thành công, Web Server tự động chạy tại `
 | `GET` | `/api/events` (hoặc `/events`) | JSON lịch sử 5 sự kiện trong Hộp đen NVS Flash |
 | `GET` | `/api/status` | JSON thông số phần cứng, trạng thái Wi-Fi, `free_heap`, `floor_mm`, cấu hình còi, trạng thái gửi SOS |
 | `GET` / `POST` | `/api/command` | Thực thi lệnh qua query `?cmd=<CMD>` hoặc body JSON `{"cmd":"<CMD>"}` |
+| `GET` / `POST` | `/api/config` | Đọc / đồng bộ danh bạ cứu hộ, Telegram, CallMeBot, URL Alert Bot & channel mask qua Wi-Fi LAN |
 | `GET` / `POST` | `/update` | Trang Web OTA upload trực tiếp file `firmware.bin` |
 
 ### 3. Danh sách lệnh điều khiển (`CHAR_CMD_UUID` & `/api/command`)
@@ -302,6 +309,7 @@ Khi ESP32 kết nối Wi-Fi thành công, Web Server tự động chạy tại `
 | `CANCEL_ALARM` | Hủy cảnh báo/SOS, tắt còi, reset trạng thái về `NORMAL` |
 | `PANIC_SOS` | Kích hoạt cảnh báo khẩn cấp SOS từ xa ngay lập tức |
 | `TEST_ALARM` / `TEST_BEEP` | Kiểm tra còi + LED đỏ (`400 ms`) hoặc bíp ngắn (`200 ms`) |
+| `TEST_REMOTE_ALERT` | Gửi thử cảnh báo ngã qua Alert Bot Server (hoặc fallback trực tiếp Telegram / SMS / CallMeBot) |
 | `GET_HISTORY` / `CLEAR_HISTORY` / `ADD_TEST_EVENT` | Đọc, xóa hoặc thêm sự kiện giả lập vào Hộp đen NVS |
 | `BUZZER_ACTIVE_LOW` / `BUZZER_ACTIVE_HIGH` | Đổi phân cực còi và lưu vĩnh viễn vào NVS |
 | `BUZZER_MUTE` / `BUZZER_UNMUTE` | Tắt/mở tiếng còi hoàn toàn (phục vụ test lab yên tĩnh) |

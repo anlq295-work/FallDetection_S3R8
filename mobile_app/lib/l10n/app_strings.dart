@@ -70,7 +70,7 @@ class AppStrings {
     }
   }
 
-  // S1 Welcome & Sign In (with mandatory Caregiver & Monitored Person fields!)
+  // S1 Welcome & Sign In (account and caregiver fields; monitored person is configured in S4)
   String get s1Headline => _t(
         'An tâm biết người thân an toàn ở nhà, ngay cả khi bạn đi xa.',
         "Know they're safe at home, even when you're away.",
@@ -155,74 +155,74 @@ class AppStrings {
   // S2 Find Sensor
   String get s2Title => _t('Tìm cảm biến của bạn', 'Find your sensor', 'Trouver votre capteur');
   String get s2Step1 => _t(
-        'Cắm nguồn 5V (2A–3A) cho hộp cảm biến trong phòng cần theo dõi.',
-        'Plug the sensor into a 5V socket in the room you want to watch.',
-        'Branchez le capteur sur une prise 5V dans la pièce à surveiller.',
+        'Cắm nguồn 5V (2A–3A) cho thiết bị trong phòng cần theo dõi.',
+        'Plug the device into a 5V socket in the room you want to watch.',
+        'Branchez l\'appareil sur une prise 5V dans la pièce à surveiller.',
       );
   String get s2Step2 => _t(
-        'Đợi đèn trên cảm biến sẵn sàng (khoảng 10 giây).',
-        'Wait until the light on the sensor is ready (about 10 seconds).',
-        'Attendez que le voyant du capteur soit prêt (environ 10 secondes).',
+        'Đợi đèn trên thiết bị sẵn sàng (khoảng 10 giây).',
+        'Wait until the light on the device is ready (about 10 seconds).',
+        'Attendez que le voyant de l\'appareil soit prêt (environ 10 secondes).',
       );
   String get s2Step3 => _t(
-        'Giữ điện thoại trong phạm vi 2 mét gần cảm biến.',
+        'Giữ điện thoại trong phạm vi 2 mét gần thiết bị.',
         'Keep your phone within 2 metres.',
         'Gardez votre téléphone à moins de 2 mètres.',
       );
   String get s2PermissionTitle => _t(
-        'Hearth chỉ dùng Bluetooth để kết nối và cấu hình cảm biến ESP32-S3 lần đầu.',
-        'Hearth uses Bluetooth only to pair and configure the ESP32-S3 sensor the first time.',
-        'Hearth utilise le Bluetooth uniquement pour appairer le capteur ESP32-S3 la première fois.',
+        'Hearth chỉ dùng Bluetooth để kết nối và cấu hình thiết bị ESP32-S3 lần đầu.',
+        'Hearth uses Bluetooth only to pair and configure the ESP32-S3 device the first time.',
+        'Hearth utilise le Bluetooth uniquement pour appairer l\'appareil ESP32-S3 la première fois.',
       );
   String get s2AllowBluetooth => _t('Cho phép Bluetooth & Quét', 'Allow Bluetooth & Scan', 'Autoriser le Bluetooth');
   String get s2SensorsNearby => _t('Cảm biến ở gần', 'Sensors nearby', 'Capteurs à proximité');
   String get s2Searching => _t('Đang tìm cảm biến ở gần…', 'Searching for sensors nearby…', 'Recherche de capteurs à proximité…');
   String s2SensorRowTitle(String code) => _t(
-        'Cảm biến Hearth · Mã cuối $code',
-        'Hearth sensor · ID ends in $code',
-        'Capteur Hearth · ID finissant par $code',
+        'Thiết bị Hearth · Mã cuối $code',
+        'Hearth device · ID ends in $code',
+        'Appareil Hearth · ID finissant par $code',
       );
   String get s2SignalStrong => _t('Tín hiệu mạnh', 'Strong', 'Signal fort');
   String get s2SignalWeak => _t('Tín hiệu yếu', 'Weak', 'Signal faible');
-  String get s2ConnectBtn => _t('Kết nối với cảm biến này', 'Connect to this sensor', 'Connecter ce capteur');
-  String get s2Connecting => _t('Đang kết nối cảm biến…', 'Connecting…', 'Connexion…');
+  String get s2ConnectBtn => _t('Kết nối với thiết bị này', 'Connect to this device', 'Connecter cet appareil');
+  String get s2Connecting => _t('Đang kết nối thiết bị…', 'Connecting…', 'Connexion…');
   String s2ConnectedTitle(String code) => _t(
-        'Đã kết nối cảm biến $code',
-        'Connected to sensor $code',
-        'Connecté au capteur $code',
+        'Đã kết nối thiết bị $code',
+        'Connected to device $code',
+        'Connecté à l\'appareil $code',
       );
   String get s2ConnectedLightCopy => _t(
-        'Đèn trên cảm biến đã ổn định. Đang chuyển sang bước Wi-Fi…',
-        'The light on the sensor is now solid blue.',
-        'Le voyant du capteur est maintenant bleu fixe.',
+        'Đèn trên thiết bị đã ổn định. Đang chuyển sang bước Wi-Fi…',
+        'The light on the device is now solid blue.',
+        'Le voyant de l\'appareil est maintenant bleu fixe.',
       );
   String get s2NotFound => _t(
-        'Chưa tìm thấy cảm biến vật lý nào. Hãy chắc chắn cảm biến đã cắm điện 5V và đứng gần dưới 2 mét.',
-        "No physical sensor found yet. Make sure it's powered and you're within 2 metres.",
-        'Aucun capteur physique détecté. Vérifiez l’alimentation et rapprochez-vous.',
+        'Chưa tìm thấy thiết bị vật lý nào. Hãy chắc chắn thiết bị đã cắm điện 5V và đứng gần dưới 2 mét.',
+        "No physical device found yet. Make sure it's powered and you're within 2 metres.",
+        'Aucun appareil physique détecté. Vérifiez l’alimentation et rapprochez-vous.',
       );
-  String get s2SearchAgain => _t('Tìm lại cảm biến', 'Search again', 'Rechercher à nouveau');
-  String get s2NotShowingLink => _t('Không thấy cảm biến?', 'Sensor not showing?', 'Capteur introuvable ?');
-  String get s2HelpTitle => _t('Khắc phục khi không thấy cảm biến', 'Sensor not showing?', 'Capteur introuvable ?');
+  String get s2SearchAgain => _t('Tìm lại thiết bị', 'Search again', 'Rechercher à nouveau');
+  String get s2NotShowingLink => _t('Không thấy thiết bị?', 'Device not showing?', 'Appareil introuvable ?');
+  String get s2HelpTitle => _t('Khắc phục khi không thấy thiết bị', 'Device not showing?', 'Appareil introuvable ?');
   String get s2HelpBody => _t(
-        '1. Rút nguồn cảm biến ra rồi cắm lại (đảm bảo nguồn 5V ≥ 2A).\n2. Giữ nút cảm ứng (GPIO7) để kiểm tra phản hồi.\n3. Hoặc nhập thủ công mã ID thiết bị bên dưới để ghép nối qua mạng LAN.',
-        '1. Unplug the sensor and plug it back in (5V ≥ 2A).\n2. Check the touch button (GPIO7).\n3. Or enter the sensor ID printed on the label below.',
-        '1. Débranchez puis rebranchez le capteur (5V ≥ 2A).\n2. Vérifiez le bouton tactile (GPIO7).\n3. Ou saisissez manuellement l’ID inscrit sur l’étiquette.',
+        '1. Rút nguồn thiết bị ra rồi cắm lại (đảm bảo nguồn 5V ≥ 2A).\n2. Giữ nút cảm ứng (GPIO7) để kiểm tra phản hồi.\n3. Hoặc nhập thủ công mã ID thiết bị bên dưới để ghép nối qua mạng LAN.',
+        '1. Unplug the device and plug it back in (5V ≥ 2A).\n2. Check the touch button (GPIO7).\n3. Or enter the device ID printed on the label below.',
+        '1. Débranchez puis rebranchez l\'appareil (5V ≥ 2A).\n2. Vérifiez le bouton tactile (GPIO7).\n3. Ou saisissez manuellement l’ID inscrit sur l’étiquette.',
       );
-  String get s2ManualIdLabel => _t('Mã ID trên nhãn thiết bị', 'Sensor ID on label', 'ID du capteur');
-  String get s2UseManualId => _t('Dùng mã cảm biến này', 'Use this sensor ID', 'Utiliser cet ID');
-  String get s2UseDemoSensor => _t('Chế độ thử nghiệm (cảm biến ảo)', 'Test mode (virtual sensor)', 'Mode test (capteur virtuel)');
+  String get s2ManualIdLabel => _t('Mã ID trên nhãn thiết bị', 'Device ID on label', 'ID de l\'appareil');
+  String get s2UseManualId => _t('Dùng mã thiết bị này', 'Use this device ID', 'Utiliser cet ID');
+  String get s2UseDemoSensor => _t('Chế độ thử nghiệm (thiết bị ảo)', 'Test mode (virtual device)', 'Mode test (appareil virtuel)');
   String get s2BtOffError => _t(
-        'Không thể kết nối Bluetooth. Hãy kiểm tra Bluetooth đã bật và đứng gần cảm biến hơn.',
+        'Không thể kết nối Bluetooth. Hãy kiểm tra Bluetooth đã bật và đứng gần thiết bị hơn.',
         'Bluetooth connection failed. Make sure Bluetooth is on and move closer.',
         'Échec Bluetooth. Vérifiez que le Bluetooth est activé et rapprochez-vous.',
       );
 
   // S3 Wi-Fi Setup
-  String get s3Title => _t('Kết nối cảm biến với Wi-Fi', 'Connect the sensor to Wi-Fi', 'Connecter le capteur au Wi-Fi');
+  String get s3Title => _t('Kết nối thiết bị với Wi-Fi', 'Connect the device to Wi-Fi', 'Connecter l\'appareil au Wi-Fi');
   String get s3Helper => _t(
-        'Dùng Wi-Fi tại nhà nơi đặt cảm biến. Bắt buộc là mạng 2.4 GHz (ESP32-S3 chỉ hỗ trợ băng tần 2.4 GHz).',
-        'Use the home Wi-Fi where the sensor is installed. Must be 2.4 GHz (ESP32-S3 supports 2.4 GHz only).',
+        'Dùng Wi-Fi tại nhà nơi đặt thiết bị. Bắt buộc là mạng 2.4 GHz (ESP32-S3 chỉ hỗ trợ băng tần 2.4 GHz).',
+        'Use the home Wi-Fi where the device is installed. Must be 2.4 GHz (ESP32-S3 supports 2.4 GHz only).',
         'Utilisez le Wi-Fi du domicile (bande 2,4 GHz obligatoire pour ESP32-S3).',
       );
   String get s3NetworksTitle => _t('Nhập hoặc chọn mạng Wi-Fi 2.4 GHz', 'Enter or pick a 2.4 GHz network', 'Réseau Wi-Fi 2,4 GHz');
@@ -230,25 +230,25 @@ class AppStrings {
   String get s3SsidHint => _t('Nhập chính xác tên Wi-Fi tại nhà', 'Enter your home Wi-Fi name', 'Nom exact du réseau Wi-Fi');
   String get s3PasswordLabel => _t('Mật khẩu Wi-Fi', 'Wi-Fi password', 'Mot de passe Wi-Fi');
   String get s3PasswordHelper => _t('Phân biệt chữ hoa và chữ thường (để trống nếu mạng mở)', 'Case-sensitive (leave blank for open network)', 'Sensible à la casse');
-  String get s3ConnectBtn => _t('Gửi cấu hình Wi-Fi tới cảm biến', 'Connect sensor to Wi-Fi', 'Connecter le capteur au Wi-Fi');
+  String get s3ConnectBtn => _t('Gửi cấu hình Wi-Fi tới thiết bị', 'Connect device to Wi-Fi', 'Connecter l\'appareil au Wi-Fi');
   String get s3NoWifiLink => _t('Nhà này không có Wi-Fi?', 'This home has no Wi-Fi', 'Ce domicile n’a pas de Wi-Fi');
   String get s3NoWifiBody => _t(
-        'Cảm biến ESP32-S3 vẫn tự phát còi và bật đèn tại chỗ khi mất mạng. Để gửi cảnh báo đồng thời qua điện thoại/Telegram/SMS khi bạn đi xa, hãy lắp bộ phát Wi-Fi 4G (SIM di động) trong nhà.',
+        'Thiết bị ESP32-S3 vẫn tự phát còi và bật đèn tại chỗ khi mất mạng. Để gửi cảnh báo đồng thời qua điện thoại/Telegram/SMS khi bạn đi xa, hãy lắp bộ phát Wi-Fi 4G (SIM di động) trong nhà.',
         'The ESP32-S3 still triggers room siren & light offline. For remote alerts, install a compact 4G mobile Wi-Fi router.',
         'L’alarme locale fonctionne hors ligne. Pour les alertes à distance, utilisez un routeur Wi-Fi 4G.',
       );
-  String s3ProgressJoining(String ssid) => _t('Đang nạp cấu hình $ssid vào cảm biến', 'Sending $ssid to sensor', 'Envoi de $ssid au capteur');
+  String s3ProgressJoining(String ssid) => _t('Đang nạp cấu hình $ssid vào thiết bị', 'Sending $ssid to device', 'Envoi de $ssid à l\'appareil');
   String get s3ProgressReaching => _t('Đang kết nối mạng gia đình', 'Connecting to home Wi-Fi', 'Connexion au Wi-Fi');
   String get s3ProgressDone => _t('Hoàn tất', 'Done', 'Terminé');
   String s3SuccessBanner(String ssid) => _t(
-        'Cảm biến đã lưu cấu hình Wi-Fi "$ssid" và sẵn sàng hoạt động độc lập.',
-        'Sensor saved "$ssid" and is ready to monitor independently.',
-        'Le capteur a enregistré "$ssid" et fonctionne en autonomie.',
+        'Thiết bị đã lưu cấu hình Wi-Fi "$ssid" và sẵn sàng hoạt động độc lập.',
+        'Device saved "$ssid" and is ready to monitor independently.',
+        'L\'appareil a enregistré "$ssid" et fonctionne en autonomie.',
       );
   String s3WrongPassword(String ssid) => _t(
-        'Không gửi được cấu hình "$ssid" tới cảm biến. Kiểm tra kết nối BLE và thử lại.',
-        'Could not send "$ssid" to the sensor. Check BLE connection and try again.',
-        'Impossible d’envoyer "$ssid" au capteur. Vérifiez le Bluetooth.',
+        'Không gửi được cấu hình "$ssid" tới thiết bị. Kiểm tra kết nối BLE và thử lại.',
+        'Could not send "$ssid" to the device. Check BLE connection and try again.',
+        'Impossible d’envoyer "$ssid" à l\'appareil. Vérifiez le Bluetooth.',
       );
   String get s3SsidRequiredError => _t(
         'Vui lòng nhập tên mạng Wi-Fi 2.4 GHz.',
@@ -257,7 +257,7 @@ class AppStrings {
       );
 
   // S4 Name the room
-  String get s4Title => _t('Cảm biến này đặt ở phòng nào?', 'Where is this sensor?', 'Où est placé ce capteur ?');
+  String get s4Title => _t('Thiết bị này đặt ở phòng nào?', 'Where is this device?', 'Où est placé cet appareil ?');
   String get s4RoomNameLabel => _t('Tên phòng *', 'Room name *', 'Nom de la pièce *');
   String get s4RoomNameHelper => _t(
         'Hiển thị trong tin nhắn & thông báo khẩn cấp. Ví dụ: Phòng tắm tầng 2.',
@@ -290,7 +290,7 @@ class AppStrings {
         'Une pièce "$name" existe déjà. Ajoutez un détail, ex. "$name étage".',
       );
 
-  // S5 Test the sensor
+  // S5 Test the device
   String get s5Title => _t('Kiểm tra đảm bảo mọi thứ hoạt động', "Let's make sure it works", 'Vérifions que tout fonctionne');
   String get s5Check1Title => _t('Kiểm tra 1 – Nhận diện có người', 'Check 1 – Presence', 'Test 1 – Présence');
   String s5Check1Desc(String room) => _t(
@@ -304,9 +304,9 @@ class AppStrings {
   String get s5SimulatePresence => _t('Xác nhận đã đứng trong phòng', 'Confirm I am in the room', 'Confirmer ma présence');
   String get s5Check2Title => _t('Kiểm tra 2 – Cảnh báo & Còi đèn', 'Check 2 – Alert', 'Test 2 – Alerte');
   String get s5Check2Desc => _t(
-        'Cảm biến sẽ nháy đèn, phát tiếng bíp và gửi thông báo thử về máy này. Người khác sẽ không bị làm phiền.',
-        "We'll make the sensor light up and beep, and send an alert to this phone. Nobody else is alerted.",
-        'Le capteur va clignoter, biper et envoyer un test sur ce téléphone. Personne d’autre n’est alerté.',
+        'Thiết bị sẽ nháy đèn, phát tiếng bíp và gửi thông báo thử về máy này. Người khác sẽ không bị làm phiền.',
+        "We'll make the device light up and beep, and send an alert to this phone. Nobody else is alerted.",
+        'L\'appareil va clignoter, biper et envoyer un test sur ce téléphone. Personne d’autre n’est alerté.',
       );
   String get s5SoundMedium => _t('Âm lượng còi: Trung bình. Bạn có thể đổi lại sau.', 'Sound: medium. You can change this later.', 'Volume : moyen. Modifiable plus tard.');
   String get s5SendTestBtn => _t('Gửi cảnh báo thử', 'Send a test alert', 'Envoyer une alerte test');
@@ -360,16 +360,16 @@ class AppStrings {
         '$count pièces surveillées · Dernière activité de ${personOrGeneric(person)} dans $room, $ago',
       );
   String s6IssueSummary(String room) => _t(
-        'Cảm biến $room đang ngoại tuyến · Không thể phát hiện té ngã tại đây',
-        "$room sensor is offline · Falls can't be detected there",
-        'Capteur $room hors ligne · Détection des chutes impossible',
+        'Thiết bị $room đang ngoại tuyến · Không thể phát hiện té ngã tại đây',
+        "$room device is offline · Falls can't be detected there",
+        'Appareil $room hors ligne · Détection des chutes impossible',
       );
   String s6OfflineSince(String room, String time) => _t(
-        'Cảm biến $room mất kết nối từ $time',
-        '$room sensor offline since $time',
-        'Capteur $room hors ligne depuis $time',
+        'Thiết bị $room mất kết nối từ $time',
+        '$room device offline since $time',
+        'Appareil $room hors ligne depuis $time',
       );
-  String get s6ReconnectSensor => _t('Kết nối lại cảm biến', 'Reconnect sensor', 'Reconnecter le capteur');
+  String get s6ReconnectSensor => _t('Kết nối lại thiết bị', 'Reconnect device', 'Reconnecter l’appareil');
   String get s6AddRoom => _t('Thêm phòng mới', 'Add a room', 'Ajouter une pièce');
   String get s6EmptyTitle => _t('Chưa có cảm biến phòng nào', 'No room sensors yet', 'Aucun capteur installé');
   String s6EmptyBody(String person) => _t(
@@ -523,7 +523,7 @@ class AppStrings {
         'ToF height, 24GHz Radar, AI posture & hardware controls',
         'Hauteur ToF, Radar 24GHz, posture IA et contrôles',
       );
-  String get s8RemoteChannels => _t('Kênh cảnh báo từ xa (Telegram & SMS)', 'Remote alert channels (Telegram & SMS)', 'Canaux distants (Telegram & SMS)');
+  String get s8RemoteChannels => _t('Kênh cảnh báo từ xa (Telegram & Gọi điện)', 'Remote alert channels (Telegram & Call)', 'Canaux distants (Telegram & Appel)');
   String get s8FirmwareOta => _t('Cập nhật Firmware OTA (ESP32-S3)', 'Firmware OTA update', 'Mise à jour Firmware OTA');
   String get s8BlackboxHistory => _t('Hộp đen NVS Flash (5 sự cố gần nhất)', 'NVS Flash Blackbox (last 5 events)', 'Boîte noire NVS (5 derniers événements)');
   String get s8CalibrateFloor => _t('Hiệu chuẩn mặt sàn', 'Calibrate floor', 'Calibrer le sol');
@@ -539,9 +539,9 @@ class AppStrings {
   String get s9ModeSimultaneous => _t('Đồng thời tất cả (Khuyên dùng)', 'Simultaneous to all (Recommended)', 'Simultané à tous (Recommandé)');
   String get s9ModeSequential => _t('Tuần tự từng người', 'Sequential order', 'Séquentiel un par un');
   String get s9SimultaneousExplainer => _t(
-        'Khi có té ngã, hệ thống gửi thông báo App, tin nhắn SMS, Telegram và mở gọi nhanh ĐỒNG THỜI tới toàn bộ người liên hệ trong danh sách để rút ngắn tối đa thời gian cấp cứu.',
-        'On a fall, App alert, SMS, Telegram and quick-call options trigger SIMULTANEOUSLY for every contact so no critical minute is lost.',
-        'En cas de chute, App, SMS, Telegram et appels rapides sont déclenchés SIMULTANÉMENT pour tous les contacts.',
+        'Khi có té ngã, hệ thống gửi thông báo App, nhắn Telegram và tự động gọi điện ĐỒNG THỜI tới toàn bộ người liên hệ trong danh sách để rút ngắn tối đa thời gian cấp cứu.',
+        'On a fall, App alert, Telegram and automated voice calls trigger SIMULTANEOUSLY for every contact so no critical minute is lost.',
+        'En cas de chute, App, Telegram et appels vocaux sont déclenchés SIMULTANÉMENT pour tous les contacts.',
       );
   String s9SequentialExplainer(int minutes) => _t(
         'Nếu người trước không phản hồi sau $minutes phút, hệ thống sẽ chuyển cảnh báo sang người tiếp theo.',
@@ -553,16 +553,19 @@ class AppStrings {
   String get s9WaitBeforeNext => _t('Thời gian chờ (chế độ tuần tự)', 'Wait before next person (sequential)', 'Délai avant escalade');
   String s9Minutes(int m) => _t('$m phút', '$m min', '$m min');
   String get s9EmptyHint => _t(
-        'Hiện chỉ có mình bạn nhận cảnh báo. Hãy thêm ít nhất 1 người thân hoặc hàng xóm ở gần để nhận SMS, Telegram và cuộc gọi đồng thời khi có sự cố.',
-        'Right now only you receive alerts. Add at least one family member or nearby neighbour for simultaneous SMS, Telegram & call backup.',
+        'Hiện chỉ có mình bạn nhận cảnh báo. Hãy thêm ít nhất 1 người thân hoặc hàng xóm ở gần để nhận Telegram và cuộc gọi đồng thời khi có sự cố.',
+        'Right now only you receive alerts. Add at least one family member or nearby neighbour for simultaneous Telegram & call backup.',
         'Vous seul(e) recevez les alertes. Ajoutez au moins un proche ou voisin pour un relais simultané.',
       );
   String get s9ContactName => _t('Họ và tên *', 'Full name *', 'Nom complet *');
   String get s9ContactPhone => _t('Số điện thoại di động *', 'Mobile number *', 'Numéro de mobile *');
+  String get s9TelegramPhone => _t('Số điện thoại Telegram', 'Telegram phone number', 'Numéro Telegram');
+  String get s9TelegramSamePhone => _t('Số Telegram trùng số điện thoại trên', 'Telegram number is the same as the mobile number above', 'Le numéro Telegram est identique au numéro ci-dessus');
+  String get s9EditContact => _t('Sửa thông tin liên hệ', 'Edit contact', 'Modifier le contact');
   String get s9InviteHelper => _t(
-        'Số này sẽ được đồng bộ trực tiếp vào ESP32-S3 để gửi SMS cứu hộ tự động và mở gọi nhanh trên S7.',
-        'Synced directly to ESP32-S3 for automatic SMS gateway alerts and one-tap S7 calls.',
-        'Synchronisé avec l’ESP32-S3 pour les SMS d’urgence et les appels rapides.',
+        'Số này sẽ được đồng bộ tự động để hệ thống gọi điện báo động tiếng Việt và mở gọi nhanh trên S7.',
+        'Synced automatically for automated voice alert calls and one-tap S7 calls.',
+        'Synchronisé automatiquement pour les appels vocaux d’alerte et les appels rapides.',
       );
   String get s9SendInvite => _t('Lưu & Đồng bộ liên hệ', 'Save & Sync contact', 'Enregistrer & Synchroniser');
   String get s9PhoneError => _t(
@@ -571,10 +574,30 @@ class AppStrings {
         'Numéro invalide (au moins 9 chiffres).',
       );
   String get s9BadgeJoined => _t('Sẵn sàng nhận tin', 'Active', 'Actif');
-  String get s9BadgeInvited => _t('Đã đồng bộ SMS', 'SMS synced', 'SMS synchronisé');
+  String get s9BadgeInvited => _t('Đã đồng bộ', 'Synced', 'Synchronisé');
   String get s9YouThisPhone => _t('Bạn · Điện thoại này', 'You · this phone', 'Vous · ce téléphone');
   String get s9MoveUp => _t('Đưa lên', 'Move up', 'Monter');
   String get s9MoveDown => _t('Đưa xuống', 'Move down', 'Descendre');
+  String get s9TelegramChatId => _t('Telegram Chat ID (tuỳ chọn)', 'Telegram Chat ID (optional)', 'ID de chat Telegram (optionnel)');
+  String get s9TelegramUsername => _t('Telegram @username (Gọi CallMeBot miễn phí)', 'Telegram @username (Free CallMeBot call)', '@username Telegram (Appel CallMeBot gratuit)');
+  String get s9BotConfigTitle => _t('Bot Cảnh Báo Tự Động (Telegram / Call)', 'Automated Alert Bot (Telegram / Call)', 'Bot d’alerte auto (Telegram / Appel)');
+  String get s9BotConfigSubEmpty => _t(
+        'Kết nối Alert Bot Server hoặc Telegram Bot Token để tự động nhắn tin & gọi điện khi có té ngã',
+        'Connect Alert Bot Server or Telegram Bot Token for automatic Telegram, SMS & voice calls on fall',
+        'Connectez le Bot Server ou un jeton Telegram pour des alertes automatiques',
+      );
+  String get s9BotServerUrl => _t('URL Alert Bot Server', 'Alert Bot Server URL', 'URL du serveur Alert Bot');
+  String get s9BotApiKey => _t('API Key bảo vệ (tuỳ chọn)', 'API Key (optional)', 'Clé API (optionnel)');
+  String get s9BotConfigureBtn => _t('Cấu hình Bot', 'Configure Bot', 'Configurer Bot');
+  String get s9BotPullBtn => _t('Đồng bộ từ Bot', 'Sync from Bot', 'Synchro Bot');
+  String get s9BotTestBtn => _t('Test tất cả', 'Test all', 'Tout tester');
+  String get s9TestTelegramBtn => _t('Test Telegram', 'Test Telegram', 'Test Telegram');
+  String get s9TestSmsBtn => _t('Test SMS', 'Test SMS', 'Test SMS');
+  String get s9TestCallBtn => _t('Test Gọi điện', 'Test Call', 'Test Appel');
+  String get s9BotCheckBtn => _t('Kiểm tra kết nối', 'Test connection', 'Tester connexion');
+  String get s9ContactChannels => _t('Kênh nhận của người này', 'Channels for this contact', 'Canaux pour ce contact');
+  String get s1OtpServerBtn => _t('Cấu hình Bot Server nhận OTP thật', 'Configure Bot Server for real OTP', 'Configurer le serveur OTP');
+  String get s1OtpServerConnected => _t('OTP Email qua Bot Server', 'Real Email OTP via Bot Server', 'OTP e-mail via serveur Bot');
 
   // Medical, Medication, Guest Mode & Safety tools
   String get medicalSuiteTitle => _t('Chăm sóc, Nhắc thuốc & Y tế khẩn cấp', 'Elderly Care, Meds & Medical Kit', 'Soins, Médicaments & Kit Médical');

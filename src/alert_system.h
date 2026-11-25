@@ -38,6 +38,8 @@ public:
 
   bool sendTelegramAlert(const String& botToken, const String& chatId, const String& message);
   bool sendSmsGateway(const String& phone, const String& content);
+  bool sendCallMeBotTelegramCall(const String& usernames, const String& spokenMessage);
+  bool sendAlertBotWebhook(const String& botBaseUrl, const String& apiKey, const String& payloadJson);
 
 private:
   Adafruit_NeoPixel strip;

@@ -18,4 +18,34 @@ incognitonamenlos4-75TYQA/
 *.p12
 *.mobileprovision
 *.key
+*.jks
+*.keystore
+*.pem
+
+# Environment & Secrets (giữ lại file .env.example làm mẫu)
+.env
+.env.*
+alert_bot/.env
+alert_bot/.env.*
+!.env.example
+!alert_bot/.env.example
+
+# Alert Bot runtime data & Python artifacts
+alert_bot/data/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+*.log
+*.tmp
+
+# Flutter / Android / iOS local build caches
+mobile_app/android/local.properties
+mobile_app/ios/Pods/
+mobile_app/ios/.symlinks/
+.DS_Store
+Thumbs.db
+
+
 

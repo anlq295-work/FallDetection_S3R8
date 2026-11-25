@@ -262,27 +262,59 @@ class Esp32HardwareService {
     }
   }
 
-  /// Syncs emergency phones, Telegram Bot Token / Chat ID, and floor threshold to ESP32 NVS.
+  /// Syncs emergency phones, Telegram Bot Token / Chat ID, Alert Bot Server URL/Key,
+  /// CallMeBot @usernames, channel mask, and floor threshold to ESP32 NVS (BLE first, LAN fallback).
   Future<bool> writeContactConfig({
     String? phoneList,
     String? telegramChatId,
     String? telegramBotToken,
+    String? alertBotUrl,
+    String? alertBotApiKey,
+    String? telegramUsers,
+    int? channelMask,
     int? floorMm,
+    String? overrideLanIp,
   }) async {
-    if (_contactChar == null) return false;
-    try {
-      final Map<String, dynamic> data = {};
-      if (phoneList != null) data['phone'] = phoneList;
-      if (telegramChatId != null) data['chat_id'] = telegramChatId;
-      if (telegramBotToken != null && telegramBotToken.isNotEmpty) {
-        data['bot_token'] = telegramBotToken;
-      }
-      if (floorMm != null) data['floor_mm'] = floorMm;
-      await _contactChar!.write(utf8.encode(jsonEncode(data)), withoutResponse: false);
-      return true;
-    } catch (_) {
-      return false;
+    final Map<String, dynamic> data = {};
+    if (phoneList != null) data['phone'] = phoneList;
+    if (telegramChatId != null) data['chat_id'] = telegramChatId;
+    if (telegramBotToken != null && telegramBotToken.isNotEmpty) {
+      data['bot_token'] = telegramBotToken;
     }
+    if (alertBotUrl != null) data['bot_url'] = alertBotUrl;
+    if (alertBotApiKey != null && alertBotApiKey.isNotEmpty) {
+      data['bot_key'] = alertBotApiKey;
+    }
+    if (telegramUsers != null) data['tg_user'] = telegramUsers;
+    if (channelMask != null) data['ch_mask'] = channelMask;
+    if (floorMm != null) data['floor_mm'] = floorMm;
+    if (data.isEmpty) return false;
+
+    final encoded = jsonEncode(data);
+
+    if (_contactChar != null && isBleConnected) {
+      try {
+        await _contactChar!.write(utf8.encode(encoded), withoutResponse: false);
+        return true;
+      } catch (_) {}
+    }
+
+    final ip = overrideLanIp ?? _activeLanIp;
+    if (ip != null && ip.isNotEmpty && ip != '0.0.0.0') {
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+        final req = await client.postUrl(Uri.parse('http://$ip/api/config'));
+        req.headers.contentType = ContentType.json;
+        req.write(encoded);
+        final resp = await req.close().timeout(const Duration(seconds: 5));
+        await resp.drain<void>();
+        client.close();
+        return resp.statusCode == 200;
+      } catch (_) {
+        return false;
+      }
+    }
+    return false;
   }
 
   /// Sends a control command over BLE first, falling back to Wi-Fi LAN HTTP POST /api/command.
