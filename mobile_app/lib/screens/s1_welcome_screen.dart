@@ -138,13 +138,11 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
         _otpProviderNotice = res.provider.isNotEmpty ? res.provider : null;
       });
     } else {
-      await Future<void>.delayed(const Duration(milliseconds: 450));
-      if (!mounted) return;
       setState(() {
         _loading = false;
-        _stepTwo = true;
-        _otpProviderNotice = null;
+        _networkError = s.s1OtpUnavailable;
       });
+      return;
     }
 
     _startResendCooldown();
@@ -172,6 +170,10 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
     }
     if (widget.ctrl.phoneOfflineSimulation) {
       setState(() => _networkError = s.s1NetworkError);
+      return;
+    }
+    if (!skipDirectToHome && widget.ctrl.alertBotUrl.trim().isEmpty) {
+      setState(() => _networkError = s.s1OtpUnavailable);
       return;
     }
 
@@ -391,8 +393,10 @@ class _S1WelcomeScreenState extends State<S1WelcomeScreen> {
               onPressed: () => _verifyCode(),
             ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 HearthTextLink(
                   label: s.back,

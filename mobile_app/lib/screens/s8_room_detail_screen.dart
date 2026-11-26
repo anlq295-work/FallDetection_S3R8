@@ -175,9 +175,11 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               ),
               if (enabled) ...[
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
+                LayoutBuilder(builder: (context, constraints) {
+                  final width = constraints.maxWidth >= 380 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
+                  return Wrap(spacing: 12, runSpacing: 12, children: [
+                    SizedBox(
+                      width: width,
                       child: DropdownButtonFormField<int>(
                         initialValue: startH,
                         decoration: const InputDecoration(labelText: 'Start (h)'),
@@ -188,8 +190,8 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                         onChanged: (v) => setModalState(() => startH = v ?? startH),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    SizedBox(
+                      width: width,
                       child: DropdownButtonFormField<int>(
                         initialValue: endH,
                         decoration: const InputDecoration(labelText: 'End (h)'),
@@ -200,8 +202,8 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                         onChanged: (v) => setModalState(() => endH = v ?? endH),
                       ),
                     ),
-                  ],
-                ),
+                  ]);
+                }),
               ],
               const SizedBox(height: 18),
               HearthPrimaryButton(
@@ -237,15 +239,14 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
             children: [
               Text(s.s8InactivityAlert, style: Theme.of(c).textTheme.titleLarge),
               const SizedBox(height: 12),
-              SegmentedButton<int>(
-                segments: [
-                  const ButtonSegment(value: 0, label: Text('Off')),
-                  ButtonSegment(value: 15, label: Text(s.s9Minutes(15))),
-                  ButtonSegment(value: 30, label: Text(s.s9Minutes(30))),
-                  ButtonSegment(value: 60, label: Text(s.s9Minutes(60))),
-                ],
-                selected: {mins},
-                onSelectionChanged: (set) => setModalState(() => mins = set.first),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [0, 15, 30, 60].map((value) => ChoiceChip(
+                  label: Text(value == 0 ? s.s8InactivityOff : s.s9Minutes(value)),
+                  selected: mins == value,
+                  onSelected: (_) => setModalState(() => mins = value),
+                )).toList(),
               ),
               const SizedBox(height: 18),
               HearthPrimaryButton(
@@ -292,8 +293,8 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                 label: s.s8CalibrateFloor,
                 icon: Icons.straighten_rounded,
                 onPressed: () async {
-                  await widget.ctrl.hardware.sendCommand('CALIBRATE_FLOOR', overrideLanIp: room.lanIp);
-                  if (mounted) showHearthToast(context, 'CALIBRATE_FLOOR sent');
+                  final sent = await widget.ctrl.hardware.sendCommand('CALIBRATE_FLOOR', overrideLanIp: room.lanIp);
+                  if (mounted) showHearthToast(context, sent ? s.s8CommandSent : s.s8CommandFailed, critical: !sent);
                 },
               ),
               const SizedBox(height: 14),
@@ -310,11 +311,28 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                 onPressed: () async {
                   final ip = ipCtrl.text.trim();
                   if (ip.isNotEmpty) {
-                    widget.ctrl.hardware.startLanPolling(ip);
+                    final snapshot = await widget.ctrl.hardware.fetchLanTelemetry(ip);
+                    if (!c.mounted) return;
+                    final expectedId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+                    final actualId = snapshot?.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ?? '';
+                    if (snapshot == null || snapshot.ipAddress != ip ||
+                        actualId.isEmpty || (expectedId.length >= 12 && actualId != expectedId)) {
+                      showHearthToast(c, s.s8LanVerificationFailed, critical: true);
+                      return;
+                    }
                     await widget.ctrl.markRoomOnlineAfterReconnect(room.id, lanIp: ip);
                   }
-                  await widget.ctrl.updateRoomSettings(room.id, floorThresholdMm: floorMm.round());
-                  if (c.mounted) Navigator.pop(c);
+                  final saved = await widget.ctrl.updateRoomSettings(
+                    room.id,
+                    floorThresholdMm: floorMm.round(),
+                    lanIp: ip.isNotEmpty ? ip : null,
+                  );
+                  if (!c.mounted) return;
+                  if (!saved) {
+                    showHearthToast(c, s.s8CommandFailed, critical: true);
+                    return;
+                  }
+                  Navigator.pop(c);
                 },
               ),
             ],
@@ -443,12 +461,16 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               label: 'OTA Latest (GitHub Releases)',
               icon: Icons.system_update_alt_rounded,
               onPressed: () async {
-                await widget.ctrl.hardware.sendCommand('OTA_LATEST', overrideLanIp: room.lanIp);
+                final sent = await widget.ctrl.hardware.sendCommand('OTA_LATEST', overrideLanIp: room.lanIp);
+                if (!sent) {
+                  if (ctx.mounted) showHearthToast(ctx, widget.ctrl.s.s8CommandFailed, critical: true);
+                  return;
+                }
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                 }
                 if (mounted) {
-                  showHearthToast(context, 'OTA_LATEST triggered on ESP32-S3');
+                  showHearthToast(context, widget.ctrl.s.s8CommandSent);
                 }
               },
             ),
@@ -513,23 +535,25 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
                 ),
               ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
+            LayoutBuilder(builder: (context, constraints) {
+              final width = constraints.maxWidth >= 420 ? (constraints.maxWidth - 10) / 2 : constraints.maxWidth;
+              return Wrap(spacing: 10, runSpacing: 10, children: [
+                SizedBox(
+                  width: width,
                   child: HearthSecondaryButton(
                     label: 'Add Test Event',
                     onPressed: () => widget.ctrl.hardware.sendCommand('ADD_TEST_EVENT', overrideLanIp: room.lanIp),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
+                SizedBox(
+                  width: width,
                   child: HearthCriticalOutlineButton(
                     label: 'Clear Flash',
                     onPressed: () => widget.ctrl.hardware.sendCommand('CLEAR_HISTORY', overrideLanIp: room.lanIp),
                   ),
                 ),
-              ],
-            ),
+              ]);
+            }),
           ],
         );
       },
@@ -550,8 +574,10 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               label: 'Reboot ESP32-S3',
               icon: Icons.restart_alt_rounded,
               onPressed: () async {
-                await widget.ctrl.hardware.sendCommand('REBOOT', overrideLanIp: room.lanIp);
-                if (ctx.mounted) Navigator.pop(ctx);
+                final sent = await widget.ctrl.hardware.sendCommand('REBOOT', overrideLanIp: room.lanIp);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (mounted) showHearthToast(context, sent ? s.s8CommandSent : s.s8CommandFailed, critical: !sent);
               },
             ),
             const SizedBox(height: 10),
@@ -559,8 +585,10 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               label: 'Reset Wi-Fi Credentials',
               icon: Icons.wifi_off_rounded,
               onPressed: () async {
-                await widget.ctrl.hardware.sendCommand('RESET_NETWORK', overrideLanIp: room.lanIp);
-                if (ctx.mounted) Navigator.pop(ctx);
+                final sent = await widget.ctrl.hardware.sendCommand('RESET_NETWORK', overrideLanIp: room.lanIp);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (mounted) showHearthToast(context, sent ? s.s8CommandSent : s.s8CommandFailed, critical: !sent);
               },
             ),
             const SizedBox(height: 10),
@@ -568,8 +596,28 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
               label: 'Factory Reset NVS Flash',
               icon: Icons.delete_forever_rounded,
               onPressed: () async {
-                await widget.ctrl.hardware.sendCommand('FACTORY_RESET', overrideLanIp: room.lanIp);
-                if (ctx.mounted) Navigator.pop(ctx);
+                final confirmed = await showDialog<bool>(
+                  context: ctx,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text(s.s8FactoryResetTitle),
+                    content: Text(s.s8FactoryResetWarning),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: Text(s.cancel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        child: Text(s.s8FactoryResetConfirm),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !ctx.mounted) return;
+                final sent = await widget.ctrl.hardware.sendCommand('FACTORY_RESET', overrideLanIp: room.lanIp);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (mounted) showHearthToast(context, sent ? s.s8CommandSent : s.s8CommandFailed, critical: !sent);
               },
             ),
           ],
@@ -795,9 +843,13 @@ class _S8RoomDetailScreenState extends State<S8RoomDetailScreen> {
     final timelineColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 4,
           children: [
-            Expanded(child: Text(s.s8TodayTimeline, style: Theme.of(context).textTheme.titleMedium)),
+            Text(s.s8TodayTimeline, style: Theme.of(context).textTheme.titleMedium),
             HearthTextLink(
               label: s.s8SeeEarlierDays,
               onPressed: () => widget.onSeeEarlierDays(room.id),

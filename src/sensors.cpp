@@ -348,7 +348,12 @@ void SensorManager::update() {
 #endif
 
   // Theo doi nam san bat dong keo dai
-  bool floorCondition = (primaryTofDistance > 50 && primaryTofDistance <= floorThresholdMm) &&
+  const uint32_t now = millis();
+  const bool freshTof = tofHealthy && (now - lastTofReadTime < 1500);
+  const bool freshRadar = radarHealthy && (now - lastRadarFrameTime < 1500);
+  const bool stationaryRadarTarget = radarTargetState >= 2;
+  bool floorCondition = freshTof && freshRadar && stationaryRadarTarget &&
+                        (primaryTofDistance > 50 && primaryTofDistance <= floorThresholdMm) &&
                         (radarPeakMotion <= POST_FALL_RADAR_MOTION_MAX) &&
                         (radarPeakStatic >= POST_FALL_RADAR_STATIC_MIN);
 
@@ -470,7 +475,7 @@ void SensorManager::extractFeatures(float* features) {
   int endCount = 0;
   for (int i = 0; i < 5; i++) {
     int idx = (bufferHead - 1 - i + WINDOW_SIZE) % WINDOW_SIZE;
-    uint16_t hVal = (windowBuffer[idx].tof_low > 50) ? windowBuffer[idx].tof_low : windowBuffer[idx].tof_high;
+    uint16_t hVal = (windowBuffer[idx].tof_mid > 100) ? windowBuffer[idx].tof_mid : windowBuffer[idx].tof_high;
     if (hVal > 50) {
       endHeightSum += hVal;
       endCount++;
@@ -531,6 +536,13 @@ bool SensorManager::isSensorsHealthy() {
   bool radarOk = (now - lastRadarFrameTime < 4000);
   bool tofOk = (now - lastTofReadTime < 4000);
   return radarOk || tofOk;
+}
+
+bool SensorManager::isFusionDataFresh() const {
+  const unsigned long now = millis();
+  return tofHealthy && radarHealthy &&
+         (now - lastTofReadTime < 1500) &&
+         (now - lastRadarFrameTime < 1500);
 }
 
 void SensorManager::setFloorThreshold(uint16_t floorMm) {

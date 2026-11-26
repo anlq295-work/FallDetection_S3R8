@@ -10,8 +10,34 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('SMS recipients respect SMS opt-in and failed sensor writes are not saved', () async {
+    final ctrl = HearthController();
+    addTearDown(ctrl.dispose);
+    await ctrl.load();
+    await ctrl.addContact('Call only', '0908333444', notifySms: false, notifyCall: true);
+    await ctrl.addContact('SMS enabled', '0909111222', notifySms: true, notifyCall: false);
+    expect(ctrl.smsPhoneNumbers, ['0909111222']);
+
+    final room = HearthRoom(
+      id: 'offline-room',
+      name: 'Bathroom',
+      type: RoomType.bathroom,
+      status: RoomStatus.offline,
+      lastMovementAt: DateTime.now(),
+      sensorId: 'S3R8',
+      lastCheckedAt: DateTime.now(),
+      floorThresholdMm: 450,
+    );
+    await ctrl.addOrUpdateRoom(room);
+
+    final saved = await ctrl.updateRoomSettings(room.id, floorThresholdMm: 600);
+    expect(saved, isFalse);
+    expect(ctrl.rooms.single.floorThresholdMm, 450);
+  });
+
   testWidgets('Hearth launches in VI with Pre-release2.0.1, enforces required fields, and switches EN/FR', (tester) async {
     final ctrl = HearthController();
+    addTearDown(ctrl.dispose);
     await ctrl.load();
 
     // Ensure ZERO hardcoded fake names or contacts exist on fresh install
@@ -43,6 +69,7 @@ void main() {
 
   testWidgets('Simultaneous multi-channel Fall Alert S7 works cleanly on compact phone', (tester) async {
     final ctrl = HearthController();
+    addTearDown(ctrl.dispose);
     await ctrl.load();
     await ctrl.signIn(
       email: 'carer@example.com',
@@ -93,6 +120,7 @@ void main() {
 
   testWidgets('Hearth renders cleanly on Tablet 2-pane and Desktop layouts without hardcoded names', (tester) async {
     final ctrl = HearthController();
+    addTearDown(ctrl.dispose);
     await ctrl.load();
     await ctrl.signIn(
       email: 'carer@example.com',

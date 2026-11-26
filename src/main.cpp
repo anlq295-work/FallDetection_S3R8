@@ -796,7 +796,7 @@ void loop() {
         bool isImmobile = (latest.radar_motion_max <= POST_FALL_RADAR_MOTION_MAX);
         bool hasBreathing = (latest.radar_static_max >= POST_FALL_RADAR_STATIC_MIN);
 
-        if (isAtFloor && isImmobile && hasBreathing) {
+        if (sensorMgr.isFusionDataFresh() && isAtFloor && isImmobile && hasBreathing) {
           Serial.println("[EVENT] Xac nhan nan nhan bat dong sat san -> KICH HOAT PRE-ALARM!");
           currentState = STATE_PRE_ALARM;
           preAlarmStart = now;

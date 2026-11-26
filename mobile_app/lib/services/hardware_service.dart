@@ -51,8 +51,12 @@ class Esp32HardwareService {
   StreamSubscription<BluetoothConnectionState>? _connSub;
   Timer? _lanPollTimer;
   int _lanPollFailures = 0;
+  int _lanPollGeneration = 0;
+  bool _lanPollInFlight = false;
 
   String? _activeLanIp;
+  bool _wifiProvisionAwaitingReboot = false;
+  bool _wifiRebootObserved = false;
   ConnectionTransport _transport = ConnectionTransport.disconnected;
 
   final StreamController<TelemetrySnapshot> _telemetryStream = StreamController.broadcast();
@@ -135,9 +139,13 @@ class Esp32HardwareService {
   Future<bool> connectBleSensor(DiscoveredSensor sensor) async {
     _lastSensor = sensor;
     _lastBleError = null;
-    if (sensor.isSimulated || sensor.rawBleDevice is! BluetoothDevice) {
+    if (sensor.isSimulated) {
       _transport = ConnectionTransport.simulated;
       return true;
+    }
+    if (sensor.rawBleDevice is! BluetoothDevice) {
+      _lastBleError = 'No physical BLE device available';
+      return false;
     }
 
     final device = sensor.rawBleDevice as BluetoothDevice;
@@ -175,17 +183,9 @@ class Esp32HardwareService {
       if (_statusChar != null) {
         await _statusChar!.setNotifyValue(true);
         _statusSub = _statusChar!.onValueReceived.listen((bytes) {
-          final msg = utf8.decode(bytes, allowMalformed: true).trim();
-          if (msg.isNotEmpty) {
-            if (msg.startsWith('CONNECTED_IP:')) {
-              final ip = msg.substring('CONNECTED_IP:'.length).trim();
-              if (ip.isNotEmpty && ip != '0.0.0.0') {
-                _activeLanIp = ip;
-              }
-            }
-            _statusStream.add(msg);
-          }
+          _handleStatusMessage(utf8.decode(bytes, allowMalformed: true).trim());
         });
+        await _readWifiStatus();
       }
 
       if (_telemetryChar != null) {
@@ -198,6 +198,7 @@ class Esp32HardwareService {
 
       _connSub = device.connectionState.listen((st) {
         if (st == BluetoothConnectionState.disconnected) {
+          if (_wifiProvisionAwaitingReboot) _wifiRebootObserved = true;
           _connectedDevice = null;
           if (!isLanConnected) {
             _transport = ConnectionTransport.disconnected;
@@ -208,11 +209,38 @@ class Esp32HardwareService {
 
       _connectedDevice = device;
       _transport = ConnectionTransport.ble;
-      await sendCommand('GET_VERSION');
+      // GET_VERSION replaces the readable status characteristic, so keep the
+      // Wi-Fi result intact while confirming a provisioning reboot.
+      if (!_wifiProvisionAwaitingReboot) await sendCommand('GET_VERSION');
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  void _handleStatusMessage(String msg) {
+    if (msg.isEmpty) return;
+    if (msg.startsWith('CONNECTED_IP:')) {
+      final ip = msg.substring('CONNECTED_IP:'.length).trim();
+      if (ip.isNotEmpty && ip != '0.0.0.0') _activeLanIp = ip;
+    } else if (msg == 'WIFI_CONNECT_FAILED' || msg == 'WIFI_SAVED_REBOOTING') {
+      _activeLanIp = null;
+      if (msg == 'WIFI_SAVED_REBOOTING' && _wifiProvisionAwaitingReboot) {
+        _wifiRebootObserved = true;
+      }
+    }
+    _statusStream.add(msg);
+  }
+
+  Future<String?> _readWifiStatus() async {
+    if (_statusChar == null) return null;
+    try {
+      final bytes = await _statusChar!.read();
+      final status = utf8.decode(bytes, allowMalformed: true).trim();
+      _handleStatusMessage(status);
+      return status;
+    } catch (_) {}
+    return null;
   }
 
   void _handleIncomingJsonPayload(String raw) {
@@ -264,6 +292,9 @@ class Esp32HardwareService {
   /// Writes Wi-Fi SSID & Password to ESP32-S3 via BLE CHAR_WIFI_UUID.
   Future<bool> provisionWifi(String ssid, String password, {DiscoveredSensor? sensor}) async {
     _lastBleError = null;
+    _activeLanIp = null;
+    _wifiProvisionAwaitingReboot = false;
+    _wifiRebootObserved = false;
     final targetSensor = sensor ?? _lastSensor;
     if (targetSensor != null && targetSensor.isSimulated) {
       await Future<void>.delayed(const Duration(milliseconds: 450));
@@ -281,14 +312,16 @@ class Esp32HardwareService {
 
     if (_wifiChar == null) {
       if (targetSensor == null) {
-        await Future<void>.delayed(const Duration(milliseconds: 450));
-        return true;
+        _lastBleError = 'No sensor selected for Wi-Fi provisioning';
+        return false;
       }
       _lastBleError = 'BLE Wi-Fi characteristic not found';
       return false;
     }
 
     final payloadBytes = utf8.encode(jsonEncode({'ssid': ssid, 'pass': password}));
+    // The device may notify and reboot before the BLE write future completes.
+    _wifiProvisionAwaitingReboot = true;
     try {
       await _wifiChar!.write(
         payloadBytes,
@@ -325,8 +358,28 @@ class Esp32HardwareService {
           }
         }
       }
+      _wifiProvisionAwaitingReboot = false;
       return false;
     }
+  }
+
+  /// A BLE write only stores credentials. Reconnect after the device reboots
+  /// and read its Wi-Fi status before reporting success to the user.
+  Future<bool> waitForWifiConnection(DiscoveredSensor sensor) async {
+    if (sensor.isSimulated) return false;
+    await Future<void>.delayed(const Duration(seconds: 2));
+    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    while (DateTime.now().isBefore(deadline)) {
+      if (!isBleConnected) await connectBleSensor(sensor);
+      final status = await _readWifiStatus();
+      if (_wifiRebootObserved && status?.startsWith('CONNECTED_IP:') == true && isLanConnected) {
+        _wifiProvisionAwaitingReboot = false;
+        return true;
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    _wifiProvisionAwaitingReboot = false;
+    return false;
   }
 
   /// Syncs emergency phones, Telegram Bot Token / Chat ID, Alert Bot Server URL/Key,
@@ -417,14 +470,23 @@ class Esp32HardwareService {
   }
 
   /// Starts periodic Wi-Fi LAN HTTP telemetry polling when operating away from BLE range.
-  void startLanPolling(String ip) {
+  void startLanPolling(String ip, {String? expectedSensorId}) {
     _activeLanIp = ip;
     _lanPollFailures = 0;
+    final generation = ++_lanPollGeneration;
     _lanPollTimer?.cancel();
     if (ip.isEmpty || ip == '0.0.0.0') return;
     _lanPollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (_lanPollInFlight) return;
+      _lanPollInFlight = true;
       final snap = await fetchLanTelemetry(ip);
-      if (snap != null) {
+      _lanPollInFlight = false;
+      if (generation != _lanPollGeneration) return;
+      final expected = expectedSensorId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ?? '';
+      final actual = snap?.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ?? '';
+      final verified = snap != null && actual.isNotEmpty &&
+          (expected.length < 12 || actual == expected) && snap.ipAddress == ip;
+      if (verified) {
         _lanPollFailures = 0;
         if (!isBleConnected) _transport = ConnectionTransport.wifiLan;
         _telemetryStream.add(snap);
@@ -439,6 +501,7 @@ class Esp32HardwareService {
   }
 
   void stopLanPolling() {
+    _lanPollGeneration++;
     _lanPollTimer?.cancel();
     _lanPollTimer = null;
   }

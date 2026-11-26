@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models.dart';
@@ -66,7 +67,7 @@ class HearthController extends ChangeNotifier {
   ActiveFallAlert? _activeAlert;
   int _escalationSecondsLeft = 0;
   Timer? _escalationTimer;
-  late final Timer _heartbeatWatchdog;
+  Timer? _heartbeatWatchdog;
   bool _phoneOfflineSimulation = false;
 
   StreamSubscription<TelemetrySnapshot>? _telemSub;
@@ -118,6 +119,20 @@ class HearthController extends ChangeNotifier {
 
   AlertContact? get nextEscalationContact =>
       backupContacts.isNotEmpty ? backupContacts.first : null;
+
+  List<String> get smsPhoneNumbers => _contacts
+      .where((c) => c.notifySms)
+      .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
+      .where((p) => p.length >= 9)
+      .toSet()
+      .toList(growable: false);
+
+  List<String> get callPhoneNumbers => _contacts
+      .where((c) => c.notifyCall)
+      .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
+      .where((p) => p.length >= 9)
+      .toSet()
+      .toList(growable: false);
 
   List<String> get allEmergencyPhoneNumbers => _contacts
       .where((c) => c.notifySms || c.notifyCall)
@@ -178,7 +193,9 @@ class HearthController extends ChangeNotifier {
 
   HearthController() {
     _bindHardwareStreams();
-    _heartbeatWatchdog = Timer.periodic(const Duration(seconds: 3), (_) => _expireStaleHardware());
+    if (Platform.environment['FLUTTER_TEST'] != 'true') {
+      _heartbeatWatchdog = Timer.periodic(const Duration(seconds: 3), (_) => _expireStaleHardware());
+    }
   }
 
   void _expireStaleHardware() {
@@ -588,7 +605,7 @@ class HearthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateRoomSettings(
+  Future<bool> updateRoomSettings(
     String roomId, {
     AlarmSoundLevel? alarmVolume,
     bool? buzzerActiveHigh,
@@ -599,10 +616,12 @@ class HearthController extends ChangeNotifier {
     int? nightEndMinute,
     int? floorThresholdMm,
     int? inactivityLimitMinutes,
+    String? lanIp,
   }) async {
     final idx = _rooms.indexWhere((r) => r.id == roomId);
-    if (idx < 0) return;
-    final updated = _rooms[idx].copyWith(
+    if (idx < 0) return false;
+    final previous = _rooms[idx];
+    final updated = previous.copyWith(
       alarmVolume: alarmVolume,
       buzzerActiveHigh: buzzerActiveHigh,
       nightlightEnabled: nightlightEnabled,
@@ -612,9 +631,18 @@ class HearthController extends ChangeNotifier {
       nightEndMinute: nightEndMinute,
       floorThresholdMm: floorThresholdMm,
       inactivityLimitMinutes: inactivityLimitMinutes,
+      lanIp: lanIp,
     );
-    _rooms[idx] = updated;
 
+    if (floorThresholdMm != null) {
+      final sent = await hardware.writeContactConfig(
+        floorMm: floorThresholdMm,
+        overrideLanIp: updated.lanIp,
+      );
+      if (!sent) return false;
+    }
+
+    _rooms[idx] = updated;
     if (alarmVolume != null) {
       await hardware.sendCommand(
         alarmVolume == AlarmSoundLevel.mute ? 'BUZZER_MUTE' : 'BUZZER_UNMUTE',
@@ -636,12 +664,10 @@ class HearthController extends ChangeNotifier {
           'NIGHTLIGHT_SCHEDULE:${updated.nightlightEnabled ? 1 : 0},${updated.nightStartHour},${updated.nightStartMinute},${updated.nightEndHour},${updated.nightEndMinute}';
       await hardware.sendCommand(cmd, overrideLanIp: updated.lanIp);
     }
-    if (floorThresholdMm != null) {
-      await hardware.writeContactConfig(floorMm: floorThresholdMm);
-    }
 
     await _persist();
     notifyListeners();
+    return true;
   }
 
   Future<void> logEvent(HearthEvent event) async {
@@ -921,8 +947,29 @@ class HearthController extends ChangeNotifier {
   }) async {
     await _syncRemoteChannelsToHardware();
     final roomName = _rooms.isNotEmpty ? _rooms.first.name : 'Hearth Test';
-    final channelLabel = (channels != null && channels.isNotEmpty)
-        ? channels.map((e) => e.toUpperCase()).join('+')
+    final target = targetContactId == null
+        ? null
+        : _contacts.cast<AlertContact?>().firstWhere(
+            (contact) => contact?.id == targetContactId,
+            orElse: () => null,
+          );
+    final effectiveChannels = target == null
+        ? channels
+        : <String>[
+            if (target.notifyTelegram && target.telegramChatId.isNotEmpty && (channels == null || channels.contains('telegram'))) 'telegram',
+            if (target.notifySms && target.phone.isNotEmpty && (channels == null || channels.contains('sms'))) 'sms',
+            if (target.notifyCall && (target.phone.isNotEmpty || target.telegramUsername.isNotEmpty) && (channels == null || channels.contains('call'))) 'call',
+          ];
+    if (targetContactId != null && (target == null || effectiveChannels!.isEmpty)) {
+      return AlertBotDispatchResult(
+        ok: false,
+        deliveredCount: 0,
+        attemptedCount: 0,
+        summary: target == null ? 'Liên hệ không còn tồn tại' : 'Liên hệ chưa bật kênh kiểm tra phù hợp',
+      );
+    }
+    final channelLabel = (effectiveChannels != null && effectiveChannels.isNotEmpty)
+        ? effectiveChannels.map((e) => e.toUpperCase()).join('+')
         : 'ALL';
     final res = await alertBot.dispatchFallAlert(
       botUrl: _alertBotUrl,
@@ -933,13 +980,25 @@ class HearthController extends ChangeNotifier {
       simulated: true,
       note: 'Kiểm tra kênh $channelLabel từ ứng dụng Hearth',
       telegramBotToken: _telegramBotToken,
-      telegramChatIds: allTelegramChatIds,
-      telegramUsernames: allTelegramUsernames,
-      phones: allEmergencyPhoneNumbers,
-      telegramEnabled: channels == null ? _channelTelegramEnabled : channels.contains('telegram'),
-      callEnabled: channels == null ? _channelCallEnabled : channels.contains('call'),
+      telegramChatIds: targetContactId != null
+          ? (effectiveChannels!.contains('telegram') ? [target!.telegramChatId] : const [])
+          : allTelegramChatIds,
+      telegramUsernames: targetContactId != null
+          ? (effectiveChannels!.contains('call') && target!.telegramUsername.isNotEmpty ? [target.telegramUsername] : const [])
+          : allTelegramUsernames,
+      phones: targetContactId != null
+          ? (effectiveChannels!.any((channel) => channel == 'sms' || channel == 'call') && target!.phone.isNotEmpty
+              ? [target.phone]
+              : const [])
+          : (channels?.contains('sms') == true ? smsPhoneNumbers : allEmergencyPhoneNumbers),
+      telegramEnabled: targetContactId != null
+          ? effectiveChannels!.contains('telegram')
+          : channels == null ? _channelTelegramEnabled : channels.contains('telegram'),
+      callEnabled: targetContactId != null
+          ? effectiveChannels!.contains('call')
+          : channels == null ? _channelCallEnabled : channels.contains('call'),
       fallbackMessage: '🧪 [TEST $channelLabel] HEARTH: Kiểm tra hệ thống cảnh báo té ngã thành công!',
-      channelsOverride: channels,
+      channelsOverride: effectiveChannels,
       targetRecipientIds: targetContactId != null ? [targetContactId] : null,
     );
     _lastBotSyncStatus = res.summary;
@@ -1231,7 +1290,7 @@ class HearthController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _heartbeatWatchdog.cancel();
+    _heartbeatWatchdog?.cancel();
     _escalationTimer?.cancel();
     _telemSub?.cancel();
     _statusSub?.cancel();

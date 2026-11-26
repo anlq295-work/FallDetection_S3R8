@@ -61,7 +61,7 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
 
   /// Launches group SMS composer pre-addressed to ALL family emergency phone numbers simultaneously!
   Future<void> _launchSimultaneousGroupSms() async {
-    final phones = widget.ctrl.allEmergencyPhoneNumbers;
+    final phones = widget.ctrl.smsPhoneNumbers;
     if (phones.isEmpty) {
       if (mounted) showHearthToast(context, widget.ctrl.s.s7EscalationNoBackup, critical: true);
       return;
@@ -325,7 +325,7 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                         expand: false,
                         onPressed: _handleRespond,
                       ),
-                      if (ctrl.allEmergencyPhoneNumbers.isNotEmpty)
+                      if (ctrl.smsPhoneNumbers.isNotEmpty)
                         HearthCriticalOutlineButton(
                           label: s.s7SendGroupSms,
                           expand: false,
@@ -397,8 +397,8 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
                         if (ctrl.channelSmsEnabled)
                           HearthStatusBadge(
                             icon: Icons.sms_rounded,
-                            label: 'SMS (${ctrl.allEmergencyPhoneNumbers.length})',
-                            color: ctrl.allEmergencyPhoneNumbers.isNotEmpty ? p.ok : p.textMuted,
+                            label: 'SMS (${ctrl.smsPhoneNumbers.length})',
+                            color: ctrl.smsPhoneNumbers.isNotEmpty ? p.ok : p.textMuted,
                           ),
                         if (ctrl.channelTelegramEnabled)
                           HearthStatusBadge(
@@ -457,9 +457,9 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
               const SizedBox(height: 12),
 
               // Simultaneous Group SMS button (messages ALL family contacts in 1 tap!)
-              if (ctrl.channelSmsEnabled && ctrl.allEmergencyPhoneNumbers.isNotEmpty) ...[
+              if (ctrl.channelSmsEnabled && ctrl.smsPhoneNumbers.isNotEmpty) ...[
                 HearthSecondaryButton(
-                  label: '${s.s7SendGroupSms} (${ctrl.allEmergencyPhoneNumbers.length})',
+                  label: '${s.s7SendGroupSms} (${ctrl.smsPhoneNumbers.length})',
                   minHeight: HearthTokens.alertTarget,
                   icon: Icons.textsms_rounded,
                   onPressed: _launchSimultaneousGroupSms,
@@ -468,72 +468,93 @@ class _S7FallAlertViewState extends State<S7FallAlertView> {
               ],
 
               // Direct Calls: Monitored Person + Emergency Services
-              Row(
-                children: [
-                  if (ctrl.medicalProfile.personPhone.trim().isNotEmpty) ...[
-                    Expanded(
-                      child: HearthSecondaryButton(
-                        label: s.s7CallPerson(alert.personName),
-                        minHeight: HearthTokens.alertTarget,
-                        icon: Icons.call_rounded,
-                        onPressed: () => _dial(ctrl.medicalProfile.personPhone),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final hasPersonPhone = ctrl.medicalProfile.personPhone.trim().isNotEmpty;
+                  final buttonWidth = hasPersonPhone && constraints.maxWidth >= 520
+                      ? (constraints.maxWidth - 10) / 2
+                      : constraints.maxWidth;
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      if (hasPersonPhone)
+                        SizedBox(
+                          width: buttonWidth,
+                          child: HearthSecondaryButton(
+                            label: s.s7CallPerson(alert.personName),
+                            minHeight: HearthTokens.alertTarget,
+                            icon: Icons.call_rounded,
+                            onPressed: () => _dial(ctrl.medicalProfile.personPhone),
+                          ),
+                        ),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: HearthCriticalOutlineButton(
+                          label: s.s7CallEmergency(ctrl.emergencyServiceNumber),
+                          minHeight: HearthTokens.alertTarget,
+                          icon: Icons.emergency_rounded,
+                          onPressed: () => _dial(ctrl.emergencyServiceNumber),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: HearthCriticalOutlineButton(
-                      label: s.s7CallEmergency(ctrl.emergencyServiceNumber),
-                      minHeight: HearthTokens.alertTarget,
-                      icon: Icons.emergency_rounded,
-                      onPressed: () => _dial(ctrl.emergencyServiceNumber),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
 
               // Simultaneous Quick-Call chips for EVERY family contact
-              if (ctrl.channelCallEnabled && backups.isNotEmpty) ...[
+              if (ctrl.channelCallEnabled && backups.any((c) => c.phone.trim().isNotEmpty)) ...[
                 const SizedBox(height: 14),
                 Text(s.s7QuickCallFamily, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: backups
-                      .map(
-                        (c) => HearthSecondaryButton(
-                          label: '${c.name} · ${c.phone}',
-                          expand: false,
-                          icon: Icons.call_rounded,
-                          onPressed: () => _dial(c.phone),
-                        ),
-                      )
-                      .toList(),
+                LayoutBuilder(
+                  builder: (context, constraints) => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: backups.where((c) => c.phone.trim().isNotEmpty).map((c) => SizedBox(
+                      width: constraints.maxWidth < 420 ? constraints.maxWidth : null,
+                      child: HearthSecondaryButton(
+                        label: '${c.name} · ${c.phone}',
+                        expand: constraints.maxWidth < 420,
+                        icon: Icons.call_rounded,
+                        onPressed: () => _dial(c.phone),
+                      ),
+                    )).toList(),
+                  ),
                 ),
               ],
 
               const SizedBox(height: 12),
 
               // 1-tap Clinical Helpers (First Aid + Offline Medical ID & Door Code)
-              Row(
-                children: [
-                  Expanded(
-                    child: HearthSecondaryButton(
-                      label: s.firstAidTitle,
-                      icon: Icons.medical_services_outlined,
-                      onPressed: () => showFirstAidGuideModal(context, ctrl),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: HearthSecondaryButton(
-                      label: s.medicalIdTitle,
-                      icon: Icons.badge_outlined,
-                      onPressed: () => showMedicalIdModal(context, ctrl),
-                    ),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final buttonWidth = constraints.maxWidth >= 420
+                      ? (constraints.maxWidth - 10) / 2
+                      : constraints.maxWidth;
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      SizedBox(
+                        width: buttonWidth,
+                        child: HearthSecondaryButton(
+                          label: s.firstAidTitle,
+                          icon: Icons.medical_services_outlined,
+                          onPressed: () => showFirstAidGuideModal(context, ctrl),
+                        ),
+                      ),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: HearthSecondaryButton(
+                          label: s.medicalIdTitle,
+                          icon: Icons.badge_outlined,
+                          onPressed: () => showMedicalIdModal(context, ctrl),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 10),

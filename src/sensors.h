@@ -26,6 +26,7 @@ public:
   void extractFeatures(float* features);
   SensorSample getLatestSample();
   bool isSensorsHealthy();
+  bool isFusionDataFresh() const;
   
   void setFloorThreshold(uint16_t floorMm);
   uint16_t getFloorThreshold() const;

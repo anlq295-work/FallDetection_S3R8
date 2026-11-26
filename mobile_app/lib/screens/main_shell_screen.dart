@@ -349,11 +349,23 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(Icons.shield_outlined, size: 15, color: p.ok),
+                      Icon(
+                        ctrl.guestModeActive || rooms.isEmpty || offline != null
+                            ? Icons.shield_outlined
+                            : Icons.verified_user_rounded,
+                        size: 15,
+                        color: ctrl.guestModeActive || rooms.isEmpty || offline != null ? p.warning : p.ok,
+                      ),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          ctrl.offlineRoom == null ? s.s6MonitoringActive : s.s6AttentionNeeded,
+                          ctrl.guestModeActive
+                              ? s.s6MonitoringPaused
+                              : rooms.isEmpty
+                                  ? s.s6SetupNeeded
+                                  : offline != null
+                                      ? s.s6AttentionNeeded
+                                      : s.s6MonitoringActive,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.labelMedium?.copyWith(color: p.textMuted),
@@ -849,30 +861,30 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 children: [
                   Text(s.language, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<AppLanguage>(
-                      segments: AppLanguage.values
-                          .map((l) => ButtonSegment(value: l, label: Text(l.nativeName)))
-                          .toList(),
-                      selected: {ctrl.language},
-                      onSelectionChanged: (set) => ctrl.setLanguage(set.first),
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AppLanguage.values.map((language) => ChoiceChip(
+                      label: Text(language.nativeName),
+                      selected: ctrl.language == language,
+                      onSelected: (_) => ctrl.setLanguage(language),
+                    )).toList(),
                   ),
                   const SizedBox(height: 16),
                   Text(s.appearance, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(value: ThemeMode.system, label: Text(s.themeSystem)),
-                        ButtonSegment(value: ThemeMode.light, label: Text(s.themeLight)),
-                        ButtonSegment(value: ThemeMode.dark, label: Text(s.themeDark)),
-                      ],
-                      selected: {ctrl.themeMode},
-                      onSelectionChanged: (set) => ctrl.setThemeMode(set.first),
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      (ThemeMode.system, s.themeSystem),
+                      (ThemeMode.light, s.themeLight),
+                      (ThemeMode.dark, s.themeDark),
+                    ].map((option) => ChoiceChip(
+                      label: Text(option.$2),
+                      selected: ctrl.themeMode == option.$1,
+                      onSelected: (_) => ctrl.setThemeMode(option.$1),
+                    )).toList(),
                   ),
                 ],
               ),

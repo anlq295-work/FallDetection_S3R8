@@ -81,6 +81,10 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
     setState(() => _saving = true);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await widget.ctrl.setPersonName(personName);
+    final liveSensor = widget.lanIp != null
+        ? await widget.ctrl.hardware.fetchLanTelemetry(widget.lanIp!)
+        : null;
+    if (!mounted) return;
 
     final now = DateTime.now();
     final room = HearthRoom(
@@ -89,7 +93,7 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
       type: _selectedType ?? RoomType.other,
       status: RoomStatus.empty,
       lastMovementAt: now,
-      sensorId: widget.sensor.shortCode,
+      sensorId: liveSensor?.deviceId.isNotEmpty == true ? liveSensor!.deviceId : widget.sensor.shortCode,
       bleDeviceId: widget.sensor.id,
       lanIp: widget.lanIp,
       wifiSsid: widget.wifiSsid,
@@ -135,16 +139,13 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
                         children: [
                           Text(s.s4Title, style: Theme.of(context).textTheme.headlineSmall),
                           const SizedBox(height: 16),
-                          GridView.count(
-                            crossAxisCount: layout.isTwoPane ? 3 : 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: layout.isTwoPane ? 2.5 : 2.35,
-                            children: RoomType.values.map((type) {
+                          LayoutBuilder(builder: (context, constraints) {
+                            const gap = 10.0;
+                            final columns = constraints.maxWidth >= 420 ? 3 : (constraints.maxWidth >= 260 ? 2 : 1);
+                            final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+                            return Wrap(spacing: gap, runSpacing: gap, children: RoomType.values.map((type) {
                               final selected = _selectedType == type;
-                              return LiquidGlassCard(
+                              return SizedBox(width: itemWidth, child: LiquidGlassCard(
                                 selected: selected,
                                 borderRadius: 14,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -163,7 +164,7 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
                                     Flexible(
                                       child: Text(
                                         s.roomTypeName(type),
-                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: true,
                                         style: TextStyle(
                                           fontSize: 15,
                                           fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
@@ -173,9 +174,9 @@ class _S4NameRoomScreenState extends State<S4NameRoomScreen> {
                                     ),
                                   ],
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                              ));
+                            }).toList());
+                          }),
                           const SizedBox(height: 18),
                           LiquidGlassCard(
                             child: Column(

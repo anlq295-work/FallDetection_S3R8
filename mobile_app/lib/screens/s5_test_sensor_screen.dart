@@ -30,6 +30,7 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
   bool _presencePassed = false;
   bool _presenceTimedOut = false;
   bool _sendingAlert = false;
+  bool _testCommandSent = false;
   bool _alertPassed = false;
   DateTime? _alertTime;
   Timer? _presenceTimer;
@@ -64,21 +65,14 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
       }
     });
 
-    // If using simulated sensor, auto-detect presence smoothly after 2.5s; otherwise 60s timeout
-    if (!widget.ctrl.hardware.isBleConnected && !widget.ctrl.hardware.isLanConnected) {
-      _presenceTimer = Timer(const Duration(milliseconds: 2400), () {
-        if (mounted && !_presencePassed) _markPresencePassed();
-      });
-    } else {
-      _presenceTimer = Timer(const Duration(seconds: 60), () {
-        if (mounted && !_presencePassed) {
-          setState(() {
-            _waitingPresence = false;
-            _presenceTimedOut = true;
-          });
-        }
-      });
-    }
+    _presenceTimer = Timer(const Duration(seconds: 60), () {
+      if (mounted && !_presencePassed) {
+        setState(() {
+          _waitingPresence = false;
+          _presenceTimedOut = true;
+        });
+      }
+    });
   }
 
   void _markPresencePassed() {
@@ -91,10 +85,23 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
   }
 
   Future<void> _sendTestAlert() async {
+    if (_sendingAlert) return;
     setState(() => _sendingAlert = true);
-    await widget.ctrl.hardware.sendCommand('TEST_ALARM', overrideLanIp: widget.room.lanIp);
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    final sent = await widget.ctrl.hardware.sendCommand('TEST_ALARM', overrideLanIp: widget.room.lanIp);
     if (!mounted) return;
+    if (!sent) {
+      setState(() => _sendingAlert = false);
+      showHearthToast(context, widget.ctrl.s.s5SendTestFailed, critical: true);
+      return;
+    }
+    setState(() {
+      _sendingAlert = false;
+      _testCommandSent = true;
+    });
+  }
+
+  Future<void> _confirmTestAlarm() async {
+    if (!_testCommandSent || _alertPassed) return;
     final now = DateTime.now();
     await widget.ctrl.logEvent(
       HearthEvent(
@@ -105,8 +112,8 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
         at: now,
       ),
     );
+    if (!mounted) return;
     setState(() {
-      _sendingAlert = false;
       _alertPassed = true;
       _alertTime = now;
     });
@@ -198,11 +205,12 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
                         ],
                       ),
           ),
-          if (!_presencePassed) ...[
+          if (!_presencePassed && widget.ctrl.hardware.transport == ConnectionTransport.simulated) ...[
             const SizedBox(height: 12),
-            HearthSecondaryButton(
-              label: s.s5SimulatePresence,
-              onPressed: _markPresencePassed,
+            HearthBanner(
+              tone: HearthBannerTone.warning,
+              icon: Icons.science_outlined,
+              title: s.s5SimulatedWarning,
             ),
           ],
         ],
@@ -237,6 +245,16 @@ class _S5TestSensorScreenState extends State<S5TestSensorScreen> {
               icon: Icons.check_rounded,
               label: s.s5ReadyBanner(s.formatClock(_alertTime!), widget.room.name),
               color: p.ok,
+            )
+          else if (_testCommandSent)
+            HearthBanner(
+              tone: HearthBannerTone.info,
+              icon: Icons.hearing_rounded,
+              title: s.s5CommandSent,
+              action: HearthSecondaryButton(
+                label: s.s5ConfirmAlarm,
+                onPressed: _confirmTestAlarm,
+              ),
             )
           else
             HearthStatusBadge(

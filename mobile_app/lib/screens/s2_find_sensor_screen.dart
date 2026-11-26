@@ -110,57 +110,59 @@ class _S2FindSensorScreenState extends State<S2FindSensorScreen> {
 
   void _openNotShowingHelp() {
     final idCtrl = TextEditingController();
-    showLiquidGlassAdaptiveModal(
+    showLiquidGlassAdaptiveModal<void>(
       context: context,
       builder: (ctx) {
         final s = widget.ctrl.s;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(s.s2HelpTitle, style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Text(s.s2HelpBody, style: Theme.of(ctx).textTheme.bodyLarge),
-            const SizedBox(height: 16),
-            TextField(
-              controller: idCtrl,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                labelText: s.s2ManualIdLabel,
-                hintText: '4F2A',
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.s2HelpTitle, style: Theme.of(modalContext).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Text(s.s2HelpBody, style: Theme.of(modalContext).textTheme.bodyLarge),
+              const SizedBox(height: 16),
+              TextField(
+                controller: idCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: s.s2ManualIdLabel,
+                  hintText: '4F2A',
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            HearthPrimaryButton(
-              label: s.s2UseManualId,
-              onPressed: () {
-                final code = idCtrl.text.trim().isEmpty ? '4F2A' : idCtrl.text.trim().toUpperCase();
-                final manual = DiscoveredSensor(
-                  id: 'MANUAL-$code',
-                  shortCode: code.length > 4 ? code.substring(code.length - 4) : code,
-                  name: 'FallDetector_S3R8',
-                  rssi: -58,
-                  isSimulated: true,
-                );
-                Navigator.pop(ctx);
-                setState(() {
-                  _btPermissionGranted = true;
-                  _sensors = [manual];
-                  _selectedId = manual.id;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            HearthSecondaryButton(
-              label: s.s2UseDemoSensor,
-              onPressed: () {
-                Navigator.pop(ctx);
-                _selectDemoSensor();
-              },
-            ),
-          ],
+              const SizedBox(height: 14),
+              HearthPrimaryButton(
+                label: s.s2UseManualId,
+                onPressed: () {
+                  final code = idCtrl.text.trim().isEmpty ? '4F2A' : idCtrl.text.trim().toUpperCase();
+                  final manual = DiscoveredSensor(
+                    id: 'MANUAL-$code',
+                    shortCode: code.length > 4 ? code.substring(code.length - 4) : code,
+                    name: 'FallDetector_S3R8',
+                    rssi: -58,
+                    isSimulated: true,
+                  );
+                  Navigator.pop(modalContext);
+                  setState(() {
+                    _btPermissionGranted = true;
+                    _sensors = [manual];
+                    _selectedId = manual.id;
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              HearthSecondaryButton(
+                label: s.s2UseDemoSensor,
+                onPressed: () {
+                  Navigator.pop(modalContext);
+                  _selectDemoSensor();
+                },
+              ),
+            ],
+          ),
         );
       },
-    );
+    ).whenComplete(idCtrl.dispose);
   }
 
   @override

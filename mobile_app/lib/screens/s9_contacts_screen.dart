@@ -60,6 +60,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
         contact.telegramPhone.trim().isNotEmpty &&
         contact.telegramPhone.trim() == contact.phone.trim();
     bool notifyTelegram = contact?.notifyTelegram ?? true;
+    bool notifySms = contact?.notifySms ?? false;
     bool notifyCall = contact?.notifyCall ?? true;
     String? nameError;
     String? phoneError;
@@ -142,6 +143,12 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 runSpacing: 6,
                 children: [
                   FilterChip(
+                    label: const Text('SMS'),
+                    avatar: const Icon(Icons.sms_rounded, size: 16),
+                    selected: notifySms,
+                    onSelected: (v) => setModalState(() => notifySms = v),
+                  ),
+                  FilterChip(
                     label: const Text('Telegram'),
                     avatar: const Icon(Icons.send_rounded, size: 16),
                     selected: notifyTelegram,
@@ -178,7 +185,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                       telegramChatId: chatIdCtrl.text.trim(),
                       telegramUsername: usernameCtrl.text.trim(),
                       notifyTelegram: notifyTelegram,
-                      notifySms: false,
+                      notifySms: notifySms,
                       notifyCall: notifyCall,
                     );
                   } else {
@@ -189,7 +196,7 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                       telegramChatId: chatIdCtrl.text.trim(),
                       telegramUsername: usernameCtrl.text.trim(),
                       notifyTelegram: notifyTelegram,
-                      notifySms: false,
+                      notifySms: notifySms,
                       notifyCall: notifyCall,
                     );
                   }
@@ -277,12 +284,19 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         const gap = 8.0;
-                        final columns = constraints.maxWidth >= 300 ? 2 : 1;
+                        final columns = constraints.maxWidth >= 520 ? 3 : (constraints.maxWidth >= 300 ? 2 : 1);
                         final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
                           children: [
+                            _AlertChannelButton(
+                              width: itemWidth,
+                              icon: Icons.sms_rounded,
+                              label: 'SMS',
+                              selected: ctrl.channelSmsEnabled,
+                              onPressed: (v) => ctrl.setChannelPreferences(sms: v),
+                            ),
                             _AlertChannelButton(
                               width: itemWidth,
                               icon: Icons.send_rounded,
@@ -305,14 +319,14 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                       const SizedBox(height: 14),
                       Text(s.s9WaitBeforeNext, style: Theme.of(context).textTheme.bodyMedium),
                       const SizedBox(height: 8),
-                      SegmentedButton<int>(
-                        segments: [
-                          ButtonSegment(value: 1, label: Text(s.s9Minutes(1))),
-                          ButtonSegment(value: 2, label: Text(s.s9Minutes(2))),
-                          ButtonSegment(value: 5, label: Text(s.s9Minutes(5))),
-                        ],
-                        selected: {ctrl.escalationMinutes},
-                        onSelectionChanged: (set) => ctrl.setEscalationMinutes(set.first),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [1, 2, 5].map((minutes) => ChoiceChip(
+                          label: Text(s.s9Minutes(minutes)),
+                          selected: ctrl.escalationMinutes == minutes,
+                          onSelected: (_) => ctrl.setEscalationMinutes(minutes),
+                        )).toList(),
                       ),
                     ],
                   ],
@@ -327,7 +341,13 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.verified_user_rounded, color: p.ok, size: 22),
+                        Icon(
+                          ctrl.lastBotSyncStatus.isEmpty
+                              ? Icons.info_outline_rounded
+                              : (ctrl.lastBotSyncOk ? Icons.verified_user_rounded : Icons.cloud_off_rounded),
+                          color: ctrl.lastBotSyncOk ? p.ok : p.warning,
+                          size: 22,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(s.s9BotConfigTitle, style: Theme.of(context).textTheme.titleMedium),
@@ -337,7 +357,9 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     const SizedBox(height: 6),
                     Text(
                       ctrl.lastBotSyncStatus.isNotEmpty
-                          ? 'Hệ thống đã tự động kết nối (${ctrl.lastBotSyncStatus})'
+                          ? (ctrl.lastBotSyncOk
+                              ? 'Hệ thống đã kết nối (${ctrl.lastBotSyncStatus})'
+                              : 'Chưa kết nối được hệ thống cảnh báo (${ctrl.lastBotSyncStatus})')
                           : 'Tự động nhắn Telegram & gọi điện thoại tiếng Việt ngay khi phát hiện té ngã',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: p.textMuted),
                     ),
@@ -346,6 +368,17 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        HearthSecondaryButton(
+                          label: _testingChannel == s.s9TestSmsBtn ? '...' : s.s9TestSmsBtn,
+                          expand: false,
+                          icon: Icons.sms_rounded,
+                          onPressed: _testingChannel != null
+                              ? null
+                              : () => _runTestChannel(
+                                    label: s.s9TestSmsBtn,
+                                    channels: const ['sms'],
+                                  ),
+                        ),
                         HearthSecondaryButton(
                           label: _testingChannel == s.s9TestTelegramBtn ? '...' : s.s9TestTelegramBtn,
                           expand: false,
@@ -460,6 +493,8 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                                 ),
                                 if (c.phone.isNotEmpty)
                                   Text(c.phone, style: TextStyle(fontSize: 14, color: p.textMuted)),
+                                if (c.telegramPhone.isNotEmpty)
+                                  Text('Telegram: ${c.telegramPhone}', style: TextStyle(fontSize: 13, color: p.textMuted)),
                                 if (c.telegramChatId.isNotEmpty || c.telegramUsername.isNotEmpty)
                                   Text(
                                     [
@@ -488,42 +523,24 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            tooltip: s.s9MoveUp,
-                            constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-                            icon: const Icon(Icons.arrow_upward_rounded, size: 20),
-                            onPressed: idx == 0 ? null : () => ctrl.moveContactByDelta(idx, -1),
+                          PopupMenuButton<String>(
+                            tooltip: s.s9ContactActions,
+                            icon: const Icon(Icons.more_vert_rounded),
+                            onSelected: (action) {
+                              if (action == 'edit') _openContactModal(contact: c);
+                              if (action == 'up') ctrl.moveContactByDelta(idx, -1);
+                              if (action == 'down') ctrl.moveContactByDelta(idx, 1);
+                              if (action == 'test') _runTestChannel(label: 'Test ${c.name}', targetContactId: c.id);
+                              if (action == 'delete') ctrl.removeContact(c.id);
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(value: 'edit', child: Text(s.s9EditContact)),
+                              if (idx > 0) PopupMenuItem(value: 'up', child: Text(s.s9MoveUp)),
+                              if (idx < contacts.length - 1) PopupMenuItem(value: 'down', child: Text(s.s9MoveDown)),
+                              if (_testingChannel == null) PopupMenuItem(value: 'test', child: Text(s.s9BotTestBtn)),
+                              if (!c.isPrimaryUser) PopupMenuItem(value: 'delete', child: Text(s.s9DeleteContact)),
+                            ],
                           ),
-                          IconButton(
-                            tooltip: s.s9MoveDown,
-                            constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-                            icon: const Icon(Icons.arrow_downward_rounded, size: 20),
-                            onPressed: idx == contacts.length - 1 ? null : () => ctrl.moveContactByDelta(idx, 1),
-                          ),
-                          IconButton(
-                            tooltip: s.s9BotTestBtn,
-                            constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-                            icon: Icon(Icons.notifications_active_outlined, color: p.ok, size: 20),
-                            onPressed: _testingChannel != null
-                                ? null
-                                : () => _runTestChannel(
-                                      label: 'Test ${c.name}',
-                                      targetContactId: c.id,
-                                    ),
-                          ),
-                          IconButton(
-                            tooltip: s.s9EditContact,
-                            constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () => _openContactModal(contact: c),
-                          ),
-                          if (!c.isPrimaryUser)
-                            IconButton(
-                              tooltip: s.cancel,
-                              constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-                              icon: Icon(Icons.delete_outline_rounded, color: p.critical, size: 20),
-                              onPressed: () => ctrl.removeContact(c.id),
-                            ),
                         ],
                       ),
                     ),

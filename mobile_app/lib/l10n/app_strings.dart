@@ -150,7 +150,8 @@ class AppStrings {
         'Setup needs your phone (Bluetooth). You can watch from here afterwards.',
         'La configuration nécessite le Bluetooth du téléphone. Vous pourrez ensuite suivre depuis cet écran.',
       );
-  String get s1SkipToHome => _t('Vào Trang chủ để xem trước (thêm cảm biến sau)', 'Enter Home first (add sensors later)', 'Accéder à l’accueil (ajouter un capteur plus tard)');
+  String get s1SkipToHome => _t('Xem trước không xác thực (thêm cảm biến sau)', 'Preview without verification (add sensors later)', 'Aperçu sans vérification (ajouter des capteurs plus tard)');
+  String get s1OtpUnavailable => _t('Chưa cấu hình máy chủ gửi mã đăng nhập. Vui lòng thử lại khi máy chủ sẵn sàng.', 'Sign-in code service is not configured. Try again when the server is available.', 'Le service de code de connexion n’est pas configuré. Réessayez lorsque le serveur est disponible.');
 
   // S2 Find Sensor
   String get s2Title => _t('Tìm cảm biến của bạn', 'Find your sensor', 'Trouver votre capteur');
@@ -250,6 +251,11 @@ class AppStrings {
         'Could not send "$ssid" to the device. Check BLE connection and try again.',
         'Impossible d’envoyer "$ssid" à l\'appareil. Vérifiez le Bluetooth.',
       );
+  String s3WifiNotVerified(String ssid) => _t(
+        'Thiết bị chưa kết nối được Wi-Fi "$ssid". Kiểm tra SSID, mật khẩu và vùng phủ sóng rồi thử lại.',
+        'The device could not connect to Wi-Fi "$ssid". Check the network name, password, and coverage, then try again.',
+        'L’appareil ne peut pas se connecter au Wi-Fi "$ssid". Vérifiez le nom du réseau, le mot de passe et la couverture, puis réessayez.',
+      );
   String get s3SsidRequiredError => _t(
         'Vui lòng nhập tên mạng Wi-Fi 2.4 GHz.',
         'Please enter your 2.4 GHz Wi-Fi network name.',
@@ -302,6 +308,11 @@ class AppStrings {
   String get s5PresenceOk => _t('Đã phát hiện có người trong phòng.', 'We can see someone in the room.', 'Présence détectée dans la pièce.');
   String get s5PresenceNotDone => _t('Chưa kiểm tra', 'Not done yet', 'Pas encore effectué');
   String get s5SimulatePresence => _t('Xác nhận đã đứng trong phòng', 'Confirm I am in the room', 'Confirmer ma présence');
+  String get s5SimulatedWarning => _t(
+        'Chế độ mô phỏng không thể xác minh có người thật.',
+        'Simulation mode cannot verify that a real person is present.',
+        'Le mode simulation ne peut pas vérifier la présence réelle d’une personne.',
+      );
   String get s5Check2Title => _t('Kiểm tra 2 – Cảnh báo & Còi đèn', 'Check 2 – Alert', 'Test 2 – Alerte');
   String get s5Check2Desc => _t(
         'Thiết bị sẽ nháy đèn, phát tiếng bíp và gửi thông báo thử về máy này. Người khác sẽ không bị làm phiền.',
@@ -310,12 +321,19 @@ class AppStrings {
       );
   String get s5SoundMedium => _t('Âm lượng còi: Trung bình. Bạn có thể đổi lại sau.', 'Sound: medium. You can change this later.', 'Volume : moyen. Modifiable plus tard.');
   String get s5SendTestBtn => _t('Gửi cảnh báo thử', 'Send a test alert', 'Envoyer une alerte test');
+  String get s5SendTestFailed => _t(
+        'Không gửi được lệnh thử tới thiết bị. Kiểm tra kết nối rồi thử lại.',
+        'Could not send the test command to the device. Check the connection and try again.',
+        'Impossible d’envoyer la commande de test. Vérifiez la connexion et réessayez.',
+      );
+  String get s5CommandSent => _t('Đã gửi lệnh thử. Hãy kiểm tra còi và đèn trên thiết bị.', 'Test command sent. Check the device siren and light.', 'Commande de test envoyée. Vérifiez la sirène et la lumière de l’appareil.');
+  String get s5ConfirmAlarm => _t('Tôi đã nghe còi và thấy đèn', 'I heard the siren and saw the light', 'J’ai entendu la sirène et vu la lumière');
   String get s5SendingTest => _t('Đang gửi thử…', 'Sending test…', 'Envoi du test…');
   String get s5StartMonitoring => _t('Bắt đầu giám sát', 'Start monitoring', 'Démarrer la surveillance');
   String s5ReadyBanner(String time, String room) => _t(
-        'Đã nhận cảnh báo thử lúc $time. Phòng $room đã sẵn sàng.',
-        'Test alert received at $time. $room is ready.',
-        'Alerte test reçue à $time. $room est prêt.',
+        'Đã xác nhận còi và đèn lúc $time. Phòng $room đã sẵn sàng.',
+        'Siren and light confirmed at $time. $room is ready.',
+        'Sirène et lumière confirmées à $time. $room est prêt.',
       );
   String get s5SkipLink => _t('Bỏ qua kiểm tra', 'Skip test', 'Passer le test');
   String get s5SkipConfirmTitle => _t('Bỏ qua bước kiểm tra?', 'Skip test?', 'Passer le test ?');
@@ -340,6 +358,8 @@ class AppStrings {
     return _t('Nhà của $trimmed', "$trimmed's home", 'Maison de $trimmed');
   }
   String get s6MonitoringActive => _t('Đang giám sát', 'Monitoring active', 'Surveillance active');
+  String get s6MonitoringPaused => _t('Đang tạm dừng', 'Monitoring paused', 'Surveillance en pause');
+  String get s6SetupNeeded => _t('Chưa cài đặt cảm biến', 'Sensor setup needed', 'Configuration du capteur requise');
   String get s6AttentionNeeded => _t('Cần chú ý', 'Attention needed', 'Attention requise');
 
   String get s6IncompleteProfileTitle => _t(
@@ -511,6 +531,14 @@ class AppStrings {
   String get s8AlarmVolume => _t('Âm thanh còi trong phòng', 'Alarm sound in room', 'Volume de l’alarme');
   String get s8NightLight => _t('Đèn ngủ thông minh khi có người vào', 'Night light when someone enters', 'Veilleuse automatique');
   String get s8InactivityAlert => _t('Cảnh báo ở quá lâu / bất động', 'Prolonged stay / inactivity alert', 'Alerte d’inactivité prolongée');
+  String get s8InactivityOff => _t('Tắt', 'Off', 'Désactivé');
+  String get s8LanVerificationFailed => _t(
+        'Không xác minh được đúng cảm biến tại IP này. Kiểm tra địa chỉ và kết nối Wi-Fi.',
+        'Could not verify this sensor at that IP address. Check the address and Wi-Fi connection.',
+        'Impossible de vérifier ce capteur à cette adresse IP. Vérifiez l’adresse et la connexion Wi-Fi.',
+      );
+  String get s8CommandSent => _t('Đã gửi lệnh tới cảm biến.', 'Command sent to the sensor.', 'Commande envoyée au capteur.');
+  String get s8CommandFailed => _t('Không gửi được lệnh tới cảm biến. Kiểm tra kết nối.', 'Could not send the command to the sensor. Check the connection.', 'Impossible d’envoyer la commande au capteur. Vérifiez la connexion.');
   String get s8AdjustDetection => _t('Tinh chỉnh độ nhạy & chiều cao sàn', 'Adjust detection', 'Ajuster la détection');
   String get s8AdjustDetectionSub => _t(
         'Chỉ thay đổi nếu gặp báo động giả (hiệu chuẩn sàn, còi, cảm biến)',
@@ -530,6 +558,13 @@ class AppStrings {
   String get s8TriggerSos => _t('Kích hoạt SOS khẩn cấp', 'Trigger remote SOS', 'Déclencher SOS');
   String get s8RenameRoom => _t('Đổi tên phòng', 'Rename room', 'Renommer la pièce');
   String get s8RemoveRoom => _t('Xóa phòng này', 'Remove room', 'Supprimer la pièce');
+  String get s8FactoryResetTitle => _t('Xác nhận khôi phục cài đặt gốc?', 'Confirm factory reset?', 'Confirmer la réinitialisation d’usine ?');
+  String get s8FactoryResetWarning => _t(
+        'Thao tác này sẽ xóa toàn bộ dữ liệu và cấu hình đã lưu trên cảm biến. Không thể hoàn tác.',
+        'This erases all saved data and settings on the sensor. This cannot be undone.',
+        'Cette action effacera toutes les données et tous les réglages du capteur. Elle est irréversible.',
+      );
+  String get s8FactoryResetConfirm => _t('Xóa và khởi động lại', 'Erase and restart', 'Effacer et redémarrer');
   String get s8Maintenance => _t('Bảo trì & Khởi động lại thiết bị', 'Device reboot & reset', 'Maintenance & réinitialisation');
 
   // S9 Alert Contacts (Simultaneous Default + Multi-Channel)
@@ -562,6 +597,8 @@ class AppStrings {
   String get s9TelegramPhone => _t('Số điện thoại Telegram', 'Telegram phone number', 'Numéro Telegram');
   String get s9TelegramSamePhone => _t('Số Telegram trùng số điện thoại trên', 'Telegram number is the same as the mobile number above', 'Le numéro Telegram est identique au numéro ci-dessus');
   String get s9EditContact => _t('Sửa thông tin liên hệ', 'Edit contact', 'Modifier le contact');
+  String get s9ContactActions => _t('Thao tác liên hệ', 'Contact actions', 'Actions du contact');
+  String get s9DeleteContact => _t('Xóa liên hệ', 'Delete contact', 'Supprimer le contact');
   String get s9InviteHelper => _t(
         'Số này sẽ được đồng bộ tự động để hệ thống gọi điện báo động tiếng Việt và mở gọi nhanh trên S7.',
         'Synced automatically for automated voice alert calls and one-tap S7 calls.',

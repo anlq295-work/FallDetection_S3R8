@@ -48,6 +48,7 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
   }
 
   Future<void> _connectWifi() async {
+    if (_connecting) return;
     final s = widget.ctrl.s;
     final ssid = _ssidCtrl.text.trim();
     final pass = _passCtrl.text;
@@ -82,12 +83,17 @@ class _S3WifiSetupScreenState extends State<S3WifiSetupScreen> {
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
-    if (!mounted) return;
     setState(() => _progressStage = 2);
-
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    final verified = await widget.ctrl.hardware.waitForWifiConnection(widget.sensor);
     if (!mounted) return;
+    if (!verified) {
+      setState(() {
+        _connecting = false;
+        _progressStage = 0;
+        _errorText = s.s3WifiNotVerified(ssid);
+      });
+      return;
+    }
     setState(() {
       _progressStage = 3;
       _connecting = false;
