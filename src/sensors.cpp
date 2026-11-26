@@ -65,6 +65,9 @@ uint16_t SensorManager::computeMedian(uint16_t* arr, uint8_t size) {
   return temp[1];
 }
 
+// 3 vùng SPAD dọc (16x6) trên VL53L1X: Cao (195), Giữa (199 - tâm quang học), Thấp (60)
+static const uint8_t TOF_ROI_CENTERS[3] = {195, 199, 60};
+
 bool SensorManager::initTofSensor() {
   lastTofAttemptTime = millis();
   recoverI2CBus(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -86,11 +89,18 @@ bool SensorManager::initTofSensor() {
 
   if (tof.init()) {
     tof.setDistanceMode(VL53L1X::Medium);
-    tof.setMeasurementTimingBudget(40000); // 40ms budget
-    tof.startContinuous(40);
+    tof.setMeasurementTimingBudget(33000); // 33ms budget (~30 Hz cho phép quét 3 vùng ROI mượt mà)
+#if ENABLE_TOF_MULTI_ROI
+    currentRoiIdx = 0;
+    tof.setROISize(16, 6);
+    tof.setROICenter(TOF_ROI_CENTERS[currentRoiIdx]);
+    Serial.println("[SENSORS] ToF VL53L1X khoi dong thanh cong (che do Multi-ROI 3 vung Cao/Giua/Thap)!");
+#else
+    Serial.println("[SENSORS] ToF VL53L1X khoi dong thanh cong tren dia chi 0x29!");
+#endif
+    tof.startContinuous(35);
     tofHealthy = true;
     lastTofReadTime = millis();
-    Serial.println("[SENSORS] ToF VL53L1X khoi dong thanh cong tren dia chi 0x29!");
     return true;
   } else {
     tofHealthy = false;
@@ -274,7 +284,7 @@ void SensorManager::parseRadarStream() {
 void SensorManager::update() {
   bool currentTofValid = false;
 
-  // 1. Doc ToF VL53L1X
+  // 1. Doc ToF VL53L1X (ho tro Multi-ROI 3 vung Cao/Giua/Thap + loc trung vi 3 mau)
   if (tofHealthy) {
     if (tof.dataReady()) {
       uint16_t rawDist = tof.read(false);
@@ -282,16 +292,41 @@ void SensorManager::update() {
 
       // rangeStatus 0 = Valid, 1 = Sigma Fail (nhung khoang cach van tot), 2 = Signal Fail
       if ((rangeStatus == 0 || rangeStatus == 1) && rawDist > 40 && rawDist < 4000) {
-        primaryTofDistance = rawDist;
-        tofDistances[0] = rawDist;
-        tofDistances[1] = rawDist;
-        tofDistances[2] = rawDist;
-
+#if ENABLE_TOF_MULTI_ROI
+        uint8_t zone = currentRoiIdx;
+        tofHistory[zone][historyIdx[zone]] = rawDist;
+        historyIdx[zone] = (historyIdx[zone] + 1) % 3;
+        uint16_t filtered = (tofHistory[zone][0] > 0 && tofHistory[zone][1] > 0 && tofHistory[zone][2] > 0)
+                                ? computeMedian(tofHistory[zone], 3)
+                                : rawDist;
+        tofDistances[zone] = filtered;
+        // Khoi tao 2 vung con lai neu chua co mau dau tien
+        for (int z = 0; z < 3; z++) {
+          if (tofDistances[z] == 0) tofDistances[z] = filtered;
+        }
+        // primaryTofDistance uu tien vung giua/thap gan nhat co gia tri hop le
+        uint16_t bestDist = tofDistances[1] > 0 ? tofDistances[1] : filtered;
+        if (tofDistances[2] > 40 && tofDistances[2] < bestDist) bestDist = tofDistances[2];
+        primaryTofDistance = bestDist;
+#else
         tofHistory[0][historyIdx[0]] = rawDist;
         historyIdx[0] = (historyIdx[0] + 1) % 3;
+        uint16_t filtered = (tofHistory[0][0] > 0 && tofHistory[0][1] > 0 && tofHistory[0][2] > 0)
+                                ? computeMedian(tofHistory[0], 3)
+                                : rawDist;
+        primaryTofDistance = filtered;
+        tofDistances[0] = filtered;
+        tofDistances[1] = filtered;
+        tofDistances[2] = filtered;
+#endif
         currentTofValid = true;
         lastTofReadTime = millis();
       }
+#if ENABLE_TOF_MULTI_ROI
+      // Chuyen sang vung ROI tiep theo cho chu ky do ke tiep
+      currentRoiIdx = (currentRoiIdx + 1) % 3;
+      tof.setROICenter(TOF_ROI_CENTERS[currentRoiIdx]);
+#endif
     } else if (millis() - lastTofReadTime > 2500) {
       // ToF bi nghen dataReady -> Thu khoi dong lai
       initTofSensor();
@@ -336,6 +371,7 @@ void SensorManager::update() {
     s.radar_motion_max = radarPeakMotion;
     s.radar_static_max = radarPeakStatic;
     s.radar_target_dist_cm = radarTargetDist;
+    s.radar_active_gates = getActiveRadarGateCount();
     s.pir_active = pirState;
     s.tof_valid = currentTofValid;
     s.timestamp_ms = millis();
@@ -344,6 +380,16 @@ void SensorManager::update() {
     bufferHead = (bufferHead + 1) % WINDOW_SIZE;
     if (sampleCount < WINDOW_SIZE) sampleCount++;
   }
+}
+
+uint8_t SensorManager::getActiveRadarGateCount() const {
+  uint8_t active = 0;
+  for (int i = 0; i < 9; i++) {
+    if (radarMotionEnergies[i] >= 20 || radarStaticEnergies[i] >= 20) {
+      active++;
+    }
+  }
+  return active;
 }
 
 bool SensorManager::isProlongedFloorInactivity(uint32_t durationMs) {
@@ -381,63 +427,103 @@ SensorSample SensorManager::getLatestSample() {
 }
 
 void SensorManager::extractFeatures(float* features) {
+  for (int i = 0; i < NUM_FEATURES; i++) features[i] = 0.0f;
+
   if (!windowBuffer || sampleCount < WINDOW_SIZE) {
-    for (int i = 0; i < NUM_FEATURES; i++) features[i] = 0.0f;
     features[0] = (float)radarPeakMotion;
     features[1] = (float)radarPeakStatic;
-    features[2] = (float)primaryTofDistance;
-    features[3] = (float)primaryTofDistance;
-    features[4] = (float)primaryTofDistance;
+    features[2] = (float)tofDistances[0];
+    features[3] = (float)tofDistances[1];
+    features[4] = (float)tofDistances[2];
     features[6] = (float)radarTargetDist;
+    features[8] = (float)radarPeakMotion;
+    features[9] = (float)radarPeakStatic;
+    features[10] = (float)getActiveRadarGateCount();
     return;
   }
 
   float maxMotion = 0.0f;
   float maxStatic = 0.0f;
-  
+  float maxActiveGates = 0.0f;
+
   for (int i = 0; i < WINDOW_SIZE; i++) {
     if (windowBuffer[i].radar_motion_max > maxMotion) maxMotion = windowBuffer[i].radar_motion_max;
     if (windowBuffer[i].radar_static_max > maxStatic) maxStatic = windowBuffer[i].radar_static_max;
+    if (windowBuffer[i].radar_active_gates > maxActiveGates) maxActiveGates = windowBuffer[i].radar_active_gates;
   }
 
   int newestIdx = (bufferHead - 1 + WINDOW_SIZE) % WINDOW_SIZE;
 
-  float startHeightSum = 0;
+  // Chieu cao dau cua so (5 mau dau ~0.25s) va cuoi cua so (5 mau cuoi ~0.25s)
+  float startHeightSum = 0.0f;
   int startCount = 0;
   for (int i = 0; i < 5; i++) {
     int idx = (bufferHead + i) % WINDOW_SIZE;
-    if (windowBuffer[idx].tof_high > 100) {
-      startHeightSum += windowBuffer[idx].tof_high;
+    uint16_t hVal = (windowBuffer[idx].tof_mid > 100) ? windowBuffer[idx].tof_mid : windowBuffer[idx].tof_high;
+    if (hVal > 100) {
+      startHeightSum += hVal;
       startCount++;
     }
   }
 
-  float endHeightSum = 0;
+  float endHeightSum = 0.0f;
   int endCount = 0;
   for (int i = 0; i < 5; i++) {
     int idx = (bufferHead - 1 - i + WINDOW_SIZE) % WINDOW_SIZE;
-    if (windowBuffer[idx].tof_high > 100) {
-      endHeightSum += windowBuffer[idx].tof_high;
+    uint16_t hVal = (windowBuffer[idx].tof_low > 50) ? windowBuffer[idx].tof_low : windowBuffer[idx].tof_high;
+    if (hVal > 50) {
+      endHeightSum += hVal;
       endCount++;
     }
   }
 
-  float avgStartHeight = (startCount > 0) ? (startHeightSum / startCount) : 0;
-  float avgEndHeight   = (endCount > 0)   ? (endHeightSum / endCount)     : 0;
+  float avgStartHeight = (startCount > 0) ? (startHeightSum / startCount) : 0.0f;
+  float avgEndHeight   = (endCount > 0)   ? (endHeightSum / endCount)     : 0.0f;
 
+  float heightDropDelta = 0.0f;
   float tofDropRate = 0.0f;
-  if (avgStartHeight > 0 && avgEndHeight > 0) {
-    tofDropRate = (avgStartHeight - avgEndHeight) / 2.0f;
-    if (tofDropRate < 0.0f) tofDropRate = 0.0f;
+  if (avgStartHeight > 0.0f && avgEndHeight > 0.0f) {
+    heightDropDelta = avgStartHeight - avgEndHeight;
+    if (heightDropDelta < 0.0f) heightDropDelta = 0.0f;
+    tofDropRate = heightDropDelta / 2.0f;
   }
 
-  features[0] = maxMotion;                                          // Dinh xung dong nang radar (0-100)
-  features[1] = maxStatic;                                          // Nang luong tinh cuoi (0-100)
-  features[2] = (float)windowBuffer[newestIdx].tof_high;            // Cu ly ToF cao (mm)
-  features[3] = (float)windowBuffer[newestIdx].tof_mid;             // Cu ly ToF giua (mm)
-  features[4] = (float)windowBuffer[newestIdx].tof_low;             // Cu ly ToF thap (mm)
-  features[5] = tofDropRate;                                        // Toc do sut giam chieu cao (mm/s)
-  features[6] = (float)windowBuffer[newestIdx].radar_target_dist_cm;// Khoang cach toi muc tieu (cm)
+  // Toc do roi cuc dai tren cua so con 0.5 giay (10 mau) de bat xung te nga sac net
+  float maxBurstDropRate = tofDropRate;
+  const int subStep = 10; // 10 * 50ms = 0.5s
+  for (int k = 0; k <= WINDOW_SIZE - 1 - subStep; k++) {
+    int idxA = (bufferHead + k) % WINDOW_SIZE;
+    int idxB = (bufferHead + k + subStep) % WINDOW_SIZE;
+    uint16_t hA = (windowBuffer[idxA].tof_mid > 100) ? windowBuffer[idxA].tof_mid : windowBuffer[idxA].tof_high;
+    uint16_t hB = (windowBuffer[idxB].tof_low > 50)  ? windowBuffer[idxB].tof_low : windowBuffer[idxB].tof_high;
+    if (hA > 100 && hB > 50 && hA > hB) {
+      float burstRate = (float)(hA - hB) / 0.5f;
+      if (burstRate > maxBurstDropRate) maxBurstDropRate = burstRate;
+    }
+  }
+
+  // Nang luong dong va tinh trung binh 0.5s cuoi (phan biet bat dong sau nga voi di chuyen/ngoi tiep)
+  float postMotionSum = 0.0f;
+  float postStaticSum = 0.0f;
+  const int postCount = 10;
+  for (int i = 0; i < postCount; i++) {
+    int idx = (bufferHead - 1 - i + WINDOW_SIZE) % WINDOW_SIZE;
+    postMotionSum += windowBuffer[idx].radar_motion_max;
+    postStaticSum += windowBuffer[idx].radar_static_max;
+  }
+
+  features[0]  = maxMotion;                                           // f0: Dinh dong nang radar (0-100)
+  features[1]  = maxStatic;                                           // f1: Dinh tinh nang radar (0-100)
+  features[2]  = (float)windowBuffer[newestIdx].tof_high;             // f2: ToF vung Cao (mm)
+  features[3]  = (float)windowBuffer[newestIdx].tof_mid;              // f3: ToF vung Giua (mm)
+  features[4]  = (float)windowBuffer[newestIdx].tof_low;              // f4: ToF vung Thap (mm)
+  features[5]  = tofDropRate;                                         // f5: Toc do roi trung binh 2s (mm/s)
+  features[6]  = (float)windowBuffer[newestIdx].radar_target_dist_cm; // f6: Cu ly muc tieu radar (cm)
+  features[7]  = maxBurstDropRate;                                    // f7: Toc do roi dinh 0.5s (mm/s)
+  features[8]  = postMotionSum / (float)postCount;                    // f8: Dong nang TB 0.5s cuoi (0-100)
+  features[9]  = postStaticSum / (float)postCount;                    // f9: Tinh nang TB 0.5s cuoi (0-100)
+  features[10] = maxActiveGates;                                      // f10: So cong radar kich hoat (0-9)
+  features[11] = heightDropDelta;                                     // f11: Do sut giam chieu cao (mm)
 }
 
 bool SensorManager::isSensorsHealthy() {

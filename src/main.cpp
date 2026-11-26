@@ -54,8 +54,18 @@ static void addCsvToJsonArray(JsonArray arr, const String& csv) {
   }
 }
 
+// Dữ liệu Telemetry thời gian thực được cập nhật cho cả BLE và Wi-Fi Web Server
+AIClass lastPredictedClass = CLASS_STAND;
+float lastConfidence = 0.0f;
+float lastFeatures[NUM_FEATURES] = {0};
+FallDiagnostic lastDiag = {};
+float recordedImpactFeatures[NUM_FEATURES] = {0};
+bool serialCsvRecordEnabled = false;
+unsigned long lastSerialCsvTime = 0;
+bool lastPirState = false;
+
 static String buildAlertBotPayloadJson(FallEventType evType, float vel, uint8_t mot, uint16_t dist, bool simulated) {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;
   const char* typeStr = "fall_impact";
   if (simulated) typeStr = "test";
   else if (evType == EVENT_SLOW_FALL) typeStr = "slow_fall";
@@ -70,10 +80,27 @@ static String buildAlertBotPayloadJson(FallEventType evType, float vel, uint8_t 
   doc["motion_peak"] = mot;
   doc["target_dist_cm"] = dist;
   doc["tof_height_mm"] = (int)sensorMgr.getPrimaryTofDistance();
+  doc["confidence"] = lastConfidence;
   doc["device_id"] = sensorId;
   doc["device_ip"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : "0.0.0.0";
   doc["uptime_sec"] = (uint32_t)(millis() / 1000);
   doc["simulated"] = simulated;
+
+  // Đính kèm 12 đặc trưng cảm biến & chẩn đoán Edge AI để server Render lưu mẫu tự học (Human-in-the-Loop)
+  JsonArray featArr = doc.createNestedArray("ai_features");
+  const float* srcFeats = (evType == EVENT_FALL_IMPACT && recordedImpactFeatures[0] > 0.0f)
+                              ? recordedImpactFeatures
+                              : lastFeatures;
+  for (int i = 0; i < NUM_FEATURES; i++) {
+    featArr.add(srcFeats[i]);
+  }
+  JsonObject diagObj = doc.createNestedObject("ai_diagnostics");
+  diagObj["model_version"] = aiEngine.getModelVersion();
+  diagObj["neural_score"] = lastDiag.neuralScore;
+  diagObj["kinematic_score"] = lastDiag.kinematicScore;
+  diagObj["spatial_score"] = lastDiag.spatialScore;
+  diagObj["final_confidence"] = lastDiag.finalConfidence;
+  diagObj["adaptive_threshold"] = aiEngine.getAdaptiveFallThreshold();
 
   JsonArray phones = doc.createNestedArray("fallback_phones");
   addCsvToJsonArray(phones, emergencyPhone);
@@ -100,11 +127,47 @@ static void reloadAllCredentials() {
                 configuredFloorMm);
 }
 
-// Dữ liệu Telemetry thời gian thực được cập nhật cho cả BLE và Wi-Fi Web Server
-AIClass lastPredictedClass = CLASS_STAND;
-float lastConfidence = 0.0f;
-float lastFeatures[NUM_FEATURES] = {0};
-bool lastPirState = false;
+String getEdgeAiStateJson() {
+  StaticJsonDocument<1024> doc;
+  const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
+  doc["model_version"] = aiEngine.getModelVersion();
+  doc["predicted_class"] = classNames[lastPredictedClass];
+  doc["confidence"] = lastConfidence;
+  doc["adaptive_threshold"] = aiEngine.getAdaptiveFallThreshold();
+  doc["neural_score"] = lastDiag.neuralScore;
+  doc["kinematic_score"] = lastDiag.kinematicScore;
+  doc["spatial_score"] = lastDiag.spatialScore;
+  JsonArray probs = doc.createNestedArray("class_probs");
+  for (int c = 0; c < 4; c++) probs.add(lastDiag.classProbs[c]);
+  JsonArray feats = doc.createNestedArray("features");
+  for (int i = 0; i < NUM_FEATURES; i++) feats.add(lastFeatures[i]);
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
+
+bool applyEdgeAiFeedbackJson(const String& body) {
+  StaticJsonDocument<256> doc;
+  if (deserializeJson(doc, body) != DeserializationError::Ok) return false;
+  String outcome = doc["outcome"] | "";
+  outcome.toLowerCase();
+  if (outcome == "false_alarm") {
+    aiEngine.recordUserFeedback(true);
+    bleProvision.updateStatus("AI_ADAPTED_FALSE_ALARM");
+    return true;
+  }
+  if (outcome == "true_fall" || outcome == "needed_help") {
+    aiEngine.recordUserFeedback(false);
+    bleProvision.updateStatus("AI_ADAPTED_TRUE_FALL");
+    return true;
+  }
+  if (outcome == "reset") {
+    aiEngine.resetAdaptation();
+    bleProvision.updateStatus("AI_ADAPT_RESET");
+    return true;
+  }
+  return false;
+}
 
 String getSystemTelemetryJson() {
   const char* classNames[] = {"STAND", "SIT", "LIE", "FALL"};
@@ -335,6 +398,15 @@ void executeSystemCommand(const String& cmd) {
     Serial.printf("[CMD] Nhan lenh OTA ban moi nhat tu GitHub: %s\n", latestUrl.c_str());
     alertSys.setIndicator(0x800080, false);
     otaManager.performHttpOta(latestUrl);
+  } else if (cmd == "AI_FALSE_ALARM") {
+    aiEngine.recordUserFeedback(true);
+    bleProvision.updateStatus("AI_ADAPTED_FALSE_ALARM");
+  } else if (cmd == "AI_TRUE_FALL") {
+    aiEngine.recordUserFeedback(false);
+    bleProvision.updateStatus("AI_ADAPTED_TRUE_FALL");
+  } else if (cmd == "AI_RESET_ADAPT") {
+    aiEngine.resetAdaptation();
+    bleProvision.updateStatus("AI_ADAPT_RESET");
   } else if (cmd == "REBOOT") {
     Serial.println("[CMD] Khoi dong lai chip ESP32-S3...");
     delay(500);
@@ -480,7 +552,9 @@ void setup() {
         getSystemStatusJson,
         executeSystemCommand,
         []() { return bleProvision.getContactConfigJson(); },
-        [](const String& body) { return bleProvision.applyContactConfigJson(body); }
+        [](const String& body) { return bleProvision.applyContactConfigJson(body); },
+        getEdgeAiStateJson,
+        applyEdgeAiFeedbackJson
       );
     } else {
       bleProvision.updateStatus("WIFI_CONNECT_FAILED");
@@ -547,9 +621,15 @@ void handleSerialCommands() {
       alertSys.setMuted(!alertSys.isMuted());
       Serial.printf("[CMD] Trang thai Mute: %s\n", alertSys.isMuted() ? "BAT (Yen lang)" : "TAT (Co coi)");
     } else if (c == 'S' || c == 's') {
-      Serial.printf("[STATUS] State=%d | Pattern=%d | BuzHigh=%d | Muted=%d | PinVal=%d\n",
+      Serial.printf("[STATUS] State=%d | Pattern=%d | BuzHigh=%d | Muted=%d | PinVal=%d | AI=%s (Thr=%.2f)\n",
                     currentState, alertSys.getCurrentPattern(), alertSys.isBuzzerActiveHigh(),
-                    alertSys.isMuted(), digitalRead(PIN_BUZZER));
+                    alertSys.isMuted(), digitalRead(PIN_BUZZER),
+                    aiEngine.getModelVersion(), aiEngine.getAdaptiveFallThreshold());
+    } else if (c == 'R' || c == 'r') {
+      serialCsvRecordEnabled = !serialCsvRecordEnabled;
+      Serial.printf("[AI_REC] Che do ghi CSV 12 dac trung: %s\n", serialCsvRecordEnabled ? "BAT" : "TAT");
+    } else if (c == 'F' || c == 'f') {
+      Serial.println(getEdgeAiStateJson());
     }
   }
 }
@@ -588,7 +668,9 @@ void loop() {
         getSystemStatusJson,
         executeSystemCommand,
         []() { return bleProvision.getContactConfigJson(); },
-        [](const String& body) { return bleProvision.applyContactConfigJson(body); }
+        [](const String& body) { return bleProvision.applyContactConfigJson(body); },
+        getEdgeAiStateJson,
+        applyEdgeAiFeedbackJson
       );
     }
     deviceWebServer.handle();
@@ -635,7 +717,16 @@ void loop() {
       // Lưu trữ trạng thái telemetry mới nhất cho cả BLE và Wi-Fi Server
       lastPredictedClass = predictedClass;
       lastConfidence = confidence;
+      lastDiag = diag;
       memcpy(lastFeatures, features, sizeof(features));
+
+      // Xuất CSV 12 đặc trưng qua Serial (4 Hz) khi bật chế độ thu dữ liệu huấn luyện (phím 'R')
+      if (serialCsvRecordEnabled && (now - lastSerialCsvTime >= 250)) {
+        lastSerialCsvTime = now;
+        Serial.printf("[AI_CSV]%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+                      features[0], features[1], features[2], features[3], features[4], features[5],
+                      features[6], features[7], features[8], features[9], features[10], features[11]);
+      }
 
       // Đèn ngủ thông minh: Tự động soi đường khi phát hiện người thức dậy ban đêm
       if (currentState == STATE_NORMAL) {
@@ -654,6 +745,7 @@ void loop() {
         recordedImpactVelocity = features[5];
         recordedImpactMotion = (uint8_t)features[0];
         recordedTargetDist = (uint16_t)features[6];
+        memcpy(recordedImpactFeatures, features, sizeof(recordedImpactFeatures));
         currentEventType = EVENT_FALL_IMPACT;
 
         Serial.printf("[EVENT] Phat hien xung va cham! V_drop=%.1f mm/s, Mot_peak=%d -> Chuyen sang SUSPECTED\n", 

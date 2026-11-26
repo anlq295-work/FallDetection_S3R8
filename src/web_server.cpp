@@ -13,7 +13,9 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
                            std::function<String()> statusSupplier,
                            std::function<void(const String&)> commandHandler,
                            std::function<String()> configGetter,
-                           std::function<bool(const String&)> configSetter) {
+                           std::function<bool(const String&)> configSetter,
+                           std::function<String()> aiSupplier,
+                           std::function<bool(const String&)> aiFeedbackHandler) {
   if (running) return;
 
   getTelemetry = telemetrySupplier;
@@ -22,6 +24,8 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
   onCommand = commandHandler;
   getConfig = configGetter;
   setConfig = configSetter;
+  getAiState = aiSupplier;
+  onAiFeedback = aiFeedbackHandler;
 
   // Endpoint 1: GET /api/telemetry (hoặc /telemetry)
   auto handleTelemetry = [this]() {
@@ -116,6 +120,39 @@ void DeviceWebServer::begin(std::function<String()> telemetrySupplier,
   server.on("/api/config", HTTP_GET, handleConfig);
   server.on("/api/config", HTTP_POST, handleConfig);
   server.on("/api/config", HTTP_OPTIONS, handleConfig);
+
+  // Endpoint 4c: GET /api/ai & POST /api/ai/feedback (Thu mau 12 dac trung & hoc thich nghi)
+  auto handleAi = [this]() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+    if (server.method() == HTTP_OPTIONS) {
+      server.send(204);
+      return;
+    }
+    String payload = getAiState ? getAiState() : "{}";
+    server.send(200, "application/json", payload);
+  };
+  server.on("/api/ai", HTTP_GET, handleAi);
+  server.on("/api/ai", HTTP_OPTIONS, handleAi);
+
+  auto handleAiFeedback = [this]() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+    if (server.method() == HTTP_OPTIONS) {
+      server.send(204);
+      return;
+    }
+    String body = server.hasArg("plain") ? server.arg("plain") : "";
+    if (body.length() > 0 && onAiFeedback && onAiFeedback(body)) {
+      server.send(200, "application/json", "{\"status\":\"ok\"}");
+    } else {
+      server.send(400, "application/json", "{\"error\":\"Invalid AI feedback JSON\"}");
+    }
+  };
+  server.on("/api/ai/feedback", HTTP_POST, handleAiFeedback);
+  server.on("/api/ai/feedback", HTTP_OPTIONS, handleAiFeedback);
 
   // Endpoint 5: Web OTA trực tiếp qua trình duyệt trên cùng mạng Wi-Fi
   server.on("/update", HTTP_GET, [this]() {

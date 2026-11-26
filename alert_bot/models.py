@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -62,6 +62,9 @@ class FallAlertRequest(BaseModel):
     channels_override: list[Literal["telegram", "sms", "call"]] | None = None
     target_recipient_ids: list[str] | None = None
     use_fallback_only: bool = False
+    # Optional Edge AI 12-feature snapshot & diagnostics for Human-in-the-Loop continuous learning
+    ai_features: list[float] = Field(default_factory=list)
+    ai_diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
 class DeliveryResult(BaseModel):
@@ -88,9 +91,12 @@ class AlertRecord(BaseModel):
     resolved_outcome: str | None = None
     resolved_at: str | None = None
     simulated: bool = False
+    device_id: str = ""
     device_ip: str = ""
     notified_recipient_ids: list[str] = Field(default_factory=list)
     deliveries: list[DeliveryResult] = Field(default_factory=list)
+    ai_features: list[float] = Field(default_factory=list)
+    ai_diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
 class AcknowledgeRequest(BaseModel):
@@ -100,7 +106,23 @@ class AcknowledgeRequest(BaseModel):
 class ResolveRequest(BaseModel):
     by: str = "Người chăm sóc"
     outcome: Literal["person_ok", "needed_help", "false_alarm"] = "person_ok"
+    false_alarm_reason: str = ""
     note: str = ""
+
+
+class AiTrainingSample(BaseModel):
+    sample_id: str = ""
+    created_at: str = Field(default_factory=utc_now_iso)
+    label: Literal["STAND", "SIT", "LIE", "FALL"] = "SIT"
+    features: list[float] = Field(default_factory=list)
+    source: str = "user_feedback"
+    alert_id: str = ""
+    outcome: str = ""
+    reason: str = ""
+    note: str = ""
+    is_false_alarm: bool = False
+    device_id: str = ""
+    room_name: str = ""
 
 
 class OtpSendRequest(BaseModel):

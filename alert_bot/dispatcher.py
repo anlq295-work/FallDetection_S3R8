@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 
 from .config import BotConfig
-from .models import AlertRecord, BotSettings, DeliveryResult, FallAlertRequest, Recipient
+from .models import AiTrainingSample, AlertRecord, BotSettings, DeliveryResult, FallAlertRequest, Recipient
 from .providers import CallProvider, SmsProvider, TelegramProvider
 from .storage import SettingsStore, normalize_telegram_username
 
@@ -45,8 +45,7 @@ class AlertDispatcher:
             if req.target_recipient_ids:
                 wanted = {rid.strip() for rid in req.target_recipient_ids if rid.strip()}
                 filtered = [r for r in recipients if r.id in wanted or r.telegram_chat_id in wanted]
-                if filtered:
-                    return filtered
+                return filtered
             if recipients:
                 return recipients
 
@@ -77,6 +76,9 @@ class AlertDispatcher:
                         enabled=True,
                     )
                 )
+        if req.target_recipient_ids:
+            wanted = {rid.strip() for rid in req.target_recipient_ids if rid.strip()}
+            return [r for r in fallback if r.id in wanted or r.telegram_chat_id in wanted]
         return fallback
 
     async def _dispatch_to_recipient(
@@ -90,9 +92,11 @@ class AlertDispatcher:
 
         if req.channels_override is not None:
             want_tg = "telegram" in req.channels_override
+            want_sms = "sms" in req.channels_override
             want_call = "call" in req.channels_override
         else:
             want_tg = settings.channels.telegram and recipient.notify_telegram
+            want_sms = settings.channels.sms and recipient.notify_sms
             want_call = settings.channels.call and recipient.notify_call
 
         if want_tg:
@@ -113,6 +117,9 @@ class AlertDispatcher:
                         ),
                     )
                 )
+
+        if want_sms:
+            tasks.append(self.sms.send_fall_sms(recipient, req, settings))
 
         if want_call:
             if recipient.telegram_username or recipient.phone:
@@ -176,7 +183,10 @@ class AlertDispatcher:
             room_name=req.room_name,
             person_name=person_name,
             simulated=req.simulated or req.event_type == "test",
+            device_id=req.device_id,
             device_ip=req.device_ip or settings.esp32_lan_ip,
+            ai_features=list(req.ai_features),
+            ai_diagnostics=dict(req.ai_diagnostics),
         )
         self.store.create_alert(record)
 
@@ -253,12 +263,46 @@ class AlertDispatcher:
         return rec
 
     async def resolve_alert(
-        self, alert_id: str, by: str, outcome: str = "person_ok", note: str = ""
+        self,
+        alert_id: str,
+        by: str,
+        outcome: str = "person_ok",
+        note: str = "",
+        false_alarm_reason: str = "",
     ) -> AlertRecord | None:
         self._cancel_escalation(alert_id)
         rec = self.store.mark_resolved(alert_id, by, outcome)
         if not rec:
             return None
+
+        # Human-in-the-Loop Edge AI: lưu nhãn thực tế kèm 12 đặc trưng cảm biến để tự huấn luyện lại
+        ai_saved_msg = ""
+        if not rec.simulated and len(rec.ai_features) == 12:
+            if outcome == "needed_help":
+                label = "FALL"
+                is_false_alarm = False
+            else:
+                is_false_alarm = True
+                reason_norm = (false_alarm_reason or "").strip().lower()
+                if reason_norm in ("guestorpet", "normalroutine"):
+                    label = "STAND"
+                else:
+                    label = "SIT"
+            self.store.add_ai_sample(
+                AiTrainingSample(
+                    label=label,  # type: ignore[arg-type]
+                    features=list(rec.ai_features),
+                    source="user_feedback",
+                    alert_id=rec.alert_id,
+                    outcome=outcome,
+                    reason=false_alarm_reason,
+                    note=note,
+                    is_false_alarm=is_false_alarm,
+                    device_id=rec.device_id,
+                    room_name=rec.room_name,
+                )
+            )
+            ai_saved_msg = f"\n🧠 Đã lưu mẫu học Edge AI (nhãn: <code>{label}</code>)"
 
         outcome_map = {
             "person_ok": "🟢 Người thân an toàn",
@@ -271,14 +315,17 @@ class AlertDispatcher:
             rec,
             f"🏁 <b>ĐÃ ĐÓNG CẢNH BÁO</b> (<code>{html.escape(alert_id)}</code>)\n"
             f"• Kết quả: <b>{outcome_label}</b>\n"
-            f"• Xử lý bởi: <b>{html.escape(by)}</b>{extra_note}",
+            f"• Xử lý bởi: <b>{html.escape(by)}</b>{extra_note}{ai_saved_msg}",
             clear_buttons=True,
         )
 
-        # Best-effort: tell ESP32-S3 on LAN to cancel local siren/LED
+        # Best-effort: tell ESP32-S3 on LAN to cancel local siren/LED and adapt threshold
         target_ip = rec.device_ip or self.store.get_settings().esp32_lan_ip
         if target_ip and target_ip != "0.0.0.0":
             await self._notify_esp32_cancel_alarm(target_ip)
+            if not rec.simulated:
+                fb_outcome = "true_fall" if outcome == "needed_help" else "false_alarm"
+                await self._notify_esp32_ai_feedback(target_ip, fb_outcome)
 
         return rec
 
@@ -314,6 +361,17 @@ class AlertDispatcher:
                     await client.post(url, json={"cmd": "CANCEL_ALARM"})
         except Exception as exc:
             logger.debug("Could not send CANCEL_ALARM to ESP32 (%s): %s", ip, exc)
+
+    async def _notify_esp32_ai_feedback(self, ip: str, outcome: str) -> None:
+        url = f"http://{ip}/api/ai/feedback"
+        try:
+            if self._http_client is not None:
+                await self._http_client.post(url, json={"outcome": outcome}, timeout=3.0)
+            else:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    await client.post(url, json={"outcome": outcome})
+        except Exception as exc:
+            logger.debug("Could not send AI feedback to ESP32 (%s): %s", ip, exc)
 
     async def shutdown(self) -> None:
         for alert_id in list(self._escalation_tasks.keys()):

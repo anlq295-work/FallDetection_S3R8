@@ -14,7 +14,9 @@ public:
              std::function<String()> statusSupplier,
              std::function<void(const String&)> commandHandler,
              std::function<String()> configGetter = nullptr,
-             std::function<bool(const String&)> configSetter = nullptr);
+             std::function<bool(const String&)> configSetter = nullptr,
+             std::function<String()> aiSupplier = nullptr,
+             std::function<bool(const String&)> aiFeedbackHandler = nullptr);
   void handle();
   void stop();
   bool isRunning() const;
@@ -28,6 +30,8 @@ private:
   std::function<void(const String&)> onCommand;
   std::function<String()> getConfig;
   std::function<bool(const String&)> setConfig;
+  std::function<String()> getAiState;
+  std::function<bool(const String&)> onAiFeedback;
 };
 
 extern DeviceWebServer deviceWebServer;

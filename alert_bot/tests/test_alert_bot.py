@@ -125,14 +125,15 @@ async def test_simultaneous_multi_channel_dispatch(tmp_path: Path) -> None:
     assert all(d.ok for d in rec.deliveries)
 
     providers_hit = {(d.recipient_id, d.channel, d.provider) for d in rec.deliveries}
-    # r1 (VN phone + Telegram + CallMeBot + Twilio Voice; SMS disabled)
+    # r1 (VN phone + Telegram + SMS + CallMeBot + Twilio Voice)
     assert ("r1", "telegram", "telegram_bot") in providers_hit
+    assert ("r1", "sms", "speedsms") in providers_hit
     assert ("r1", "call", "callmebot_telegram") in providers_hit
     assert ("r1", "call", "twilio_voice") in providers_hit
     # r2 (Telegram + Twilio Voice)
     assert ("r2", "telegram", "telegram_bot") in providers_hit
+    assert ("r2", "sms", "twilio_sms") in providers_hit
     assert ("r2", "call", "twilio_voice") in providers_hit
-    assert all(d.channel != "sms" for d in rec.deliveries)
 
     # Resolving sends CANCEL_ALARM to ESP32 LAN IP
     resolved = await dispatcher.resolve_alert(rec.alert_id, by="Con trai An", outcome="person_ok")
@@ -183,6 +184,40 @@ async def test_sequential_escalation_stops_on_ack(tmp_path: Path) -> None:
     assert rec.alert_id not in dispatcher._escalation_tasks
 
     await asyncio.sleep(0.05)
+    await dispatcher.shutdown()
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_targeted_test_does_not_broadcast_to_other_contacts(tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    client = httpx.AsyncClient(transport=_make_mock_transport(calls))
+    cfg = BotConfig(
+        data_file=str(tmp_path / "settings.json"),
+        telegram_bot_token="123456:TEST_TOKEN",
+        alert_cooldown_sec=0,
+    )
+    store = SettingsStore(cfg.data_file)
+    store.update_settings(BotSettings(recipients=[
+        Recipient(id="first", name="First", telegram_chat_id="111"),
+        Recipient(id="second", name="Second", telegram_chat_id="222"),
+    ]))
+    dispatcher = AlertDispatcher(cfg, store, http_client=client)
+
+    missing, _ = await dispatcher.trigger_fall_alert(FallAlertRequest(
+        event_type="test", room_name="Room", target_recipient_ids=["deleted"],
+        channels_override=["telegram"],
+    ))
+    assert missing.notified_recipient_ids == []
+    assert calls == []
+
+    selected, _ = await dispatcher.trigger_fall_alert(FallAlertRequest(
+        event_type="test", room_name="Room", target_recipient_ids=["second"],
+        channels_override=["telegram"],
+    ))
+    assert selected.notified_recipient_ids == ["second"]
+    assert len([c for c in calls if "sendMessage" in str(c["url"])]) == 1
+
     await dispatcher.shutdown()
     await client.aclose()
 
@@ -515,3 +550,75 @@ def test_render_base64_webhook_secret_sanitized(monkeypatch) -> None:
     assert cfg.telegram_webhook_base_url == "https://hearth-alert-bot.onrender.com"
     assert re.fullmatch(r"[A-Za-z0-9_-]{1,256}", cfg.telegram_webhook_secret)
     assert cfg.telegram_webhook_secret != "abc+def/ghi==="
+
+
+def test_edge_ai_human_in_the_loop_dataset_pipeline(tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    mock_client = httpx.AsyncClient(transport=_make_mock_transport(calls))
+
+    cfg = BotConfig(
+        data_file=str(tmp_path / "settings.json"),
+        telegram_bot_token="123456:TEST_TOKEN",
+        alert_cooldown_sec=0,
+    )
+    store = SettingsStore(cfg.data_file)
+    store.register_telegram_user("555111", "An")
+    dispatcher = AlertDispatcher(cfg, store, http_client=mock_client)
+    app = create_app(config=cfg, store=store, dispatcher=dispatcher, enable_poller=False)
+
+    sample_features = [62.0, 44.0, 1100.0, 650.0, 580.0, 310.0, 145.0, 620.0, 26.0, 40.0, 3.0, 460.0]
+
+    with TestClient(app) as tc:
+        # 1. ESP32 sends a fall alert with 12 Edge AI features
+        r_fall = tc.post(
+            "/api/alerts/fall",
+            json={
+                "event_type": "fall_impact",
+                "room_name": "Phòng khách",
+                "velocity_mm_s": 620.0,
+                "motion_peak": 62,
+                "simulated": False,
+                "ai_features": sample_features,
+                "ai_diagnostics": {"model_version": "mlp12-test"},
+            },
+        )
+        assert r_fall.status_code == 200
+        alert_id = r_fall.json()["alert"]["alert_id"]
+
+        # 2. Carer resolves alert as False Alarm (satDownQuickly) -> auto-labeled SIT
+        r_res = tc.post(
+            f"/api/alerts/{alert_id}/resolve",
+            json={
+                "by": "An",
+                "outcome": "false_alarm",
+                "false_alarm_reason": "satDownQuickly",
+                "note": "Ngồi phịch xuống ghế",
+            },
+        )
+        assert r_res.status_code == 200
+
+        # 3. Direct CLI recorder uploads a verified FALL sample
+        r_add = tc.post(
+            "/api/ai/samples",
+            json={
+                "label": "FALL",
+                "features": [88.0, 42.0, 2200.0, 1900.0, 240.0, 640.0, 160.0, 1400.0, 9.0, 38.0, 6.0, 1150.0],
+                "source": "recorder_cli",
+            },
+        )
+        assert r_add.status_code == 200
+
+        # 4. Verify dataset JSON & CSV export for scripts/train_edge_ai.py
+        r_ds = tc.get("/api/ai/dataset")
+        assert r_ds.status_code == 200
+        ds = r_ds.json()
+        assert ds["summary"]["total"] == 2
+        assert ds["summary"]["SIT"] == 1
+        assert ds["summary"]["FALL"] == 1
+        assert ds["summary"]["false_alarms"] == 1
+
+        r_csv = tc.get("/api/ai/dataset.csv")
+        assert r_csv.status_code == 200
+        assert "max_motion" in r_csv.text
+        assert "SIT,satDownQuickly,3.5,true" in r_csv.text
+        assert "FALL,recorder_cli,3.0,false" in r_csv.text

@@ -11,6 +11,7 @@ struct SensorSample {
   uint8_t  radar_motion_max;
   uint8_t  radar_static_max;
   uint16_t radar_target_dist_cm;
+  uint8_t  radar_active_gates;
   bool     pir_active;
   bool     tof_valid;
   uint32_t timestamp_ms;
@@ -39,6 +40,7 @@ public:
   uint8_t  getRadarPeakStatic() const { return radarPeakStatic; }
   uint16_t getRadarTargetDist() const { return radarTargetDist; }
   uint8_t  getRadarTargetState() const { return radarTargetState; }
+  uint8_t  getActiveRadarGateCount() const;
   bool     isTofHealthy() const { return tofHealthy; }
   bool     isRadarHealthy() const { return radarHealthy; }
 

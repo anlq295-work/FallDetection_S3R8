@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Iterable
 
-from .models import AlertRecord, BotSettings, Recipient, utc_now_iso
+from .models import AiTrainingSample, AlertRecord, BotSettings, Recipient, utc_now_iso
 
 
 def normalize_phone(raw_phone: str, default_country_code: str = "+84") -> str:
@@ -45,6 +45,7 @@ class SettingsStore:
         self._lock = threading.RLock()
         self._settings: BotSettings = BotSettings()
         self._alerts: dict[str, AlertRecord] = {}
+        self._ai_samples: list[AiTrainingSample] = []
         self._load()
 
     def _load(self) -> None:
@@ -61,6 +62,8 @@ class SettingsStore:
                     for item in raw.get("recent_alerts", []):
                         rec = AlertRecord.model_validate(item)
                         self._alerts[rec.alert_id] = rec
+                    for item in raw.get("ai_samples", []):
+                        self._ai_samples.append(AiTrainingSample.model_validate(item))
             except Exception:
                 # Start clean if file is corrupt rather than crashing emergency service
                 self._settings = BotSettings()
@@ -69,9 +72,11 @@ class SettingsStore:
         with self._lock:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             recent = list(self._alerts.values())[-50:]
+            recent_samples = self._ai_samples[-2000:]
             payload = {
                 "settings": self._settings.model_dump(),
                 "recent_alerts": [a.model_dump() for a in recent],
+                "ai_samples": [s.model_dump() for s in recent_samples],
             }
             tmp = self._path.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -269,3 +274,31 @@ class SettingsStore:
     @staticmethod
     def generate_alert_id() -> str:
         return f"fall_{int(time.time() * 1000)}"
+
+    # Edge AI Human-in-the-Loop training samples
+    def add_ai_sample(self, sample: AiTrainingSample) -> AiTrainingSample:
+        with self._lock:
+            sid = sample.sample_id or f"ai_{int(time.time() * 1000)}_{len(self._ai_samples) + 1}"
+            stored = sample.model_copy(update={"sample_id": sid})
+            # Avoid duplicate labeling for the same alert_id
+            if stored.alert_id:
+                self._ai_samples = [s for s in self._ai_samples if s.alert_id != stored.alert_id]
+            self._ai_samples.append(stored)
+            if len(self._ai_samples) > 2000:
+                self._ai_samples = self._ai_samples[-2000:]
+            self._save()
+            return stored.model_copy(deep=True)
+
+    def list_ai_samples(self, limit: int = 2000) -> list[AiTrainingSample]:
+        with self._lock:
+            return [s.model_copy(deep=True) for s in self._ai_samples[-limit:]]
+
+    def ai_dataset_summary(self) -> dict[str, int]:
+        with self._lock:
+            counts = {"total": len(self._ai_samples), "STAND": 0, "SIT": 0, "LIE": 0, "FALL": 0, "false_alarms": 0}
+            for s in self._ai_samples:
+                if s.label in counts:
+                    counts[s.label] += 1
+                if s.is_false_alarm:
+                    counts["false_alarms"] += 1
+            return counts

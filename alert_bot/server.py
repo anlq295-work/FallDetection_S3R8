@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,12 +9,13 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 
 from .config import BotConfig
 from .dispatcher import AlertDispatcher
 from .models import (
     AcknowledgeRequest,
+    AiTrainingSample,
     BotSettings,
     FallAlertRequest,
     OtpSendRequest,
@@ -112,6 +115,7 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
         settings = st.get_settings()
+        ai_sum = st.ai_dataset_summary()
         providers = cfg.active_providers()
         prov_html = "".join(
             f"<li><code>{k}</code>: <b>{'ACTIVE' if v else 'not configured'}</b></li>"
@@ -162,7 +166,13 @@ def create_app(
             "<li><code>POST /api/alerts/fall</code> — Nhận sự kiện ngã từ ESP32-S3 hoặc Hearth App</li>"
             "<li><code>POST /api/alerts/test</code> — Gửi thử cảnh báo (hỗ trợ <code>channels_override</code>: telegram / call)</li>"
             "<li><code>POST /api/auth/otp/send</code> &amp; <code>/api/auth/otp/verify</code> — Gửi &amp; xác thực mã OTP Email đăng nhập App</li>"
+            "<li><code>GET /api/ai/dataset</code> &amp; <a href='/api/ai/dataset.csv'><code>GET /api/ai/dataset.csv</code></a> — Tải bộ dữ liệu Edge AI (Human-in-the-Loop)</li>"
             "</ul></div>"
+            "<div class='card'><h3>🧠 Dữ liệu tự học Edge AI (Human-in-the-Loop)</h3>"
+            f"<p>Tổng mẫu đã thu: <b>{ai_sum['total']}</b> (FALL: <b>{ai_sum['FALL']}</b> | SIT: <b>{ai_sum['SIT']}</b> | "
+            f"LIE: <b>{ai_sum['LIE']}</b> | STAND: <b>{ai_sum['STAND']}</b> | Báo động giả: <b>{ai_sum['false_alarms']}</b>)</p>"
+            "<p><a href='/api/ai/dataset.csv'>⬇️ Tải dataset CSV</a> · "
+            "Huấn luyện lại: <code>python scripts/train_edge_ai.py --pull-url &lt;URL_RENDER&gt;</code></p></div>"
             "<script>"
             "const out=document.getElementById('out');"
             "async function runTest(chs){out.textContent='Đang gửi test '+chs.join(', ')+'...';"
@@ -203,6 +213,7 @@ def create_app(
             "recipient_count": len(settings.recipients),
             "enabled_recipient_count": len(st.enabled_recipients()),
             "active_alert_id": (st.get_latest_active_alert().alert_id if st.get_latest_active_alert() else None),
+            "ai_dataset": st.ai_dataset_summary(),
         }
 
     @app.get("/api/settings", dependencies=[Depends(verify_api_key)])
@@ -268,10 +279,52 @@ def create_app(
 
     @app.post("/api/alerts/{alert_id}/resolve", dependencies=[Depends(verify_api_key)])
     async def resolve_alert(alert_id: str, body: ResolveRequest) -> dict[str, Any]:
-        rec = await disp.resolve_alert(alert_id, by=body.by, outcome=body.outcome, note=body.note)
+        rec = await disp.resolve_alert(
+            alert_id,
+            by=body.by,
+            outcome=body.outcome,
+            note=body.note,
+            false_alarm_reason=body.false_alarm_reason,
+        )
         if not rec:
             raise HTTPException(status_code=404, detail="Alert not found")
         return {"ok": True, "alert": rec.model_dump()}
+
+    # --- Edge AI Human-in-the-Loop Dataset Endpoints ---
+    @app.post("/api/ai/samples", dependencies=[Depends(verify_api_key)])
+    async def add_ai_sample(sample: AiTrainingSample) -> dict[str, Any]:
+        if len(sample.features) != 12:
+            raise HTTPException(status_code=400, detail="features must contain exactly 12 floats")
+        stored = st.add_ai_sample(sample)
+        return {"ok": True, "sample": stored.model_dump(), "summary": st.ai_dataset_summary()}
+
+    @app.get("/api/ai/dataset", dependencies=[Depends(verify_api_key)])
+    async def get_ai_dataset() -> dict[str, Any]:
+        return {
+            "summary": st.ai_dataset_summary(),
+            "samples": [s.model_dump() for s in st.list_ai_samples()],
+        }
+
+    @app.get("/api/ai/dataset.csv", response_class=PlainTextResponse, dependencies=[Depends(verify_api_key)])
+    async def download_ai_dataset_csv() -> str:
+        feature_cols = [
+            "max_motion", "max_static", "tof_high", "tof_mid", "tof_low",
+            "drop_rate", "radar_dist", "max_drop_rate", "post_motion_mean",
+            "post_static_mean", "radar_gate_spread", "height_drop_delta",
+        ]
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["timestamp", "label", "note", "weight", "is_false_alarm", *feature_cols])
+        for s in st.list_ai_samples():
+            if len(s.features) != 12:
+                continue
+            w = "3.5" if s.is_false_alarm else "3.0"
+            note = s.reason or s.note or s.source
+            writer.writerow([
+                s.created_at, s.label, note, w, str(s.is_false_alarm).lower(),
+                *[f"{v:.4f}" for v in s.features],
+            ])
+        return buf.getvalue()
 
     @app.post("/api/telegram/webhook", include_in_schema=False)
     async def telegram_webhook(

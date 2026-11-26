@@ -423,6 +423,7 @@ class AlertBotService {
     required String alertId,
     required String by,
     required String outcome,
+    String falseAlarmReason = '',
     String note = '',
   }) async {
     final base = _normalizeBaseUrl(botUrl);
@@ -432,7 +433,12 @@ class AlertBotService {
       final req = await client.postUrl(Uri.parse('$base/api/alerts/$alertId/resolve'));
       req.headers.contentType = ContentType.json;
       if (apiKey.trim().isNotEmpty) req.headers.set('X-API-Key', apiKey.trim());
-      req.write(jsonEncode({'by': by, 'outcome': outcome, 'note': note}));
+      req.write(jsonEncode({
+        'by': by,
+        'outcome': outcome,
+        'false_alarm_reason': falseAlarmReason,
+        'note': note,
+      }));
       final resp = await req.close().timeout(const Duration(seconds: 5));
       await resp.drain<void>();
       return resp.statusCode == 200;

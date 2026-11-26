@@ -45,6 +45,7 @@ class HearthController extends ChangeNotifier {
   String _alertBotUrl = kDefaultAlertBotUrl;
   String _alertBotApiKey = kDefaultAlertBotApiKey;
   String _lastBotSyncStatus = '';
+  bool _lastBotSyncOk = false;
   String _emergencyServiceNumber = '115';
   bool _heightInCm = false;
 
@@ -65,7 +66,7 @@ class HearthController extends ChangeNotifier {
   ActiveFallAlert? _activeAlert;
   int _escalationSecondsLeft = 0;
   Timer? _escalationTimer;
-  final Timer _heartbeatWatchdog;
+  late final Timer _heartbeatWatchdog;
   bool _phoneOfflineSimulation = false;
 
   StreamSubscription<TelemetrySnapshot>? _telemSub;
@@ -99,6 +100,7 @@ class HearthController extends ChangeNotifier {
   String get alertBotUrl => _alertBotUrl;
   String get alertBotApiKey => _alertBotApiKey;
   String get lastBotSyncStatus => _lastBotSyncStatus;
+  bool get lastBotSyncOk => _lastBotSyncOk;
   String get emergencyServiceNumber => _emergencyServiceNumber;
   bool get heightInCm => _heightInCm;
   ElderlyMedicalProfile get medicalProfile => _medicalProfile;
@@ -180,17 +182,17 @@ class HearthController extends ChangeNotifier {
   }
 
   void _expireStaleHardware() {
-    if (_activeRoomIdForHardware == null || hardware.isLanConnected || hardware.isBleConnected) {
-      return;
+    final now = DateTime.now();
+    var changed = false;
+    for (var idx = 0; idx < _rooms.length; idx++) {
+      final room = _rooms[idx];
+      if (room.status != RoomStatus.offline &&
+          now.difference(room.lastCheckedAt) > const Duration(seconds: 8)) {
+        _rooms[idx] = room.copyWith(status: RoomStatus.offline, offlineSince: now);
+        changed = true;
+      }
     }
-    final idx = _rooms.indexWhere((r) => r.id == _activeRoomIdForHardware);
-    if (idx < 0) return;
-    final room = _rooms[idx];
-    if (room.status != RoomStatus.offline &&
-        DateTime.now().difference(room.lastCheckedAt) > const Duration(seconds: 8)) {
-      _rooms[idx] = room.copyWith(status: RoomStatus.offline);
-      notifyListeners();
-    }
+    if (changed) notifyListeners();
   }
 
   void _bindHardwareStreams() {
@@ -199,10 +201,29 @@ class HearthController extends ChangeNotifier {
       if (_telemetryHistory.length > 40) _telemetryHistory.removeAt(0);
 
       if (_rooms.isNotEmpty) {
-        final idx = _activeRoomIdForHardware != null
-            ? _rooms.indexWhere((r) => r.id == _activeRoomIdForHardware)
-            : 0;
-        final targetIdx = idx >= 0 ? idx : 0;
+        final incomingId = snap.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+        final fullIdIdx = incomingId.isEmpty ? -1 : _rooms.indexWhere((room) {
+          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+          return roomId.length >= 12 && incomingId == roomId;
+        });
+        final ipIdx = snap.ipAddress == '0.0.0.0' ? -1 : _rooms.indexWhere((room) {
+          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+          return roomId.length < 12 && room.lanIp == snap.ipAddress;
+        });
+        final bleIdx = _rooms.indexWhere((room) {
+          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+          if (roomId.length >= 12) return false;
+          final bleId = room.bleDeviceId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+          return bleId != null && bleId.isNotEmpty &&
+              bleId == hardware.connectedDeviceId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') &&
+              (snap.ipAddress == '0.0.0.0' || room.lanIp == snap.ipAddress);
+        });
+        final matchingIdx = fullIdIdx >= 0 ? fullIdIdx : (ipIdx >= 0 ? ipIdx : bleIdx);
+        final targetIdx = matchingIdx >= 0
+            ? matchingIdx
+            : _rooms.indexWhere((r) => r.id == _activeRoomIdForHardware);
+        if (targetIdx < 0 || (incomingId.isNotEmpty && matchingIdx < 0)) return;
+        _activeRoomIdForHardware = _rooms[targetIdx].id;
         final room = _rooms[targetIdx];
         // A BLE telemetry packet alone does not prove Wi-Fi connectivity.
         // Firmware reports 0.0.0.0 until the station has a valid IP.
@@ -232,6 +253,7 @@ class HearthController extends ChangeNotifier {
           firmwareVersion: snap.firmwareVersion,
           sensorId: snap.deviceId.isNotEmpty ? snap.deviceId : room.sensorId,
           latestTelemetry: snap,
+          offlineSince: hasWifi ? null : (room.offlineSince ?? DateTime.now()),
           clearOfflineSince: hasWifi,
         );
 
@@ -279,7 +301,7 @@ class HearthController extends ChangeNotifier {
     _personName = prefs.getString('hearth_person_name') ?? '';
     _dispatchMode = AlertDispatchMode.fromName(prefs.getString('hearth_dispatch_mode'));
     _escalationMinutes = prefs.getInt('hearth_escalation_min') ?? 2;
-    _channelSmsEnabled = false;
+    _channelSmsEnabled = prefs.getBool('hearth_ch_sms') ?? false;
     _channelTelegramEnabled = prefs.getBool('hearth_ch_tg') ?? true;
     _channelCallEnabled = prefs.getBool('hearth_ch_call') ?? true;
     _guestModeActive = prefs.getBool('hearth_guest_mode') ?? false;
@@ -326,6 +348,13 @@ class HearthController extends ChangeNotifier {
             .map((room) => room.copyWith(status: RoomStatus.offline))
             .toList();
       } catch (_) {}
+    }
+    if (_rooms.isNotEmpty) {
+      final room = _rooms.first;
+      _activeRoomIdForHardware = room.id;
+      if (room.lanIp != null && room.lanIp!.isNotEmpty) {
+        hardware.startLanPolling(room.lanIp!, expectedSensorId: room.sensorId);
+      }
     }
 
     final eventsRaw = prefs.getString('hearth_events');
@@ -510,6 +539,9 @@ class HearthController extends ChangeNotifier {
       _rooms.insert(0, room);
     }
     _activeRoomIdForHardware = room.id;
+    if (room.lanIp != null && room.lanIp!.isNotEmpty) {
+      hardware.startLanPolling(room.lanIp!, expectedSensorId: room.sensorId);
+    }
     await _persist();
     notifyListeners();
     return room;
@@ -525,6 +557,13 @@ class HearthController extends ChangeNotifier {
 
   Future<void> removeRoom(String roomId) async {
     _rooms.removeWhere((r) => r.id == roomId);
+    if (_activeRoomIdForHardware == roomId) {
+      hardware.stopLanPolling();
+      _activeRoomIdForHardware = _rooms.isEmpty ? null : _rooms.first.id;
+      if (_rooms.isNotEmpty && _rooms.first.lanIp != null) {
+        hardware.startLanPolling(_rooms.first.lanIp!, expectedSensorId: _rooms.first.sensorId);
+      }
+    }
     await _persist();
     notifyListeners();
   }
@@ -540,6 +579,11 @@ class HearthController extends ChangeNotifier {
       wifiRssi: -54,
       lastCheckedAt: DateTime.now(),
     );
+    _activeRoomIdForHardware = roomId;
+    final activeIp = _rooms[idx].lanIp;
+    if (activeIp != null && activeIp.isNotEmpty) {
+      hardware.startLanPolling(activeIp, expectedSensorId: _rooms[idx].sensorId);
+    }
     await _persist();
     notifyListeners();
   }
@@ -832,6 +876,7 @@ class HearthController extends ChangeNotifier {
       apiKey: _alertBotApiKey,
     );
     _lastBotSyncStatus = res.ok ? 'Connected (${res.enabledRecipients})' : res.message;
+    _lastBotSyncOk = res.ok;
     notifyListeners();
     return res;
   }
@@ -898,6 +943,7 @@ class HearthController extends ChangeNotifier {
       targetRecipientIds: targetContactId != null ? [targetContactId] : null,
     );
     _lastBotSyncStatus = res.summary;
+    _lastBotSyncOk = res.ok;
     notifyListeners();
     return res;
   }
@@ -937,6 +983,7 @@ class HearthController extends ChangeNotifier {
         defaultTelegramChatIds: _telegramChatId,
       );
       _lastBotSyncStatus = ok ? 'Synced to Alert Bot' : 'Bot offline (saved locally)';
+      _lastBotSyncOk = ok;
     }
   }
 
@@ -1139,6 +1186,12 @@ class HearthController extends ChangeNotifier {
     if (alert == null) return;
     _escalationTimer?.cancel();
     await hardware.sendCommand('CANCEL_ALARM');
+    if (!alert.simulated) {
+      final aiCmd = outcome == FallResolutionOutcome.neededHelp
+          ? 'AI_TRUE_FALL'
+          : 'AI_FALSE_ALARM';
+      unawaited(hardware.sendCommand(aiCmd));
+    }
 
     final resolvedBy = _carerName.isNotEmpty ? _carerName : _userEmail;
     if (alert.remoteAlertId != null && _alertBotUrl.trim().isNotEmpty) {
@@ -1153,6 +1206,7 @@ class HearthController extends ChangeNotifier {
         alertId: alert.remoteAlertId!,
         by: resolvedBy,
         outcome: outcomeKey,
+        falseAlarmReason: falseAlarmReason?.name ?? '',
         note: note ?? '',
       ));
     }

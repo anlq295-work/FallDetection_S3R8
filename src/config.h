@@ -42,7 +42,8 @@
 // =========================================================================
 #define SAMPLE_RATE_HZ        20    // 20 Hz (50ms mỗi chu kỳ lấy mẫu)
 #define WINDOW_SIZE           40    // Cửa sổ trượt 2.0 giây (40 mẫu x 50ms)
-#define NUM_FEATURES          7     // 7 đặc trưng không gian - động học
+#define NUM_FEATURES          12    // 12 đặc trưng đa phương thức (ToF Multi-ROI + Radar 9 cổng + Động học)
+#define ENABLE_TOF_MULTI_ROI  1     // 1: Quét 3 vùng SPAD Cao/Giữa/Thấp trên VL53L1X; 0: 1 vùng toàn khung
 
 // =========================================================================
 // 3. NGƯỠNG ĐỘ CHÍNH XÁC NHẬN DIỆN TÉ NGÃ (KINEMATIC & RADAR THRESHOLDS)
