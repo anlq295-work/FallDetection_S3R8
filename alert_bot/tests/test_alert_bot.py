@@ -35,6 +35,8 @@ def _make_mock_transport(recorded_calls: list[dict[str, object]]) -> httpx.MockT
             return httpx.Response(200, json={"status": "success", "code": "00"})
         if "api.twilio.com" in url:
             return httpx.Response(201, json={"sid": "SM_TEST_123"})
+        if "api.stringee.com" in url:
+            return httpx.Response(200, json={"r": 13, "message": "WAIT_TEXT_TO_SPEECH", "call_id": "call-vn-test-1"})
         if "verify.twilio.com" in url:
             body_txt = request.content.decode("utf-8", errors="replace")
             if "VerificationCheck" in url:
@@ -622,3 +624,56 @@ def test_edge_ai_human_in_the_loop_dataset_pipeline(tmp_path: Path) -> None:
         assert "max_motion" in r_csv.text
         assert "SIT,satDownQuickly,3.5,true" in r_csv.text
         assert "FALL,recorder_cli,3.0,false" in r_csv.text
+
+
+def test_stringee_voice_priority_over_twilio(tmp_path: Path) -> None:
+    import json as _json
+    calls: list[dict[str, object]] = []
+    mock_client = httpx.AsyncClient(transport=_make_mock_transport(calls))
+
+    cfg = BotConfig(
+        data_file=str(tmp_path / "settings.json"),
+        stringee_api_key_sid="SK.0.TEST_SID",
+        stringee_api_key_secret="TEST_SECRET_KEY",
+        stringee_from_number="842473001234",
+        twilio_account_sid="AC_TEST",
+        twilio_auth_token="AUTH_TEST",
+        twilio_from_number="+15017122661",
+        alert_cooldown_sec=0,
+    )
+    store = SettingsStore(cfg.data_file)
+    store.update_settings(
+        BotSettings(
+            person_name="Bà Nội",
+            channels=ChannelToggles(telegram=False, sms=False, call=True),
+            recipients=[Recipient(id="r1", name="An", phone="0912345678", notify_call=True)],
+        )
+    )
+    dispatcher = AlertDispatcher(cfg, store, http_client=mock_client)
+    app = create_app(config=cfg, store=store, dispatcher=dispatcher, enable_poller=False)
+
+    with TestClient(app) as tc:
+        health = tc.get("/health").json()
+        assert health["providers"]["stringee_voice_call"] is True
+
+        r = tc.post(
+            "/api/alerts/fall",
+            json={"event_type": "fall_impact", "room_name": "Phòng tắm", "simulated": False},
+        )
+        assert r.status_code == 200
+        deliveries = r.json()["alert"]["deliveries"]
+        assert len(deliveries) == 1
+        assert deliveries[0]["provider"] == "stringee_voice"
+        assert deliveries[0]["ok"] is True
+
+        # Twilio must NOT be called when Stringee succeeded
+        assert any("api.stringee.com/v1/call2/callout" in str(c["url"]) for c in calls)
+        assert not any("api.twilio.com" in str(c["url"]) for c in calls)
+
+        str_req = next(c for c in calls if "api.stringee.com" in str(c["url"]))
+        body = _json.loads(str(str_req["body"]))
+        assert body["from"]["number"] == "842473001234"
+        assert body["to"][0]["number"] == "84912345678"
+        assert body["actions"][0]["action"] == "talk"
+        assert "Bà Nội" in body["actions"][0]["text"]
+        assert "Phòng tắm" in body["actions"][0]["text"]

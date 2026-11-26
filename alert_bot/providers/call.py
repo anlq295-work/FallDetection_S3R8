@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import html
+import json
+import time
 from urllib.parse import urlencode
 
 import httpx
@@ -8,6 +13,35 @@ import httpx
 from ..config import BotConfig
 from ..models import BotSettings, DeliveryResult, FallAlertRequest, Recipient
 from ..storage import normalize_phone, normalize_telegram_username
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def build_stringee_rest_jwt(api_key_sid: str, api_key_secret: str, ttl_sec: int = 3600) -> str:
+    """Generates a Stringee REST API HS256 JWT token without external PyJWT dependency."""
+    now = int(time.time())
+    header = _b64url(
+        json.dumps(
+            {"typ": "JWT", "alg": "HS256", "cty": "stringee-api;v=1"},
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    payload = _b64url(
+        json.dumps(
+            {
+                "jti": f"{api_key_sid}-{now}",
+                "iss": api_key_sid,
+                "exp": now + ttl_sec,
+                "rest_api": True,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    signing_input = f"{header}.{payload}".encode("ascii")
+    sig = _b64url(hmac.new(api_key_secret.encode("utf-8"), signing_input, hashlib.sha256).digest())
+    return f"{header}.{payload}.{sig}"
 
 
 def build_voice_script(req: FallAlertRequest, settings: BotSettings) -> str:
@@ -29,7 +63,7 @@ def build_voice_script(req: FallAlertRequest, settings: BotSettings) -> str:
 
 
 class CallProvider:
-    """Dispatches voice calls via CallMeBot (free Telegram voice call) and/or Twilio Voice (real phone call)."""
+    """Dispatches voice calls via CallMeBot (free Telegram voice call), Stringee Voice (VN direct TTS), or Twilio Voice."""
 
     def __init__(self, config: BotConfig, client: httpx.AsyncClient | None = None) -> None:
         self._config = config
@@ -49,14 +83,22 @@ class CallProvider:
         if self._config.callmebot_enabled and tg_user:
             results.append(await self._call_callmebot(recipient, tg_user, spoken_text))
 
-        # 2. Real Cellular Phone Call via Twilio Programmable Voice (if Twilio configured & phone valid)
+        # 2. Real Cellular Phone Call: Priority #1 Stringee (direct VN TTS, no English trial prompt),
+        #    falling back to Twilio Programmable Voice if Stringee is unconfigured or fails.
         e164 = normalize_phone(recipient.phone, self._config.default_country_code)
-        if self._config.has_twilio and e164:
-            results.append(await self._call_twilio_voice(recipient, e164, spoken_text))
+        if e164:
+            stringee_ok = False
+            if self._config.has_stringee:
+                str_res = await self._call_stringee_voice(recipient, e164, spoken_text)
+                results.append(str_res)
+                stringee_ok = str_res.ok
+
+            if not stringee_ok and self._config.has_twilio:
+                results.append(await self._call_twilio_voice(recipient, e164, spoken_text))
 
         if not results:
             reason = (
-                "Cần điền @username Telegram (CallMeBot miễn phí) hoặc cấu hình Twilio Voice + SĐT"
+                "Cần điền @username Telegram (CallMeBot miễn phí) hoặc cấu hình Stringee/Twilio Voice + SĐT"
             )
             results.append(
                 DeliveryResult(
@@ -110,6 +152,87 @@ class CallProvider:
                 channel="call",
                 provider="callmebot_telegram",
                 target=telegram_user,
+                ok=False,
+                detail=str(exc),
+            )
+
+    async def _call_stringee_voice(
+        self, recipient: Recipient, e164: str, spoken_text: str
+    ) -> DeliveryResult:
+        url = "https://api.stringee.com/v1/call2/callout"
+        from_num = normalize_phone(
+            self._config.stringee_from_number, self._config.default_country_code
+        ).lstrip("+") or self._config.stringee_from_number.lstrip("+")
+        to_num = e164.lstrip("+")
+
+        token = build_stringee_rest_jwt(
+            self._config.stringee_api_key_sid,
+            self._config.stringee_api_key_secret,
+        )
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-STRINGEE-AUTH": token,
+            "User-Agent": "HearthAlertBot/1.0",
+        }
+        payload = {
+            "from": {
+                "type": "external",
+                "number": from_num,
+                "alias": from_num,
+            },
+            "to": [
+                {
+                    "type": "external",
+                    "number": to_num,
+                    "alias": to_num,
+                }
+            ],
+            "actions": [
+                {
+                    "action": "talk",
+                    "text": spoken_text,
+                    "voice": self._config.stringee_voice or "hn_female_thutrang_phrase_48k-hsmm",
+                    "speed": self._config.stringee_speed,
+                    "bargeIn": False,
+                    "loop": max(1, self._config.stringee_repeat),
+                }
+            ],
+        }
+        try:
+            if self._client is not None:
+                resp = await self._client.post(url, json=payload, headers=headers, timeout=15.0)
+            else:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+
+            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            r_code = data.get("r") if isinstance(data, dict) else None
+            # Stringee Callout success codes: 0 (SUCCESS) or 13 (WAIT_TEXT_TO_SPEECH — generating TTS then ringing)
+            ok = resp.status_code in (200, 201) and r_code in (0, 13)
+            if ok:
+                call_id = data.get("call_id", "")
+                detail = f"OK (Stringee VN voice ringing: {call_id})"
+            else:
+                msg = data.get("message") if isinstance(data, dict) else resp.text[:160]
+                detail = f"Stringee r={r_code} HTTP {resp.status_code}: {msg}"
+
+            return DeliveryResult(
+                recipient_id=recipient.id,
+                recipient_name=recipient.name,
+                channel="call",
+                provider="stringee_voice",
+                target=e164,
+                ok=ok,
+                detail=detail,
+            )
+        except Exception as exc:
+            return DeliveryResult(
+                recipient_id=recipient.id,
+                recipient_name=recipient.name,
+                channel="call",
+                provider="stringee_voice",
+                target=e164,
                 ok=False,
                 detail=str(exc),
             )

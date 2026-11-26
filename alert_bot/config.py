@@ -43,12 +43,20 @@ class BotConfig:
     callmebot_lang: str = "vi-VN-Standard-A"
     callmebot_repeat: int = 3
 
-    # Twilio (Real SMS + Real Phone Voice Call)
+    # Twilio (Real Phone Voice Call — fallback if Stringee not configured)
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
     twilio_voice_lang: str = "vi-VN"
     twilio_voice_name: str = "Google.vi-VN-Standard-A"
+
+    # Stringee Programmable Voice (Vietnam Direct TTS Call — Priority #1, no English trial prompt)
+    stringee_api_key_sid: str = ""
+    stringee_api_key_secret: str = ""
+    stringee_from_number: str = ""
+    stringee_voice: str = "hn_female_thutrang_phrase_48k-hsmm"
+    stringee_speed: int = 0
+    stringee_repeat: int = 3
 
     # Email OTP — 1) Twilio Verify Email, 2) Twilio SendGrid API, 3) SMTP (Gmail/Custom)
     twilio_verify_service_sid: str = ""
@@ -112,6 +120,12 @@ class BotConfig:
             twilio_from_number=os.getenv("TWILIO_FROM_NUMBER", "").strip(),
             twilio_voice_lang=os.getenv("TWILIO_VOICE_LANG", "vi-VN").strip(),
             twilio_voice_name=os.getenv("TWILIO_VOICE_NAME", "Google.vi-VN-Standard-A").strip(),
+            stringee_api_key_sid=os.getenv("STRINGEE_API_KEY_SID", "").strip(),
+            stringee_api_key_secret=os.getenv("STRINGEE_API_KEY_SECRET", "").strip(),
+            stringee_from_number=os.getenv("STRINGEE_FROM_NUMBER", "").strip(),
+            stringee_voice=os.getenv("STRINGEE_VOICE", "hn_female_thutrang_phrase_48k-hsmm").strip(),
+            stringee_speed=int(os.getenv("STRINGEE_SPEED", "0")),
+            stringee_repeat=int(os.getenv("STRINGEE_REPEAT", "3")),
             twilio_verify_service_sid=os.getenv("TWILIO_VERIFY_SERVICE_SID", "").strip(),
             sendgrid_api_key=os.getenv("SENDGRID_API_KEY", "").strip(),
             sendgrid_from_email=os.getenv("SENDGRID_FROM_EMAIL", "").strip(),
@@ -143,6 +157,10 @@ class BotConfig:
         return bool(self.twilio_account_sid and self.twilio_auth_token and self.twilio_from_number)
 
     @property
+    def has_stringee(self) -> bool:
+        return bool(self.stringee_api_key_sid and self.stringee_api_key_secret and self.stringee_from_number)
+
+    @property
     def has_speedsms(self) -> bool:
         return bool(self.speedsms_access_token)
 
@@ -162,6 +180,7 @@ class BotConfig:
         return {
             "telegram_bot": self.has_telegram,
             "callmebot_telegram_call": self.callmebot_enabled,
+            "stringee_voice_call": self.has_stringee,
             "twilio_voice_call": self.has_twilio,
             "twilio_verify_email_otp": self.has_twilio_verify_email,
             "twilio_sendgrid_email_otp": self.has_sendgrid,

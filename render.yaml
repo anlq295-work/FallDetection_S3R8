@@ -31,6 +31,16 @@ services:
         value: "vi-VN"
       - key: TWILIO_VOICE_NAME
         value: "Google.vi-VN-Standard-A"
+      - key: STRINGEE_API_KEY_SID
+        sync: false
+      - key: STRINGEE_API_KEY_SECRET
+        sync: false
+      - key: STRINGEE_FROM_NUMBER
+        sync: false
+      - key: STRINGEE_VOICE
+        value: "hn_female_thutrang_phrase_48k-hsmm"
+      - key: STRINGEE_REPEAT
+        value: "3"
       - key: TWILIO_VERIFY_SERVICE_SID
         sync: false
       - key: SENDGRID_API_KEY
