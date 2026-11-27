@@ -7,7 +7,7 @@ import 's4_name_room_screen.dart';
 import 's5_test_sensor_screen.dart';
 import 's9_contacts_screen.dart';
 
-/// Guided S2 → S3 → S4 → S5 → (S9 if first time) flow, also reused for Reconnect (S2→S3) and Add Room (S2..S5).
+/// Guided sensor setup with emergency contacts before the sensor test on first use.
 class SensorSetupFlow extends StatefulWidget {
   final HearthController ctrl;
   final bool isFirstTimeOnboarding;
@@ -29,11 +29,12 @@ class SensorSetupFlow extends StatefulWidget {
 }
 
 class _SensorSetupFlowState extends State<SensorSetupFlow> {
-  int _step = 2; // 2=S2, 3=S3, 4=S4, 5=S5, 9=S9
+  int _step = 2;
   DiscoveredSensor? _sensor;
   String _wifiSsid = '';
   String? _lanIp;
   HearthRoom? _createdRoom;
+  bool _contactsConfigured = false;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +90,7 @@ class _SensorSetupFlowState extends State<SensorSetupFlow> {
           onRoomSaved: (room) {
             setState(() {
               _createdRoom = room;
-              _step = 5;
+              _step = widget.isFirstTimeOnboarding ? 9 : 5;
             });
           },
         );
@@ -97,13 +98,10 @@ class _SensorSetupFlowState extends State<SensorSetupFlow> {
         return S5TestSensorScreen(
           ctrl: ctrl,
           room: _createdRoom!,
-          onBack: () => setState(() => _step = 4),
-          onFinish: () {
-            if (widget.isFirstTimeOnboarding) {
-              setState(() => _step = 9);
-            } else {
-              widget.onComplete();
-            }
+          onBack: () => setState(() => _step = _contactsConfigured ? 9 : 4),
+          onFinish: () async {
+            if (widget.isFirstTimeOnboarding) await ctrl.completeOnboarding();
+            widget.onComplete();
           },
         );
       case 9:
@@ -111,10 +109,12 @@ class _SensorSetupFlowState extends State<SensorSetupFlow> {
         return S9ContactsScreen(
           ctrl: ctrl,
           isOnboarding: true,
-          onBack: () => setState(() => _step = 5),
-          onFinishOnboarding: () async {
-            await ctrl.completeOnboarding();
-            widget.onComplete();
+          onBack: () => setState(() => _step = 4),
+          onFinishOnboarding: () {
+            setState(() {
+              _contactsConfigured = true;
+              _step = 5;
+            });
           },
         );
     }

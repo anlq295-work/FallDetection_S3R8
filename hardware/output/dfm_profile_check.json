@@ -1,0 +1,130 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-11-27T09:32:34",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.8",
+    "schematic_parity": [],
+    "source": "FallDetection_S3R8.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/I2C_SDA] on B.Cu, length 6.7000 mm",
+                    "pos": {
+                        "x": 144.94,
+                        "y": 145.9
+                    },
+                    "uuid": "933da974-f5e1-49e5-896a-7ca36fe2355f"
+                },
+                {
+                    "description": "Track [/RADAR_RX] on B.Cu, length 30.6400 mm",
+                    "pos": {
+                        "x": 139.86,
+                        "y": 150.2
+                    },
+                    "uuid": "bfa918c3-ddf9-4e89-9706-afd8529ef9b1"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/RADAR_TX] on B.Cu, length 12.7000 mm",
+                    "pos": {
+                        "x": 168.0,
+                        "y": 148.8
+                    },
+                    "uuid": "8c69549a-d4c3-4161-b858-02d3cca83f85"
+                },
+                {
+                    "description": "Track [/RADAR_RX] on B.Cu, length 30.6400 mm",
+                    "pos": {
+                        "x": 139.86,
+                        "y": 150.2
+                    },
+                    "uuid": "bfa918c3-ddf9-4e89-9706-afd8529ef9b1"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Tracks crossing",
+            "items": [
+                {
+                    "description": "Track [/RADAR_TX] on B.Cu, length 25.6000 mm",
+                    "pos": {
+                        "x": 142.4,
+                        "y": 148.8
+                    },
+                    "uuid": "45e8d35f-de14-4350-b390-814b84628aa5"
+                },
+                {
+                    "description": "Track [/I2C_SDA] on B.Cu, length 6.7000 mm",
+                    "pos": {
+                        "x": 144.94,
+                        "y": 145.9
+                    },
+                    "uuid": "933da974-f5e1-49e5-896a-7ca36fe2355f"
+                }
+            ],
+            "severity": "error",
+            "type": "tracks_crossing"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of J1",
+                    "pos": {
+                        "x": 166.8,
+                        "y": 111.0
+                    },
+                    "uuid": "0fca2d76-681d-43b1-942e-a4438bf789e4"
+                },
+                {
+                    "description": "Pad 1 [Net-(F1-Pad1)] of F1 on F.Cu",
+                    "pos": {
+                        "x": 165.6375,
+                        "y": 111.5
+                    },
+                    "uuid": "981cab26-34b2-4fe8-a1b5-f0ca74d84342"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        }
+    ]
+}

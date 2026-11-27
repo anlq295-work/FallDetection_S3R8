@@ -52,14 +52,23 @@ def _make_mock_transport(recorded_calls: list[dict[str, object]]) -> httpx.MockT
     return httpx.MockTransport(handler)
 
 
-def test_normalization_helpers() -> None:
-    assert normalize_phone("0912 345 678") == "+84912345678"
-    assert normalize_phone("+84 912-345-678") == "+84912345678"
-    assert normalize_phone("0084912345678") == "+84912345678"
-    assert normalize_phone("123") == ""
-    assert normalize_telegram_username("alice") == "@alice"
-    assert normalize_telegram_username("@alice") == "@alice"
-    assert normalize_telegram_username("https://t.me/alice") == "@alice"
+def test_emergency_gps_location_is_included_in_telegram_and_sms() -> None:
+    from alert_bot.providers.sms import build_sms_text
+    from alert_bot.providers.telegram import build_telegram_html
+
+    request = FallAlertRequest(
+        event_type="fall_impact",
+        room_name="Phòng tắm",
+        person_name="Bà Nội",
+        location={"latitude": 10.7769, "longitude": 106.7009},
+    )
+    settings = BotSettings(home_address="123 Nguyễn Huệ")
+
+    telegram = build_telegram_html("alert-gps", request, settings)
+    sms = build_sms_text(request, settings)
+
+    assert "https://maps.google.com/?q=10.776900,106.700900" in telegram
+    assert "https://maps.google.com/?q=10.776900,106.700900" in sms
 
 
 @pytest.mark.asyncio

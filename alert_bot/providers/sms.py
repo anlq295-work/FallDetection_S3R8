@@ -28,6 +28,11 @@ def build_sms_text(req: FallAlertRequest, settings: BotSettings) -> str:
     }.get(req.event_type, "canh bao te nga")
 
     extras: list[str] = []
+    if req.location:
+        latitude = req.location.get("latitude")
+        longitude = req.location.get("longitude")
+        if latitude is not None and longitude is not None:
+            extras.append(f"GPS: https://maps.google.com/?q={latitude:.6f},{longitude:.6f}")
     if settings.home_address:
         extras.append(_to_ascii_sms(settings.home_address))
     if settings.door_code:

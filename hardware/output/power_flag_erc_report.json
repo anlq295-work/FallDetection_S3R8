@@ -1,0 +1,98 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-11-27T09:15:33",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.8",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/bd6e0489-77da-470d-8f3f-d1330c158bbf",
+            "violations": [
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 27.94 mm",
+                            "pos": {
+                                "x": 48.26,
+                                "y": 177.8
+                            },
+                            "uuid": "e1d46bef-5b7f-4f3c-82e1-28fab7455069"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 27.94 mm",
+                            "pos": {
+                                "x": 129.54,
+                                "y": 177.8
+                            },
+                            "uuid": "0e8fabc0-f235-4306-b27d-b27c91f18507"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 35.56 mm",
+                            "pos": {
+                                "x": 332.74,
+                                "y": 190.5
+                            },
+                            "uuid": "8608d08c-af17-498c-bca6-1835f023a069"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 35.56 mm",
+                            "pos": {
+                                "x": 332.74,
+                                "y": 193.04
+                            },
+                            "uuid": "2e148cc6-5dbb-4cf1-80d1-f1c7ab70c15e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                }
+            ]
+        }
+    ],
+    "source": "FallDetection_S3R8.kicad_sch"
+}

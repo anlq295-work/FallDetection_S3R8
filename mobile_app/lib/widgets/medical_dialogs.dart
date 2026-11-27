@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 import '../services/hearth_controller.dart';
@@ -7,7 +6,10 @@ import 'hearth_components.dart';
 import 'liquid_glass.dart';
 
 /// 1. Illustrated 4-step Clinical First Aid Guide for Elderly Falls (VI / EN / FR).
-Future<void> showFirstAidGuideModal(BuildContext context, HearthController ctrl) {
+Future<void> showFirstAidGuideModal(
+  BuildContext context,
+  HearthController ctrl,
+) {
   final s = ctrl.s;
   final lang = ctrl.language;
   final steps = _firstAidSteps(lang);
@@ -25,7 +27,10 @@ Future<void> showFirstAidGuideModal(BuildContext context, HearthController ctrl)
               Icon(Icons.medical_services_rounded, color: p.critical, size: 26),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(s.firstAidTitle, style: Theme.of(ctx).textTheme.titleLarge),
+                child: Text(
+                  s.firstAidTitle,
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
               ),
               IconButton(
                 onPressed: () => Navigator.pop(ctx),
@@ -60,10 +65,17 @@ Future<void> showFirstAidGuideModal(BuildContext context, HearthController ctrl)
                         children: [
                           Text(
                             '${i + 1}. ${step.title}',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.text),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: p.text,
+                            ),
                           ),
                           const SizedBox(height: 4),
-                          Text(step.body, style: TextStyle(fontSize: 15, color: p.textMuted)),
+                          Text(
+                            step.body,
+                            style: TextStyle(fontSize: 15, color: p.textMuted),
+                          ),
                         ],
                       ),
                     ),
@@ -72,15 +84,6 @@ Future<void> showFirstAidGuideModal(BuildContext context, HearthController ctrl)
               ),
             );
           }),
-          const SizedBox(height: 6),
-          HearthCriticalOutlineButton(
-            label: s.s7CallEmergency(ctrl.emergencyServiceNumber),
-            icon: Icons.emergency_rounded,
-            onPressed: () async {
-              final uri = Uri(scheme: 'tel', path: ctrl.emergencyServiceNumber);
-              if (await canLaunchUrl(uri)) await launchUrl(uri);
-            },
-          ),
         ],
       );
     },
@@ -192,23 +195,34 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
       final prof = ctrl.medicalProfile;
 
       Widget row(String label, String val) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 130,
-                  child: Text(label, style: TextStyle(fontSize: 14, color: p.textMuted, fontWeight: FontWeight.w600)),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 130,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: p.textMuted,
+                  fontWeight: FontWeight.w600,
                 ),
-                Expanded(
-                  child: Text(
-                    val.isEmpty ? '—' : val,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: p.text),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
+            Expanded(
+              child: Text(
+                val.isEmpty ? '—' : val,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: p.text,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,8 +231,16 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
             children: [
               Icon(Icons.badge_rounded, color: p.critical, size: 26),
               const SizedBox(width: 10),
-              Expanded(child: Text(s.medicalIdTitle, style: Theme.of(ctx).textTheme.titleLarge)),
-              IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded)),
+              Expanded(
+                child: Text(
+                  s.medicalIdTitle,
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -229,27 +251,77 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
               children: [
                 Text(
                   [
-                    prof.fullName.isEmpty ? s.personOrGeneric('') : prof.fullName,
+                    prof.fullName.isEmpty
+                        ? s.personOrGeneric('')
+                        : prof.fullName,
                     if (prof.age != null) '${prof.age}',
                     if (prof.bloodType.isNotEmpty) prof.bloodType,
                   ].join(' · '),
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: p.critical),
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: p.critical,
+                  ),
                 ),
                 const Divider(height: 20),
-                row(_lbl(ctrl.language, 'SĐT người thân', 'Phone', 'Téléphone'), prof.personPhone),
-                row(_lbl(ctrl.language, 'Mã khóa cửa / PIN', 'Door lockbox code', 'Code porte'), prof.doorLockboxCode),
-                row(_lbl(ctrl.language, 'Địa chỉ nhà', 'Home address', 'Adresse'), prof.homeAddress),
-                row(_lbl(ctrl.language, 'Bệnh nền', 'Conditions', 'Antécédents'), prof.conditions),
-                row(_lbl(ctrl.language, 'Thuốc đang dùng', 'Medications', 'Traitements'), prof.medications),
-                row(_lbl(ctrl.language, 'Dị ứng', 'Allergies', 'Allergies'), prof.allergies),
-                row(_lbl(ctrl.language, 'Bác sĩ điều trị', 'Doctor', 'Médecin'), prof.primaryDoctor),
-                row(_lbl(ctrl.language, 'SĐT bác sĩ', 'Doctor phone', 'Tél. médecin'), prof.doctorPhone),
+                row(
+                  _lbl(ctrl.language, 'SĐT người thân', 'Phone', 'Téléphone'),
+                  prof.personPhone,
+                ),
+                row(
+                  _lbl(
+                    ctrl.language,
+                    'Mã khóa cửa / PIN',
+                    'Door lockbox code',
+                    'Code porte',
+                  ),
+                  prof.doorLockboxCode,
+                ),
+                row(
+                  _lbl(ctrl.language, 'Địa chỉ nhà', 'Home address', 'Adresse'),
+                  prof.homeAddress,
+                ),
+                row(
+                  _lbl(ctrl.language, 'Bệnh nền', 'Conditions', 'Antécédents'),
+                  prof.conditions,
+                ),
+                row(
+                  _lbl(
+                    ctrl.language,
+                    'Thuốc đang dùng',
+                    'Medications',
+                    'Traitements',
+                  ),
+                  prof.medications,
+                ),
+                row(
+                  _lbl(ctrl.language, 'Dị ứng', 'Allergies', 'Allergies'),
+                  prof.allergies,
+                ),
+                row(
+                  _lbl(ctrl.language, 'Bác sĩ điều trị', 'Doctor', 'Médecin'),
+                  prof.primaryDoctor,
+                ),
+                row(
+                  _lbl(
+                    ctrl.language,
+                    'SĐT bác sĩ',
+                    'Doctor phone',
+                    'Tél. médecin',
+                  ),
+                  prof.doctorPhone,
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           HearthPrimaryButton(
-            label: _lbl(ctrl.language, 'Chỉnh sửa hồ sơ y tế', 'Edit medical profile', 'Modifier la fiche'),
+            label: _lbl(
+              ctrl.language,
+              'Chỉnh sửa hồ sơ y tế',
+              'Edit medical profile',
+              'Modifier la fiche',
+            ),
             icon: Icons.edit_rounded,
             onPressed: () {
               Navigator.pop(ctx);
@@ -262,7 +334,10 @@ Future<void> showMedicalIdModal(BuildContext context, HearthController ctrl) {
   );
 }
 
-Future<void> showMedicalProfileEditorModal(BuildContext context, HearthController ctrl) {
+Future<void> showMedicalProfileEditorModal(
+  BuildContext context,
+  HearthController ctrl,
+) {
   final prof = ctrl.medicalProfile;
   final nameCtrl = TextEditingController(text: prof.fullName);
   final ageCtrl = TextEditingController(text: prof.age?.toString() ?? '');
@@ -287,7 +362,10 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
         children: [
           Text(s.medicalIdTitle, style: Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height: 14),
-          TextField(controller: nameCtrl, decoration: InputDecoration(labelText: s.s4PersonLabel)),
+          TextField(
+            controller: nameCtrl,
+            decoration: InputDecoration(labelText: s.s4PersonLabel),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -295,14 +373,23 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
                 child: TextField(
                   controller: ageCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: _lbl(lang, 'Tuổi', 'Age', 'Âge')),
+                  decoration: InputDecoration(
+                    labelText: _lbl(lang, 'Tuổi', 'Age', 'Âge'),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: bloodCtrl,
-                  decoration: InputDecoration(labelText: _lbl(lang, 'Nhóm máu', 'Blood type', 'Groupe sanguin')),
+                  decoration: InputDecoration(
+                    labelText: _lbl(
+                      lang,
+                      'Nhóm máu',
+                      'Blood type',
+                      'Groupe sanguin',
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -311,29 +398,78 @@ Future<void> showMedicalProfileEditorModal(BuildContext context, HearthControlle
           TextField(
             controller: phoneCtrl,
             keyboardType: TextInputType.phone,
-            decoration: InputDecoration(labelText: _lbl(lang, 'SĐT của người thân', 'Relative phone', 'Téléphone')),
+            decoration: InputDecoration(
+              labelText: _lbl(
+                lang,
+                'SĐT của người thân',
+                'Relative phone',
+                'Téléphone',
+              ),
+            ),
           ),
           const SizedBox(height: 10),
-          TextField(controller: condCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Bệnh nền', 'Conditions', 'Antécédents'))),
+          TextField(
+            controller: condCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(lang, 'Bệnh nền', 'Conditions', 'Antécédents'),
+            ),
+          ),
           const SizedBox(height: 10),
-          TextField(controller: medCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Thuốc đang dùng', 'Medications', 'Traitements'))),
+          TextField(
+            controller: medCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(
+                lang,
+                'Thuốc đang dùng',
+                'Medications',
+                'Traitements',
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
-          TextField(controller: allergyCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Dị ứng', 'Allergies', 'Allergies'))),
+          TextField(
+            controller: allergyCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(lang, 'Dị ứng', 'Allergies', 'Allergies'),
+            ),
+          ),
           const SizedBox(height: 10),
-          TextField(controller: docCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Bác sĩ điều trị', 'Doctor', 'Médecin'))),
+          TextField(
+            controller: docCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(lang, 'Bác sĩ điều trị', 'Doctor', 'Médecin'),
+            ),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: docPhoneCtrl,
             keyboardType: TextInputType.phone,
-            decoration: InputDecoration(labelText: _lbl(lang, 'SĐT bác sĩ', 'Doctor phone', 'Tél. médecin')),
+            decoration: InputDecoration(
+              labelText: _lbl(
+                lang,
+                'SĐT bác sĩ',
+                'Doctor phone',
+                'Tél. médecin',
+              ),
+            ),
           ),
           const SizedBox(height: 10),
-          TextField(controller: addrCtrl, decoration: InputDecoration(labelText: _lbl(lang, 'Địa chỉ nhà', 'Home address', 'Adresse'))),
+          TextField(
+            controller: addrCtrl,
+            decoration: InputDecoration(
+              labelText: _lbl(lang, 'Địa chỉ nhà', 'Home address', 'Adresse'),
+            ),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: lockboxCtrl,
             decoration: InputDecoration(
-              labelText: _lbl(lang, 'Mã khóa cửa / Hộp chìa khóa khẩn cấp', 'Emergency door / lockbox code', 'Code porte / boîte à clés'),
+              labelText: _lbl(
+                lang,
+                'Mã khóa cửa / Hộp chìa khóa khẩn cấp',
+                'Emergency door / lockbox code',
+                'Code porte / boîte à clés',
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -390,14 +526,26 @@ Future<void> showCdcSteadiModal(BuildContext context, HearthController ctrl) {
                 children: [
                   Icon(Icons.fact_check_rounded, color: p.accent, size: 24),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(s.steadiTitle, style: Theme.of(c).textTheme.titleLarge)),
-                  IconButton(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close_rounded)),
+                  Expanded(
+                    child: Text(
+                      s.steadiTitle,
+                      style: Theme.of(c).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(c),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               HearthBanner(
-                tone: highRisk ? HearthBannerTone.critical : HearthBannerTone.ok,
-                icon: highRisk ? Icons.warning_amber_rounded : Icons.verified_user_rounded,
+                tone: highRisk
+                    ? HearthBannerTone.critical
+                    : HearthBannerTone.ok,
+                icon: highRisk
+                    ? Icons.warning_amber_rounded
+                    : Icons.verified_user_rounded,
                 title: _lbl(
                   ctrl.language,
                   'Điểm hiện tại: $score / 14 · ${highRisk ? "Nguy cơ té ngã CAO (>=4)" : "Nguy cơ thấp (<4)"}',
@@ -410,13 +558,22 @@ Future<void> showCdcSteadiModal(BuildContext context, HearthController ctrl) {
                 return CheckboxListTile(
                   value: answers[i],
                   contentPadding: EdgeInsets.zero,
-                  title: Text(questions[i], style: TextStyle(fontSize: 15, color: p.text)),
-                  onChanged: (v) => setModalState(() => answers[i] = v ?? false),
+                  title: Text(
+                    questions[i],
+                    style: TextStyle(fontSize: 15, color: p.text),
+                  ),
+                  onChanged: (v) =>
+                      setModalState(() => answers[i] = v ?? false),
                 );
               }),
               const SizedBox(height: 14),
               HearthPrimaryButton(
-                label: _lbl(ctrl.language, 'Lưu kết quả đánh giá', 'Save assessment', 'Enregistrer le bilan'),
+                label: _lbl(
+                  ctrl.language,
+                  'Lưu kết quả đánh giá',
+                  'Save assessment',
+                  'Enregistrer le bilan',
+                ),
                 onPressed: () async {
                   await ctrl.saveSteadiResult(score);
                   if (c.mounted) {
@@ -484,7 +641,10 @@ List<String> _steadiQuestions(AppLanguage lang) {
 }
 
 /// 4. Medical Safety Audit Report combining STEADI score, rooms health, and incident log.
-Future<void> showMedicalAuditReportModal(BuildContext context, HearthController ctrl) {
+Future<void> showMedicalAuditReportModal(
+  BuildContext context,
+  HearthController ctrl,
+) {
   return showLiquidGlassAdaptiveModal(
     context: context,
     maxDialogWidth: 600,
@@ -492,8 +652,12 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
       final p = HearthPalette.of(ctx);
       final s = ctrl.s;
       final lang = ctrl.language;
-      final onlineCount = ctrl.rooms.where((r) => r.status != RoomStatus.offline).length;
-      final fallCount = ctrl.events.where((e) => e.type == HearthEventType.fallDetected).length;
+      final onlineCount = ctrl.rooms
+          .where((r) => r.status != RoomStatus.offline)
+          .length;
+      final fallCount = ctrl.events
+          .where((e) => e.type == HearthEventType.fallDetected)
+          .length;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -502,8 +666,16 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
             children: [
               Icon(Icons.assessment_rounded, color: p.accent, size: 25),
               const SizedBox(width: 10),
-              Expanded(child: Text(s.auditReportTitle, style: Theme.of(ctx).textTheme.titleLarge)),
-              IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded)),
+              Expanded(
+                child: Text(
+                  s.auditReportTitle,
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -516,9 +688,14 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
                     ctrl.medicalProfile.fullName.isEmpty
                         ? s.personOrGeneric(ctrl.personName)
                         : ctrl.medicalProfile.fullName,
-                    if (ctrl.medicalProfile.age != null) '${ctrl.medicalProfile.age}',
+                    if (ctrl.medicalProfile.age != null)
+                      '${ctrl.medicalProfile.age}',
                   ].join(' · '),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: p.text),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: p.text,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -554,7 +731,10 @@ Future<void> showMedicalAuditReportModal(BuildContext context, HearthController 
 }
 
 /// 5. Daily Medication Schedule Tracker (linked with room presence awareness).
-Future<void> showMedicationScheduleModal(BuildContext context, HearthController ctrl) {
+Future<void> showMedicationScheduleModal(
+  BuildContext context,
+  HearthController ctrl,
+) {
   final nameCtrl = TextEditingController();
   final doseCtrl = TextEditingController();
   int hour = 8;
@@ -579,8 +759,16 @@ Future<void> showMedicationScheduleModal(BuildContext context, HearthController 
                 children: [
                   Icon(Icons.medication_rounded, color: p.accent, size: 25),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(s.medicationTitle, style: Theme.of(sc).textTheme.titleLarge)),
-                  IconButton(onPressed: () => Navigator.pop(sc), icon: const Icon(Icons.close_rounded)),
+                  Expanded(
+                    child: Text(
+                      s.medicationTitle,
+                      style: Theme.of(sc).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(sc),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -602,7 +790,10 @@ Future<void> showMedicationScheduleModal(BuildContext context, HearthController 
                   (m) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: LiquidGlassCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
                           Checkbox(
@@ -619,16 +810,28 @@ Future<void> showMedicationScheduleModal(BuildContext context, HearthController 
                                     fontSize: 15.5,
                                     fontWeight: FontWeight.w700,
                                     color: p.text,
-                                    decoration: m.takenToday ? TextDecoration.lineThrough : null,
+                                    decoration: m.takenToday
+                                        ? TextDecoration.lineThrough
+                                        : null,
                                   ),
                                 ),
                                 if (m.dosage.isNotEmpty)
-                                  Text(m.dosage, style: TextStyle(fontSize: 13.5, color: p.textMuted)),
+                                  Text(
+                                    m.dosage,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: p.textMuted,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.delete_outline_rounded, color: p.critical, size: 20),
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: p.critical,
+                              size: 20,
+                            ),
                             onPressed: () => ctrl.removeMedication(m.id),
                           ),
                         ],
@@ -640,43 +843,76 @@ Future<void> showMedicationScheduleModal(BuildContext context, HearthController 
               TextField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: _lbl(lang, 'Tên thuốc *', 'Medication name *', 'Nom du médicament *'),
+                  labelText: _lbl(
+                    lang,
+                    'Tên thuốc *',
+                    'Medication name *',
+                    'Nom du médicament *',
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextField(
-                      controller: doseCtrl,
-                      decoration: InputDecoration(
-                        labelText: _lbl(lang, 'Liều dùng', 'Dosage', 'Dosage'),
-                        hintText: '1 viên',
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 420;
+                  final timeField = DropdownButtonFormField<int>(
+                    initialValue: hour,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: _lbl(lang, 'Giờ', 'Hour', 'Heure'),
+                    ),
+                    items: List.generate(
+                      24,
+                      (h) => DropdownMenuItem(
+                        value: h,
+                        child: Text('${h.toString().padLeft(2, '0')}:00'),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: hour,
-                      decoration: InputDecoration(labelText: _lbl(lang, 'Giờ', 'Hour', 'Heure')),
-                      items: List.generate(
-                        24,
-                        (h) => DropdownMenuItem(value: h, child: Text('${h.toString().padLeft(2, '0')}:00')),
-                      ),
-                      onChanged: (v) => setModalState(() => hour = v ?? hour),
+                    onChanged: (v) => setModalState(() => hour = v ?? hour),
+                  );
+                  final doseField = TextField(
+                    controller: doseCtrl,
+                    decoration: InputDecoration(
+                      labelText: _lbl(lang, 'Liều dùng', 'Dosage', 'Dosage'),
+                      hintText: '1 viên',
                     ),
-                  ),
-                ],
+                  );
+                  if (compact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        doseField,
+                        const SizedBox(height: 10),
+                        timeField,
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(flex: 2, child: doseField),
+                      const SizedBox(width: 10),
+                      Expanded(child: timeField),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 14),
               HearthPrimaryButton(
-                label: _lbl(lang, 'Thêm lịch nhắc thuốc', 'Add medication', 'Ajouter'),
+                label: _lbl(
+                  lang,
+                  'Thêm lịch nhắc thuốc',
+                  'Add medication',
+                  'Ajouter',
+                ),
                 icon: Icons.add_rounded,
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty) return;
-                  await ctrl.addMedication(nameCtrl.text, doseCtrl.text, hour, minute);
+                  await ctrl.addMedication(
+                    nameCtrl.text,
+                    doseCtrl.text,
+                    hour,
+                    minute,
+                  );
                   nameCtrl.clear();
                   doseCtrl.clear();
                 },

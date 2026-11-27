@@ -54,6 +54,7 @@ class FallAlertRequest(BaseModel):
     uptime_sec: int = 0
     simulated: bool = False
     note: str = ""
+    location: dict[str, float] | None = None
     # Optional per-request overrides (e.g. from ESP32 NVS if settings.json has no recipients yet)
     fallback_phones: list[str] = Field(default_factory=list)
     fallback_chat_ids: list[str] = Field(default_factory=list)

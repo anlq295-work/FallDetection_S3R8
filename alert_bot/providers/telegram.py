@@ -45,8 +45,12 @@ def build_telegram_html(
         if req.tof_height_mm > 0:
             lines.append(f"• Chiều cao đo được: <b>{req.tof_height_mm} mm</b>")
 
-    if settings.home_address:
-        lines.append(f"🏠 Địa chỉ: <code>{html.escape(settings.home_address)}</code>")
+    if req.location:
+        latitude = req.location.get("latitude")
+        longitude = req.location.get("longitude")
+        if latitude is not None and longitude is not None:
+            lines.append(f"🗺️ Vị trí GPS: https://maps.google.com/?q={latitude:.6f},{longitude:.6f}")
+
     if settings.door_code:
         lines.append(f"🔑 Mã cửa / Hộp khóa: <code>{html.escape(settings.door_code)}</code>")
     if req.note:

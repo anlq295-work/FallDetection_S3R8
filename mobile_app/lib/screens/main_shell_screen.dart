@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/models.dart';
 import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../services/hearth_controller.dart';
+import '../services/hardware_service.dart';
 import '../widgets/hearth_components.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/medical_dialogs.dart';
@@ -77,7 +80,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void _openQuickCareProfileModal() {
     final carerCtrl = TextEditingController(text: widget.ctrl.carerName);
     final personCtrl = TextEditingController(text: widget.ctrl.personName);
-    final phoneCtrl = TextEditingController(text: widget.ctrl.medicalProfile.personPhone);
+    final phoneCtrl = TextEditingController(
+      text: widget.ctrl.medicalProfile.personPhone,
+    );
     String? personErr;
     String? carerErr;
 
@@ -89,7 +94,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(s.s6CompleteProfileBtn, style: Theme.of(c).textTheme.titleLarge),
+              Text(
+                s.s6CompleteProfileBtn,
+                style: Theme.of(c).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: carerCtrl,
@@ -142,80 +150,139 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Future<void> _checkUpdatesModal() async {
     final pkg = await PackageInfo.fromPlatform();
+    GitHubReleaseInfo? release;
+    var playUpdateAvailable = false;
+    if (Platform.isAndroid) {
+      try {
+        final update = await InAppUpdate.checkForUpdate();
+        playUpdateAvailable =
+            update.updateAvailability == UpdateAvailability.updateAvailable &&
+            update.immediateUpdateAllowed;
+      } catch (_) {}
+    }
+    try {
+      release = await widget.ctrl.hardware.fetchLatestGitHubRelease();
+    } catch (_) {}
     if (!mounted) return;
-    showLiquidGlassAdaptiveModal(
+
+    await showLiquidGlassAdaptiveModal(
       context: context,
       builder: (ctx) {
-        return FutureBuilder(
-          future: widget.ctrl.hardware.fetchLatestGitHubRelease(),
-          builder: (c, snap) {
-            final s = widget.ctrl.s;
-            final p = HearthPalette.of(c);
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [HearthSkeleton(height: 22), SizedBox(height: 12), HearthSkeleton(height: 44)],
+        final s = widget.ctrl.s;
+        final p = HearthPalette.of(ctx);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(s.appUpdatesTitle, style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              'Release: $kAppReleaseLabel\nInstalled version: ${pkg.version} · Build ${pkg.buildNumber}',
+              style: TextStyle(fontSize: 15, color: p.textMuted),
+            ),
+            const SizedBox(height: 12),
+            if (playUpdateAvailable) ...[
+              HearthBanner(
+                tone: HearthBannerTone.ok,
+                icon: Icons.new_releases_rounded,
+                title: 'Có bản cập nhật trên Google Play',
+              ),
+              const SizedBox(height: 12),
+              HearthPrimaryButton(
+                label: 'Cập nhật trong ứng dụng',
+                icon: Icons.system_update_rounded,
+                onPressed: () async {
+                  try {
+                    await InAppUpdate.performImmediateUpdate();
+                  } catch (_) {
+                    if (ctx.mounted)
+                      showHearthToast(
+                        ctx,
+                        'Cập nhật qua Google Play không thành công.',
+                        critical: true,
+                      );
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (release == null)
+              HearthBanner(
+                tone: HearthBannerTone.warning,
+                icon: Icons.cloud_off_rounded,
+                title: s.s1NetworkError,
+              )
+            else ...[
+              HearthBanner(
+                tone: HearthBannerTone.info,
+                icon: Icons.new_releases_rounded,
+                title: 'Bản phát hành mới nhất: ${release.tagName}',
+                subtitle: release.releaseNotes.isEmpty
+                    ? null
+                    : release.releaseNotes,
+              ),
+              const SizedBox(height: 12),
+              if (Platform.isAndroid && release.apkUrl != null)
+                HearthPrimaryButton(
+                  label: 'Tải bản Android từ trang phát hành',
+                  icon: Icons.download_rounded,
+                  onPressed: () async {
+                    final uri = Uri.parse(release!.apkUrl!);
+                    if (await canLaunchUrl(uri))
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                  },
+                )
+              else if (Platform.isIOS && release.ipaUrl != null)
+                HearthPrimaryButton(
+                  label: 'Xem hướng dẫn cập nhật iOS',
+                  icon: Icons.open_in_new_rounded,
+                  onPressed: () async {
+                    final uri = Uri.parse(release!.htmlUrl);
+                    if (await canLaunchUrl(uri))
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                  },
+                )
+              else
+                HearthSecondaryButton(
+                  label: 'Mở trang phát hành',
+                  icon: Icons.open_in_new_rounded,
+                  onPressed: () async {
+                    final uri = Uri.parse(release!.htmlUrl);
+                    if (await canLaunchUrl(uri))
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                  },
                 ),
-              );
-            }
-            final rel = snap.data;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(s.appUpdatesTitle, style: Theme.of(c).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                Text(
-                  'Release: $kAppReleaseLabel\nInstalled version: ${pkg.version} · Build ${pkg.buildNumber}',
-                  style: TextStyle(fontSize: 15, color: p.textMuted),
-                ),
-                const SizedBox(height: 12),
-                if (rel == null)
-                  HearthBanner(
-                    tone: HearthBannerTone.warning,
-                    icon: Icons.cloud_off_rounded,
-                    title: s.s1NetworkError,
-                  )
-                else ...[
-                  HearthBanner(
-                    tone: HearthBannerTone.ok,
-                    icon: Icons.new_releases_rounded,
-                    title: 'Latest GitHub Release: ${rel.tagName}',
-                  ),
-                  const SizedBox(height: 14),
-                  HearthPrimaryButton(
-                    label: 'Open Release Page',
-                    icon: Icons.open_in_new_rounded,
-                    onPressed: () async {
-                      final uri = Uri.parse(rel.htmlUrl);
-                      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  HearthSecondaryButton(
-                    label: 'Trigger ESP32 OTA Latest',
-                    icon: Icons.system_update_alt_rounded,
-                    onPressed: () async {
-                      await widget.ctrl.hardware.sendCommand('OTA_LATEST');
-                      if (c.mounted) {
-                        Navigator.pop(c);
-                      }
-                      if (mounted) {
-                        showHearthToast(context, 'OTA_LATEST sent');
-                      }
-                    },
-                  ),
-                ],
-              ],
-            );
-          },
+              const SizedBox(height: 10),
+              HearthSecondaryButton(
+                label: 'Cập nhật Firmware ESP32',
+                icon: Icons.system_update_alt_rounded,
+                onPressed: () async {
+                  await widget.ctrl.hardware.sendCommand('OTA_LATEST');
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted)
+                    showHearthToast(context, 'Đã gửi lệnh cập nhật firmware.');
+                },
+              ),
+            ],
+          ],
         );
       },
     );
   }
 
-  Widget _buildRoomCard(HearthRoom room, HearthLayout layout, {bool selected = false}) {
+  Widget _buildRoomCard(
+    HearthRoom room,
+    HearthLayout layout, {
+    bool selected = false,
+  }) {
     final s = widget.ctrl.s;
     final p = HearthPalette.of(context);
 
@@ -230,7 +297,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         statusIcon = Icons.circle;
         statusWord = s.s6StatusOccupied;
         statusColor = p.ok;
-        contextLine = s.s6MovementAgo(s.formatRelativeTime(room.lastMovementAt));
+        contextLine = s.s6MovementAgo(
+          s.formatRelativeTime(room.lastMovementAt),
+        );
         break;
       case RoomStatus.empty:
         statusIcon = Icons.radio_button_unchecked_rounded;
@@ -242,13 +311,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
         statusIcon = Icons.warning_amber_rounded;
         statusWord = s.s6StatusOffline;
         statusColor = p.critical;
-        contextLine = s.s6OfflineContext(s.formatClock(room.offlineSince ?? room.lastCheckedAt));
+        contextLine = s.s6OfflineContext(
+          s.formatClock(room.offlineSince ?? room.lastCheckedAt),
+        );
         break;
     }
 
     return LiquidGlassCard(
       selected: selected,
-      borderColor: room.status == RoomStatus.offline ? p.critical.withValues(alpha: 0.55) : null,
+      borderColor: room.status == RoomStatus.offline
+          ? p.critical.withValues(alpha: 0.55)
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       onTap: () => _openRoom(room, layout),
       child: ConstrainedBox(
@@ -277,9 +350,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     children: [
                       Text(
                         room.name,
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.text),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: p.text,
+                        ),
                       ),
-                      HearthStatusBadge(icon: statusIcon, label: statusWord, color: statusColor),
+                      HearthStatusBadge(
+                        icon: statusIcon,
+                        label: statusWord,
+                        color: statusColor,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -300,10 +381,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       spacing: 10,
                       runSpacing: 4,
                       children: [
-                        _RoomMetric(label: 'ToF', value: '${telemetry.tofHeightMm} mm'),
-                        _RoomMetric(label: 'Motion', value: '${telemetry.radarMotion}/100'),
-                        _RoomMetric(label: 'Static', value: '${telemetry.radarStatic}/100'),
-                        _RoomMetric(label: 'PIR', value: telemetry.pirActive ? 'ON' : 'OFF'),
+                        _RoomMetric(
+                          label: 'ToF',
+                          value: '${telemetry.tofHeightMm} mm',
+                        ),
+                        _RoomMetric(
+                          label: 'Motion',
+                          value: '${telemetry.radarMotion}/100',
+                        ),
+                        _RoomMetric(
+                          label: 'Static',
+                          value: '${telemetry.radarStatic}/100',
+                        ),
+                        _RoomMetric(
+                          label: 'PIR',
+                          value: telemetry.pirActive ? 'ON' : 'OFF',
+                        ),
                       ],
                     ),
                   ],
@@ -317,8 +410,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
   }
-
-
 
   Widget _buildHomeContent(HearthLayout layout) {
     final ctrl = widget.ctrl;
@@ -354,7 +445,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             ? Icons.shield_outlined
                             : Icons.verified_user_rounded,
                         size: 15,
-                        color: ctrl.guestModeActive || rooms.isEmpty || offline != null ? p.warning : p.ok,
+                        color:
+                            ctrl.guestModeActive ||
+                                rooms.isEmpty ||
+                                offline != null
+                            ? p.warning
+                            : p.ok,
                       ),
                       const SizedBox(width: 5),
                       Expanded(
@@ -362,13 +458,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           ctrl.guestModeActive
                               ? s.s6MonitoringPaused
                               : rooms.isEmpty
-                                  ? s.s6SetupNeeded
-                                  : offline != null
-                                      ? s.s6AttentionNeeded
-                                      : s.s6MonitoringActive,
+                              ? s.s6SetupNeeded
+                              : offline != null
+                              ? s.s6AttentionNeeded
+                              : s.s6MonitoringActive,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: p.textMuted),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelMedium?.copyWith(color: p.textMuted),
                         ),
                       ),
                     ],
@@ -396,7 +494,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 value: 'sim_fall',
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: p.critical, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: p.critical,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Text(s.s6SimulateFall),
                   ],
@@ -406,7 +508,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 value: 'first_aid',
                 child: Row(
                   children: [
-                    Icon(Icons.medical_services_outlined, color: p.accent, size: 20),
+                    Icon(
+                      Icons.medical_services_outlined,
+                      color: p.accent,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Text(s.firstAidTitle),
                   ],
@@ -430,7 +536,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     if (_loadingHome) {
       return ListView(
-        padding: EdgeInsets.symmetric(horizontal: layout.horizontalPadding, vertical: 16),
+        padding: EdgeInsets.symmetric(
+          horizontal: layout.horizontalPadding,
+          vertical: 16,
+        ),
         children: [
           headerBar,
           const SizedBox(height: 16),
@@ -481,30 +590,42 @@ class _MainShellScreenState extends State<MainShellScreen> {
             tone: HearthBannerTone.warning,
             icon: Icons.cloud_off_rounded,
             title: s.s6OfflinePhoneBanner,
-            action: HearthSecondaryButton(label: s.retry, expand: false, onPressed: _refreshHome),
+            action: HearthSecondaryButton(
+              label: s.retry,
+              expand: false,
+              onPressed: _refreshHome,
+            ),
           ),
           const SizedBox(height: 12),
         ],
         if (rooms.isNotEmpty) ...[
           HearthBanner(
-            tone: offline != null ? HearthBannerTone.critical : HearthBannerTone.ok,
-            icon: offline != null ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+            tone: offline != null
+                ? HearthBannerTone.critical
+                : HearthBannerTone.ok,
+            icon: offline != null
+                ? Icons.warning_amber_rounded
+                : Icons.check_circle_rounded,
             title: offline != null
                 ? s.s6IssueSummary(offline.name)
                 : s.s6AllGoodSummary(
                     rooms.length,
                     ctrl.personName,
                     recent?.name ?? rooms.first.name,
-                    s.formatRelativeTime(recent?.lastMovementAt ?? DateTime.now()),
+                    s.formatRelativeTime(
+                      recent?.lastMovementAt ?? DateTime.now(),
+                    ),
                   ),
             subtitle: offline != null
                 ? s.s6OfflineSince(
                     offline.name,
-                    s.formatClock(offline.offlineSince ?? offline.lastCheckedAt),
+                    s.formatClock(
+                      offline.offlineSince ?? offline.lastCheckedAt,
+                    ),
                   )
                 : (ctrl.lastSafeCheckIn != null
-                    ? s.s6LastCheckIn(s.formatClock(ctrl.lastSafeCheckIn!))
-                    : null),
+                      ? s.s6LastCheckIn(s.formatClock(ctrl.lastSafeCheckIn!))
+                      : null),
             action: offline != null
                 ? HearthPrimaryButton(
                     label: s.s6ReconnectSensor,
@@ -518,7 +639,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     onPressed: () async {
                       await ctrl.logSafeCheckIn();
                       if (mounted) {
-                        showHearthToast(context, s.s6LastCheckIn(s.formatClock(DateTime.now())));
+                        showHearthToast(
+                          context,
+                          s.s6LastCheckIn(s.formatClock(DateTime.now())),
+                        );
                       }
                     },
                   ),
@@ -532,7 +656,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return RefreshIndicator(
         onRefresh: _refreshHome,
         child: ListView(
-          padding: EdgeInsets.symmetric(horizontal: layout.horizontalPadding, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: layout.horizontalPadding,
+            vertical: 16,
+          ),
           children: [
             headerBar,
             const SizedBox(height: 24),
@@ -546,9 +673,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     children: [
                       Icon(Icons.home_outlined, size: 52, color: p.accent),
                       const SizedBox(height: 14),
-                      Text(s.s6EmptyTitle, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        s.s6EmptyTitle,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 8),
-                      Text(s.s6EmptyBody(ctrl.personName), textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),
+                      Text(
+                        s.s6EmptyBody(ctrl.personName),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
                       const SizedBox(height: 20),
                       HearthPrimaryButton(
                         label: s.s6AddRoom,
@@ -571,7 +706,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onRefresh: _refreshHome,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: layout.horizontalPadding, vertical: 18),
+          padding: EdgeInsets.symmetric(
+            horizontal: layout.horizontalPadding,
+            vertical: 18,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -589,12 +727,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         LayoutBuilder(
                           builder: (_, box) {
                             final cols = box.maxWidth >= 820 ? 3 : 2;
-                            final cardWidth = (box.maxWidth - (cols - 1) * 12) / cols;
+                            final cardWidth =
+                                (box.maxWidth - (cols - 1) * 12) / cols;
                             return Wrap(
                               spacing: 12,
                               runSpacing: 12,
                               children: rooms
-                                  .map((r) => SizedBox(width: cardWidth, child: _buildRoomCard(r, layout)))
+                                  .map(
+                                    (r) => SizedBox(
+                                      width: cardWidth,
+                                      child: _buildRoomCard(r, layout),
+                                    ),
+                                  )
                                   .toList(),
                             );
                           },
@@ -620,10 +764,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Expanded(
-                    flex: 3,
-                    child: _TodayActivitySidebar(ctrl: ctrl),
-                  ),
+                  Expanded(flex: 3, child: _TodayActivitySidebar(ctrl: ctrl)),
                 ],
               ),
             ],
@@ -635,7 +776,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     // Tablet & Foldable 2-pane (600–1023dp, hinge-aware!)
     if (layout.isTabletOrFoldable) {
       final activeId = _selectedRoomId ?? rooms.first.id;
-      final effectiveId = rooms.any((r) => r.id == activeId) ? activeId : rooms.first.id;
+      final effectiveId = rooms.any((r) => r.id == activeId)
+          ? activeId
+          : rooms.first.id;
       final selectedRoom = rooms.firstWhere((r) => r.id == effectiveId);
 
       return Row(
@@ -653,14 +796,26 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ...rooms.map(
                     (r) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildRoomCard(r, layout, selected: r.id == effectiveId),
+                      child: _buildRoomCard(
+                        r,
+                        layout,
+                        selected: r.id == effectiveId,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   if (offline != null)
-                    HearthSecondaryButton(label: s.s6AddRoom, icon: Icons.add_rounded, onPressed: widget.onAddRoom)
+                    HearthSecondaryButton(
+                      label: s.s6AddRoom,
+                      icon: Icons.add_rounded,
+                      onPressed: widget.onAddRoom,
+                    )
                   else
-                    HearthPrimaryButton(label: s.s6AddRoom, icon: Icons.add_rounded, onPressed: widget.onAddRoom),
+                    HearthPrimaryButton(
+                      label: s.s6AddRoom,
+                      icon: Icons.add_rounded,
+                      onPressed: widget.onAddRoom,
+                    ),
                 ],
               ),
             ),
@@ -687,7 +842,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return RefreshIndicator(
       onRefresh: _refreshHome,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(layout.horizontalPadding, 14, layout.horizontalPadding, 110),
+        padding: EdgeInsets.fromLTRB(
+          layout.horizontalPadding,
+          14,
+          layout.horizontalPadding,
+          110,
+        ),
         children: [
           headerBar,
           const SizedBox(height: 14),
@@ -729,9 +889,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: ListView(
-          padding: EdgeInsets.fromLTRB(layout.horizontalPadding, 16, layout.horizontalPadding, 110),
+          padding: EdgeInsets.fromLTRB(
+            layout.horizontalPadding,
+            16,
+            layout.horizontalPadding,
+            110,
+          ),
           children: [
-            Text(s.tabActivity, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              s.tabActivity,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -740,7 +908,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ChoiceChip(
                     label: Text(s.tabHome),
                     selected: _activityRoomFilter == null,
-                    onSelected: (_) => setState(() => _activityRoomFilter = null),
+                    onSelected: (_) =>
+                        setState(() => _activityRoomFilter = null),
                   ),
                   const SizedBox(width: 8),
                   ...ctrl.rooms.map(
@@ -749,7 +918,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       child: ChoiceChip(
                         label: Text(r.name),
                         selected: _activityRoomFilter == r.id,
-                        onSelected: (_) => setState(() => _activityRoomFilter = r.id),
+                        onSelected: (_) =>
+                            setState(() => _activityRoomFilter = r.id),
                       ),
                     ),
                   ),
@@ -758,12 +928,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
             const SizedBox(height: 14),
             if (events.isEmpty)
-              LiquidGlassCard(child: Text(s.s8NoEventsToday, style: Theme.of(context).textTheme.bodyLarge))
+              LiquidGlassCard(
+                child: Text(
+                  s.s8NoEventsToday,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              )
             else
               ...events.map((ev) {
                 final critical =
-                    ev.type == HearthEventType.fallDetected || ev.type == HearthEventType.sensorOffline;
-                final ok = ev.type == HearthEventType.fallResolved || ev.type == HearthEventType.testPassed;
+                    ev.type == HearthEventType.fallDetected ||
+                    ev.type == HearthEventType.sensorOffline;
+                final ok =
+                    ev.type == HearthEventType.fallResolved ||
+                    ev.type == HearthEventType.testPassed;
                 final color = critical ? p.critical : (ok ? p.ok : p.accent);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -776,7 +954,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           width: 10,
                           height: 10,
                           margin: const EdgeInsets.only(top: 7, right: 12),
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                         Expanded(
                           child: Column(
@@ -784,19 +965,29 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             children: [
                               Text(
                                 '${ev.roomName} · ${s.eventTitle(ev, ctrl.personName)}',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.text),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: p.text,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '${s.formatClock(ev.at)} · ${s.formatRelativeTime(ev.at)}',
-                                style: TextStyle(fontSize: 14, color: p.textMuted),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: p.textMuted,
+                                ),
                               ),
                               if (ev.outcome != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: HearthStatusBadge(
                                     icon: Icons.check_rounded,
-                                    label: s.outcomeLabel(ev.outcome!, ctrl.personName),
+                                    label: s.outcomeLabel(
+                                      ev.outcome!,
+                                      ctrl.personName,
+                                    ),
                                     color: p.ok,
                                   ),
                                 ),
@@ -823,9 +1014,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
         child: ListView(
-          padding: EdgeInsets.fromLTRB(layout.horizontalPadding, 16, layout.horizontalPadding, 110),
+          padding: EdgeInsets.fromLTRB(
+            layout.horizontalPadding,
+            16,
+            layout.horizontalPadding,
+            110,
+          ),
           children: [
-            Text(s.tabSettings, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              s.tabSettings,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 16),
 
             // S9 Alert contacts entry
@@ -834,7 +1033,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: ListTile(
                 minTileHeight: 64,
                 leading: Icon(Icons.group_rounded, color: p.accent),
-                title: Text(s.s9Title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                title: Text(
+                  s.s9Title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 subtitle: Text(
                   '${ctrl.contacts.length} · ${ctrl.dispatchMode == AlertDispatchMode.simultaneous ? s.s9ModeSimultaneous : s.s9Minutes(ctrl.escalationMinutes)}',
                 ),
@@ -859,32 +1061,47 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(s.language, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    s.language,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: AppLanguage.values.map((language) => ChoiceChip(
-                      label: Text(language.nativeName),
-                      selected: ctrl.language == language,
-                      onSelected: (_) => ctrl.setLanguage(language),
-                    )).toList(),
+                    children: AppLanguage.values
+                        .map(
+                          (language) => ChoiceChip(
+                            label: Text(language.nativeName),
+                            selected: ctrl.language == language,
+                            onSelected: (_) => ctrl.setLanguage(language),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
-                  Text(s.appearance, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    s.appearance,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [
-                      (ThemeMode.system, s.themeSystem),
-                      (ThemeMode.light, s.themeLight),
-                      (ThemeMode.dark, s.themeDark),
-                    ].map((option) => ChoiceChip(
-                      label: Text(option.$2),
-                      selected: ctrl.themeMode == option.$1,
-                      onSelected: (_) => ctrl.setThemeMode(option.$1),
-                    )).toList(),
+                    children:
+                        [
+                              (ThemeMode.system, s.themeSystem),
+                              (ThemeMode.light, s.themeLight),
+                              (ThemeMode.dark, s.themeDark),
+                            ]
+                            .map(
+                              (option) => ChoiceChip(
+                                label: Text(option.$2),
+                                selected: ctrl.themeMode == option.$1,
+                                onSelected: (_) => ctrl.setThemeMode(option.$1),
+                              ),
+                            )
+                            .toList(),
                   ),
                 ],
               ),
@@ -892,7 +1109,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
             const SizedBox(height: 14),
 
             // Preserved Elderly Care & Medical Kit
-            Text(s.medicalSuiteTitle, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              s.medicalSuiteTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             LiquidGlassCard(
               padding: EdgeInsets.zero,
@@ -900,8 +1120,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 children: [
                   ListTile(
                     minTileHeight: 60,
-                    leading: Icon(Icons.medical_services_rounded, color: p.critical),
-                    title: Text(s.firstAidTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    leading: Icon(
+                      Icons.medical_services_rounded,
+                      color: p.critical,
+                    ),
+                    title: Text(
+                      s.firstAidTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(s.firstAidSub),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => showFirstAidGuideModal(context, ctrl),
@@ -910,7 +1136,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.badge_rounded, color: p.accent),
-                    title: Text(s.medicalIdTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                      s.medicalIdTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(
                       ctrl.medicalProfile.fullName.isEmpty
                           ? s.medicalIdSub
@@ -923,8 +1152,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.medication_rounded, color: p.accent),
-                    title: Text(s.medicationTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text('${s.medicationSub} (${ctrl.medications.length})'),
+                    title: Text(
+                      s.medicationTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      '${s.medicationSub} (${ctrl.medications.length})',
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => showMedicationScheduleModal(context, ctrl),
                   ),
@@ -932,7 +1166,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.fact_check_rounded, color: p.accent),
-                    title: Text(s.steadiTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                      s.steadiTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text('${s.steadiSub} (${ctrl.steadiScore}/14)'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => showCdcSteadiModal(context, ctrl),
@@ -941,7 +1178,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.assessment_rounded, color: p.ok),
-                    title: Text(s.auditReportTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                      s.auditReportTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(s.auditReportSub),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => showMedicalAuditReportModal(context, ctrl),
@@ -959,22 +1199,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.emergency_rounded, color: p.critical),
-                    title: Text(s.emergencyNumberLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                      s.emergencyNumberLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(ctrl.emergencyServiceNumber),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: () {
-                      final numCtrl = TextEditingController(text: ctrl.emergencyServiceNumber);
+                      final numCtrl = TextEditingController(
+                        text: ctrl.emergencyServiceNumber,
+                      );
                       showLiquidGlassAdaptiveModal(
                         context: context,
                         builder: (ctx) => Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(s.emergencyNumberLabel, style: Theme.of(ctx).textTheme.titleLarge),
+                            Text(
+                              s.emergencyNumberLabel,
+                              style: Theme.of(ctx).textTheme.titleLarge,
+                            ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: numCtrl,
                               keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(hintText: '115 / 112 / 911'),
+                              decoration: const InputDecoration(
+                                hintText: '115 / 112 / 911',
+                              ),
                             ),
                             const SizedBox(height: 16),
                             HearthPrimaryButton(
@@ -991,8 +1241,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
                   const Divider(height: 1),
                   SwitchListTile(
-                    secondary: Icon(Icons.pause_circle_outline_rounded, color: p.accent),
-                    title: Text(s.guestModeTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    secondary: Icon(
+                      Icons.location_on_outlined,
+                      color: p.accent,
+                    ),
+                    title: const Text(
+                      'Chia sẻ vị trí khi cấp cứu',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Chỉ lấy vị trí khi bật và đính kèm vào cảnh báo gửi người thân.',
+                    ),
+                    value: ctrl.shareLocationWithAlerts,
+                    onChanged: (enabled) async {
+                      final ok = await ctrl.setShareLocationWithAlerts(enabled);
+                      if (!mounted) return;
+                      if (enabled && !ok) {
+                        showHearthToast(
+                          context,
+                          'Không thể lấy vị trí. Hãy kiểm tra GPS và quyền vị trí.',
+                          critical: true,
+                        );
+                      }
+                    },
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.pause_circle_outline_rounded,
+                      color: p.accent,
+                    ),
+                    title: Text(
+                      s.guestModeTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: Text(s.guestModeSub),
                     value: ctrl.guestModeActive,
                     onChanged: ctrl.setGuestMode,
@@ -1001,8 +1283,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ListTile(
                     minTileHeight: 60,
                     leading: Icon(Icons.system_update_rounded, color: p.accent),
-                    title: Text(s.appUpdatesTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Release $kAppReleaseLabel · GitHub Releases OTA'),
+                    title: Text(
+                      s.appUpdatesTitle,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Release $kAppReleaseLabel · GitHub Releases OTA',
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: _checkUpdatesModal,
                   ),
@@ -1018,7 +1305,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
             const SizedBox(height: 16),
             HearthSecondaryButton(
-              label: '${ctrl.userEmail.isEmpty ? "Hearth" : ctrl.userEmail} · Sign out',
+              label:
+                  '${ctrl.userEmail.isEmpty ? "Hearth" : ctrl.userEmail} · Sign out',
               icon: Icons.logout_rounded,
               onPressed: () async {
                 await ctrl.signOut();
@@ -1040,7 +1328,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     final activePage = _tabIndex == 0
         ? _buildHomeContent(layout)
-        : (_tabIndex == 1 ? _buildActivityTab(layout) : _buildSettingsTab(layout));
+        : (_tabIndex == 1
+              ? _buildActivityTab(layout)
+              : _buildSettingsTab(layout));
 
     if (layout.isDesktop) {
       return Scaffold(
@@ -1053,7 +1343,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   padding: const EdgeInsets.all(14),
                   child: LiquidGlassCard(
                     borderRadius: 24,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 8,
+                    ),
                     child: SizedBox(
                       width: 112,
                       child: Column(
@@ -1179,7 +1472,9 @@ class _BottomGlassTab extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           margin: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: selected ? p.accent.withValues(alpha: 0.14) : Colors.transparent,
+            color: selected
+                ? p.accent.withValues(alpha: 0.14)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -1229,7 +1524,9 @@ class _RailNavItem extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         decoration: BoxDecoration(
-          color: selected ? p.accent.withValues(alpha: 0.15) : Colors.transparent,
+          color: selected
+              ? p.accent.withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -1265,7 +1562,11 @@ class _RoomMetric extends StatelessWidget {
     final p = HearthPalette.of(context);
     return Text(
       '$label $value',
-      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.textMuted),
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+        color: p.textMuted,
+      ),
     );
   }
 }
@@ -1284,10 +1585,16 @@ class _TodayActivitySidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(s.s6TodayActivity, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            s.s6TodayActivity,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           if (items.isEmpty)
-            Text(s.s8NoEventsToday, style: Theme.of(context).textTheme.bodyMedium)
+            Text(
+              s.s8NoEventsToday,
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
           else
             ...items.map(
               (e) => Padding(
@@ -1297,11 +1604,19 @@ class _TodayActivitySidebar extends StatelessWidget {
                   children: [
                     Text(
                       '${s.formatClock(e.at)} · ${e.roomName}',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: p.textMuted),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: p.textMuted,
+                      ),
                     ),
                     Text(
                       s.eventTitle(e, ctrl.personName),
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: p.text),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: p.text,
+                      ),
                     ),
                   ],
                 ),

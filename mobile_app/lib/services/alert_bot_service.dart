@@ -54,7 +54,9 @@ class AlertBotService {
     while (url.endsWith('/')) {
       url = url.substring(0, url.length - 1);
     }
-    if (url.isNotEmpty && !url.startsWith('http://') && !url.startsWith('https://')) {
+    if (url.isNotEmpty &&
+        !url.startsWith('http://') &&
+        !url.startsWith('https://')) {
       url = 'http://$url';
     }
     return url;
@@ -66,7 +68,10 @@ class AlertBotService {
   }) async {
     final base = _normalizeBaseUrl(botUrl);
     if (base.isEmpty) {
-      return const AlertBotHealthResult(ok: false, message: 'Chưa nhập URL Bot Server');
+      return const AlertBotHealthResult(
+        ok: false,
+        message: 'Chưa nhập URL Bot Server',
+      );
     }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
@@ -86,7 +91,8 @@ class AlertBotService {
               providers[entry.key.toString()] = entry.value == true;
             }
           }
-          final count = ((decoded['enabled_recipient_count'] as num?) ?? 0).toInt();
+          final count = ((decoded['enabled_recipient_count'] as num?) ?? 0)
+              .toInt();
           return AlertBotHealthResult(
             ok: true,
             providers: providers,
@@ -95,7 +101,10 @@ class AlertBotService {
           );
         }
       }
-      return AlertBotHealthResult(ok: false, message: 'HTTP ${resp.statusCode}');
+      return AlertBotHealthResult(
+        ok: false,
+        message: 'HTTP ${resp.statusCode}',
+      );
     } catch (e) {
       return AlertBotHealthResult(ok: false, message: e.toString());
     } finally {
@@ -127,23 +136,48 @@ class AlertBotService {
     final seenChatIds = <String>{};
 
     for (final c in contacts) {
-      final cid = c.telegramChatId.trim();
-      final tuser = c.telegramUsername.trim();
-      final phone = c.phone.trim();
-      if (cid.isEmpty && tuser.isEmpty && phone.isEmpty) continue;
-      if (cid.isNotEmpty) seenChatIds.add(cid);
-      recipients.add({
-        'id': c.id,
-        'name': c.name,
-        'phone': phone,
-        'telegram_chat_id': cid,
-        'telegram_username': tuser,
-        'enabled': true,
-        'is_primary': c.isPrimaryUser,
-        'notify_telegram': c.notifyTelegram,
-        'notify_sms': c.notifySms,
-        'notify_call': c.notifyCall,
-      });
+      final chatIds = c.telegramChatId
+          .replaceAll(';', ',')
+          .split(',')
+          .map((v) => v.trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+      final usernames = c.telegramUsername
+          .replaceAll(';', ',')
+          .split(',')
+          .map((v) => v.trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+      final phones = c.phone
+          .replaceAll(';', ',')
+          .split(',')
+          .map((v) => v.trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+      final maxRecipients = [
+        chatIds.length,
+        usernames.length,
+        phones.length,
+      ].reduce((a, b) => a > b ? a : b);
+      for (var i = 0; i < maxRecipients; i++) {
+        final cid = i < chatIds.length ? chatIds[i] : '';
+        final username = i < usernames.length ? usernames[i] : '';
+        final phone = i < phones.length ? phones[i] : '';
+        if (cid.isEmpty && username.isEmpty && phone.isEmpty) continue;
+        if (cid.isNotEmpty) seenChatIds.add(cid);
+        recipients.add({
+          'id': i == 0 ? c.id : '${c.id}_$i',
+          'name': c.name,
+          'phone': phone,
+          'telegram_chat_id': cid,
+          'telegram_username': username,
+          'enabled': true,
+          'is_primary': c.isPrimaryUser,
+          'notify_telegram': c.notifyTelegram,
+          'notify_sms': c.notifySms,
+          'notify_call': c.notifyCall,
+        });
+      }
     }
 
     // Also include any default Telegram Group/Chat IDs configured globally
@@ -172,7 +206,9 @@ class AlertBotService {
     }
 
     final payload = {
-      'dispatch_mode': dispatchMode == AlertDispatchMode.sequential ? 'sequential' : 'simultaneous',
+      'dispatch_mode': dispatchMode == AlertDispatchMode.sequential
+          ? 'sequential'
+          : 'simultaneous',
       'escalation_minutes': escalationMinutes.clamp(1, 30),
       'channels': {
         'telegram': telegramEnabled,
@@ -254,13 +290,17 @@ class AlertBotService {
     List<String> phones = const [],
     bool telegramEnabled = true,
     bool callEnabled = true,
+    double? locationLatitude,
+    double? locationLongitude,
     String fallbackMessage = '',
     List<String>? channelsOverride,
     List<String>? targetRecipientIds,
   }) async {
     final base = _normalizeBaseUrl(botUrl);
     if (base.isNotEmpty) {
-      final endpoint = eventType == 'test' ? '$base/api/alerts/test' : '$base/api/alerts/fall';
+      final endpoint = eventType == 'test'
+          ? '$base/api/alerts/test'
+          : '$base/api/alerts/fall';
       final payload = <String, dynamic>{
         'event_type': eventType,
         'room_name': roomName,
@@ -278,6 +318,11 @@ class AlertBotService {
         'fallback_phones': phones,
         'fallback_chat_ids': telegramChatIds,
         'fallback_telegram_users': telegramUsernames,
+        if (locationLatitude != null && locationLongitude != null)
+          'location': {
+            'latitude': locationLatitude,
+            'longitude': locationLongitude,
+          },
       };
       if (channelsOverride != null && channelsOverride.isNotEmpty) {
         payload['channels_override'] = channelsOverride;
@@ -285,7 +330,8 @@ class AlertBotService {
       if (targetRecipientIds != null && targetRecipientIds.isNotEmpty) {
         payload['target_recipient_ids'] = targetRecipientIds;
       }
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 5);
       try {
         final req = await client.postUrl(Uri.parse(endpoint));
         req.headers.contentType = ContentType.json;
@@ -298,10 +344,14 @@ class AlertBotService {
         if (resp.statusCode == 200 || resp.statusCode == 201) {
           final decoded = jsonDecode(body);
           if (decoded is Map<String, dynamic>) {
-            final delivered = ((decoded['delivered_count'] as num?) ?? 0).toInt();
-            final attempted = ((decoded['attempted_count'] as num?) ?? 0).toInt();
+            final delivered = ((decoded['delivered_count'] as num?) ?? 0)
+                .toInt();
+            final attempted = ((decoded['attempted_count'] as num?) ?? 0)
+                .toInt();
             final alertMap = decoded['alert'];
-            final alertId = alertMap is Map<String, dynamic> ? alertMap['alert_id']?.toString() : null;
+            final alertId = alertMap is Map<String, dynamic>
+                ? alertMap['alert_id']?.toString()
+                : null;
             return AlertBotDispatchResult(
               ok: decoded['ok'] == true,
               alertId: alertId,
@@ -325,10 +375,16 @@ class AlertBotService {
         ? fallbackMessage
         : '🚨 HEARTH: $personName — $roomName (${simulated ? "TEST" : "CẢNH BÁO TÉ NGÃ"})';
 
-    if (telegramEnabled && telegramBotToken.trim().isNotEmpty && telegramChatIds.isNotEmpty) {
+    if (telegramEnabled &&
+        telegramBotToken.trim().isNotEmpty &&
+        telegramChatIds.isNotEmpty) {
       for (final cid in telegramChatIds) {
         attempted++;
-        final ok = await _sendDirectTelegram(telegramBotToken.trim(), cid, text);
+        final ok = await _sendDirectTelegram(
+          telegramBotToken.trim(),
+          cid,
+          text,
+        );
         if (ok) delivered++;
       }
     }
@@ -345,20 +401,30 @@ class AlertBotService {
       ok: delivered > 0,
       deliveredCount: delivered,
       attemptedCount: attempted,
-      summary: attempted > 0 ? 'Direct: $delivered/$attempted' : 'Chưa cấu hình Bot / Telegram',
+      summary: attempted > 0
+          ? 'Direct: $delivered/$attempted'
+          : 'Chưa cấu hình Bot / Telegram',
     );
   }
 
-  Future<bool> _sendDirectTelegram(String token, String chatId, String text) async {
+  Future<bool> _sendDirectTelegram(
+    String token,
+    String chatId,
+    String text,
+  ) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
     try {
-      final req = await client.postUrl(Uri.parse('https://api.telegram.org/bot$token/sendMessage'));
+      final req = await client.postUrl(
+        Uri.parse('https://api.telegram.org/bot$token/sendMessage'),
+      );
       req.headers.contentType = ContentType.json;
-      req.write(jsonEncode({
-        'chat_id': chatId.trim(),
-        'text': text,
-        'parse_mode': 'HTML',
-      }));
+      req.write(
+        jsonEncode({
+          'chat_id': chatId.trim(),
+          'text': text,
+          'parse_mode': 'HTML',
+        }),
+      );
       final resp = await req.close().timeout(const Duration(seconds: 6));
       await resp.drain<void>();
       return resp.statusCode == 200;
@@ -403,7 +469,9 @@ class AlertBotService {
     if (base.isEmpty || alertId.isEmpty) return false;
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
-      final req = await client.postUrl(Uri.parse('$base/api/alerts/$alertId/ack'));
+      final req = await client.postUrl(
+        Uri.parse('$base/api/alerts/$alertId/ack'),
+      );
       req.headers.contentType = ContentType.json;
       if (apiKey.trim().isNotEmpty) req.headers.set('X-API-Key', apiKey.trim());
       req.write(jsonEncode({'by': by}));
@@ -430,15 +498,19 @@ class AlertBotService {
     if (base.isEmpty || alertId.isEmpty) return false;
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
-      final req = await client.postUrl(Uri.parse('$base/api/alerts/$alertId/resolve'));
+      final req = await client.postUrl(
+        Uri.parse('$base/api/alerts/$alertId/resolve'),
+      );
       req.headers.contentType = ContentType.json;
       if (apiKey.trim().isNotEmpty) req.headers.set('X-API-Key', apiKey.trim());
-      req.write(jsonEncode({
-        'by': by,
-        'outcome': outcome,
-        'false_alarm_reason': falseAlarmReason,
-        'note': note,
-      }));
+      req.write(
+        jsonEncode({
+          'by': by,
+          'outcome': outcome,
+          'false_alarm_reason': falseAlarmReason,
+          'note': note,
+        }),
+      );
       final resp = await req.close().timeout(const Duration(seconds: 5));
       await resp.drain<void>();
       return resp.statusCode == 200;
@@ -460,19 +532,24 @@ class AlertBotService {
   }) async {
     final base = _normalizeBaseUrl(botUrl);
     if (base.isEmpty) {
-      return const OtpApiResult(ok: false, message: 'Chưa cấu hình URL Bot Server');
+      return const OtpApiResult(
+        ok: false,
+        message: 'Chưa cấu hình URL Bot Server',
+      );
     }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 6);
     try {
       final req = await client.postUrl(Uri.parse('$base/api/auth/otp/send'));
       req.headers.contentType = ContentType.json;
       if (apiKey.trim().isNotEmpty) req.headers.set('X-API-Key', apiKey.trim());
-      req.write(jsonEncode({
-        'email': email.trim(),
-        'phone': phone.trim(),
-        'carer_name': carerName.trim(),
-        'language': language,
-      }));
+      req.write(
+        jsonEncode({
+          'email': email.trim(),
+          'phone': phone.trim(),
+          'carer_name': carerName.trim(),
+          'language': language,
+        }),
+      );
       final resp = await req.close().timeout(const Duration(seconds: 12));
       final body = await resp.transform(utf8.decoder).join();
       final decoded = jsonDecode(body);
@@ -502,18 +579,23 @@ class AlertBotService {
   }) async {
     final base = _normalizeBaseUrl(botUrl);
     if (base.isEmpty) {
-      return const OtpApiResult(ok: false, message: 'Chưa cấu hình URL Bot Server');
+      return const OtpApiResult(
+        ok: false,
+        message: 'Chưa cấu hình URL Bot Server',
+      );
     }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 6);
     try {
       final req = await client.postUrl(Uri.parse('$base/api/auth/otp/verify'));
       req.headers.contentType = ContentType.json;
       if (apiKey.trim().isNotEmpty) req.headers.set('X-API-Key', apiKey.trim());
-      req.write(jsonEncode({
-        'email': email.trim(),
-        'phone': phone.trim(),
-        'code': code.trim(),
-      }));
+      req.write(
+        jsonEncode({
+          'email': email.trim(),
+          'phone': phone.trim(),
+          'code': code.trim(),
+        }),
+      );
       final resp = await req.close().timeout(const Duration(seconds: 10));
       final body = await resp.transform(utf8.decoder).join();
       final decoded = jsonDecode(body);

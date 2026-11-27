@@ -59,17 +59,23 @@ class Esp32HardwareService {
   bool _wifiRebootObserved = false;
   ConnectionTransport _transport = ConnectionTransport.disconnected;
 
-  final StreamController<TelemetrySnapshot> _telemetryStream = StreamController.broadcast();
+  final StreamController<TelemetrySnapshot> _telemetryStream =
+      StreamController.broadcast();
   final StreamController<String> _statusStream = StreamController.broadcast();
-  final StreamController<List<BlackboxEvent>> _blackboxStream = StreamController.broadcast();
+  final StreamController<List<BlackboxEvent>> _blackboxStream =
+      StreamController.broadcast();
 
   Stream<TelemetrySnapshot> get telemetryStream => _telemetryStream.stream;
   Stream<String> get statusStream => _statusStream.stream;
   Stream<List<BlackboxEvent>> get blackboxStream => _blackboxStream.stream;
 
   ConnectionTransport get transport => _transport;
-  bool get isBleConnected => _connectedDevice != null && _transport == ConnectionTransport.ble;
-  bool get isLanConnected => _activeLanIp != null && _activeLanIp!.isNotEmpty && _activeLanIp != '0.0.0.0';
+  bool get isBleConnected =>
+      _connectedDevice != null && _transport == ConnectionTransport.ble;
+  bool get isLanConnected =>
+      _activeLanIp != null &&
+      _activeLanIp!.isNotEmpty &&
+      _activeLanIp != '0.0.0.0';
   String? get activeLanIp => _activeLanIp;
   String? get connectedDeviceId => _connectedDevice?.remoteId.str;
   String? get lastBleError => _lastBleError;
@@ -82,7 +88,9 @@ class Esp32HardwareService {
   Future<bool> isBluetoothOn() async {
     if (!isMobileBleSupported) return false;
     try {
-      final state = await FlutterBluePlus.adapterState.first.timeout(const Duration(seconds: 2));
+      final state = await FlutterBluePlus.adapterState.first.timeout(
+        const Duration(seconds: 2),
+      );
       return state == BluetoothAdapterState.on;
     } catch (_) {
       return false;
@@ -102,15 +110,19 @@ class Esp32HardwareService {
           final name = r.device.platformName.isNotEmpty
               ? r.device.platformName
               : r.advertisementData.advName;
-          final hasService = r.advertisementData.serviceUuids
-              .any((u) => u.str.toLowerCase() == Esp32Uuids.service.toLowerCase());
-          final nameMatch = name.toLowerCase().contains('falldetector') ||
+          final hasService = r.advertisementData.serviceUuids.any(
+            (u) => u.str.toLowerCase() == Esp32Uuids.service.toLowerCase(),
+          );
+          final nameMatch =
+              name.toLowerCase().contains('falldetector') ||
               name.toLowerCase().contains('hearth') ||
               name.toLowerCase().contains('s3r8');
           if (hasService || nameMatch) {
             final rawId = r.device.remoteId.str;
             final clean = rawId.replaceAll(':', '').replaceAll('-', '');
-            final shortCode = clean.length >= 4 ? clean.substring(clean.length - 4).toUpperCase() : 'S3R8';
+            final shortCode = clean.length >= 4
+                ? clean.substring(clean.length - 4).toUpperCase()
+                : 'S3R8';
             found[rawId] = DiscoveredSensor(
               id: rawId,
               shortCode: shortCode,
@@ -131,7 +143,8 @@ class Esp32HardwareService {
       // Safe fallback when BLE permission or hardware is unavailable.
     }
 
-    final list = found.values.toList()..sort((a, b) => b.rssi.compareTo(a.rssi));
+    final list = found.values.toList()
+      ..sort((a, b) => b.rssi.compareTo(a.rssi));
     return list;
   }
 
@@ -151,7 +164,11 @@ class Esp32HardwareService {
     final device = sensor.rawBleDevice as BluetoothDevice;
     try {
       await disconnectBle();
-      await device.connect(license: License.nonprofit, timeout: const Duration(seconds: 12), autoConnect: false);
+      await device.connect(
+        license: License.nonprofit,
+        timeout: const Duration(seconds: 12),
+        autoConnect: false,
+      );
       if (Platform.isAndroid) {
         try {
           await device.requestMtu(512);
@@ -285,12 +302,18 @@ class Esp32HardwareService {
       _connectedDevice = null;
     }
     if (_transport == ConnectionTransport.ble) {
-      _transport = isLanConnected ? ConnectionTransport.wifiLan : ConnectionTransport.disconnected;
+      _transport = isLanConnected
+          ? ConnectionTransport.wifiLan
+          : ConnectionTransport.disconnected;
     }
   }
 
   /// Writes Wi-Fi SSID & Password to ESP32-S3 via BLE CHAR_WIFI_UUID.
-  Future<bool> provisionWifi(String ssid, String password, {DiscoveredSensor? sensor}) async {
+  Future<bool> provisionWifi(
+    String ssid,
+    String password, {
+    DiscoveredSensor? sensor,
+  }) async {
     _lastBleError = null;
     _activeLanIp = null;
     _wifiProvisionAwaitingReboot = false;
@@ -302,7 +325,9 @@ class Esp32HardwareService {
     }
 
     // Auto-reconnect BLE if it dropped while user was typing Wi-Fi credentials.
-    if ((!isBleConnected || _wifiChar == null) && targetSensor != null && !targetSensor.isSimulated) {
+    if ((!isBleConnected || _wifiChar == null) &&
+        targetSensor != null &&
+        !targetSensor.isSimulated) {
       final reconnected = await connectBleSensor(targetSensor);
       if (!reconnected) {
         _lastBleError = 'BLE disconnected and reconnect failed';
@@ -319,7 +344,9 @@ class Esp32HardwareService {
       return false;
     }
 
-    final payloadBytes = utf8.encode(jsonEncode({'ssid': ssid, 'pass': password}));
+    final payloadBytes = utf8.encode(
+      jsonEncode({'ssid': ssid, 'pass': password}),
+    );
     // The device may notify and reboot before the BLE write future completes.
     _wifiProvisionAwaitingReboot = true;
     try {
@@ -372,7 +399,9 @@ class Esp32HardwareService {
     while (DateTime.now().isBefore(deadline)) {
       if (!isBleConnected) await connectBleSensor(sensor);
       final status = await _readWifiStatus();
-      if (_wifiRebootObserved && status?.startsWith('CONNECTED_IP:') == true && isLanConnected) {
+      if (_wifiRebootObserved &&
+          status?.startsWith('CONNECTED_IP:') == true &&
+          isLanConnected) {
         _wifiProvisionAwaitingReboot = false;
         return true;
       }
@@ -426,7 +455,8 @@ class Esp32HardwareService {
     final ip = overrideLanIp ?? _activeLanIp;
     if (ip != null && ip.isNotEmpty && ip != '0.0.0.0') {
       try {
-        final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+        final client = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 4);
         final req = await client.postUrl(Uri.parse('http://$ip/api/config'));
         req.headers.contentType = ContentType.json;
         req.write(encoded);
@@ -453,7 +483,8 @@ class Esp32HardwareService {
     final ip = overrideLanIp ?? _activeLanIp;
     if (ip != null && ip.isNotEmpty && ip != '0.0.0.0') {
       try {
-        final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+        final client = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 4);
         final uri = Uri.parse('http://$ip/api/command');
         final req = await client.postUrl(uri);
         req.headers.contentType = ContentType.json;
@@ -482,10 +513,20 @@ class Esp32HardwareService {
       final snap = await fetchLanTelemetry(ip);
       _lanPollInFlight = false;
       if (generation != _lanPollGeneration) return;
-      final expected = expectedSensorId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ?? '';
-      final actual = snap?.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ?? '';
-      final verified = snap != null && actual.isNotEmpty &&
-          (expected.length < 12 || actual == expected) && snap.ipAddress == ip;
+      final expected =
+          expectedSensorId?.toUpperCase().replaceAll(
+            RegExp(r'[^A-F0-9]'),
+            '',
+          ) ??
+          '';
+      final actual =
+          snap?.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') ??
+          '';
+      final verified =
+          snap != null &&
+          actual.isNotEmpty &&
+          (expected.length < 12 || actual == expected) &&
+          snap.ipAddress == ip;
       if (verified) {
         _lanPollFailures = 0;
         if (!isBleConnected) _transport = ConnectionTransport.wifiLan;
@@ -509,7 +550,8 @@ class Esp32HardwareService {
   Future<TelemetrySnapshot?> fetchLanTelemetry(String ip) async {
     if (ip.isEmpty || ip == '0.0.0.0') return null;
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 3);
       final req = await client.getUrl(Uri.parse('http://$ip/api/telemetry'));
       final resp = await req.close().timeout(const Duration(seconds: 4));
       final body = await resp.transform(utf8.decoder).join();
@@ -527,7 +569,8 @@ class Esp32HardwareService {
   Future<List<BlackboxEvent>> fetchLanEvents(String ip) async {
     if (ip.isEmpty || ip == '0.0.0.0') return [];
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 3);
       final req = await client.getUrl(Uri.parse('http://$ip/api/events'));
       final resp = await req.close().timeout(const Duration(seconds: 4));
       final body = await resp.transform(utf8.decoder).join();
@@ -552,13 +595,18 @@ class Esp32HardwareService {
   }) async {
     if (_otaChar == null || !isBleConnected) return false;
     try {
-      await _otaChar!.write(utf8.encode('OTA_BEGIN:${firmwareBytes.length}'), withoutResponse: false);
+      await _otaChar!.write(
+        utf8.encode('OTA_BEGIN:${firmwareBytes.length}'),
+        withoutResponse: false,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 250));
 
       const int chunkSize = 240;
       int offset = 0;
       while (offset < firmwareBytes.length) {
-        final end = (offset + chunkSize < firmwareBytes.length) ? offset + chunkSize : firmwareBytes.length;
+        final end = (offset + chunkSize < firmwareBytes.length)
+            ? offset + chunkSize
+            : firmwareBytes.length;
         final chunk = firmwareBytes.sublist(offset, end);
         await _otaChar!.write(chunk, withoutResponse: true);
         offset = end;
@@ -580,9 +628,12 @@ class Esp32HardwareService {
   /// Queries latest GitHub Release (including Pre-releases) for App APK/IPA & ESP32 firmware.bin.
   Future<GitHubReleaseInfo?> fetchLatestGitHubRelease() async {
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 5);
       final req = await client.getUrl(
-        Uri.parse('https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases?per_page=1'),
+        Uri.parse(
+          'https://api.github.com/repos/anlq295-work/FallDetection_S3R8/releases?per_page=1',
+        ),
       );
       req.headers.set('User-Agent', 'HearthApp');
       req.headers.set('Accept', 'application/vnd.github.v3+json');
@@ -592,7 +643,9 @@ class Esp32HardwareService {
 
       if (resp.statusCode == 200) {
         final decoded = jsonDecode(body);
-        if (decoded is List && decoded.isNotEmpty && decoded.first is Map<String, dynamic>) {
+        if (decoded is List &&
+            decoded.isNotEmpty &&
+            decoded.first is Map<String, dynamic>) {
           final data = decoded.first as Map<String, dynamic>;
           String? apkUrl;
           String? ipaUrl;
@@ -610,7 +663,10 @@ class Esp32HardwareService {
           return GitHubReleaseInfo(
             tagName: (data['tag_name'] ?? kAppReleaseLabel).toString(),
             releaseNotes: (data['body'] ?? '').toString(),
-            htmlUrl: (data['html_url'] ?? 'https://github.com/anlq295-work/FallDetection_S3R8/releases').toString(),
+            htmlUrl:
+                (data['html_url'] ??
+                        'https://github.com/anlq295-work/FallDetection_S3R8/releases')
+                    .toString(),
             apkUrl: apkUrl,
             ipaUrl: ipaUrl,
             firmwareUrl: fwUrl,
@@ -619,6 +675,27 @@ class Esp32HardwareService {
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<Uint8List?> downloadReleaseAsset(String url) async {
+    try {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 10);
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close().timeout(
+        const Duration(seconds: 30),
+      );
+      if (response.statusCode != HttpStatus.ok) {
+        await response.drain<void>();
+        client.close();
+        return null;
+      }
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      client.close();
+      return bytes;
+    } catch (_) {
+      return null;
+    }
   }
 
   void dispose() {

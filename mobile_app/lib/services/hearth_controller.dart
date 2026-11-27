@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models.dart';
 import '../l10n/app_strings.dart';
@@ -48,6 +50,9 @@ class HearthController extends ChangeNotifier {
   String _lastBotSyncStatus = '';
   bool _lastBotSyncOk = false;
   String _emergencyServiceNumber = '115';
+  bool _shareLocationWithAlerts = false;
+  bool _emergencyNumberCustomized = false;
+  Position? _emergencyLocation;
   bool _heightInCm = false;
 
   // Medical tools state
@@ -84,7 +89,8 @@ class HearthController extends ChangeNotifier {
   String get userEmail => _userEmail;
   String get carerName => _carerName;
   String get personName => _personName;
-  bool get hasRequiredCareProfile => _personName.trim().isNotEmpty && _carerName.trim().isNotEmpty;
+  bool get hasRequiredCareProfile =>
+      _personName.trim().isNotEmpty && _carerName.trim().isNotEmpty;
   List<HearthRoom> get rooms => List.unmodifiable(_rooms);
   List<HearthEvent> get events => List.unmodifiable(_events);
   List<AlertContact> get contacts => List.unmodifiable(_contacts);
@@ -107,7 +113,8 @@ class HearthController extends ChangeNotifier {
   ElderlyMedicalProfile get medicalProfile => _medicalProfile;
   int get steadiScore => _steadiScore;
   DateTime? get steadiDate => _steadiDate;
-  List<TelemetrySnapshot> get telemetryHistory => List.unmodifiable(_telemetryHistory);
+  List<TelemetrySnapshot> get telemetryHistory =>
+      List.unmodifiable(_telemetryHistory);
   List<BlackboxEvent> get blackboxEvents => List.unmodifiable(_blackboxEvents);
   String get lastHardwareStatus => _lastHardwareStatus;
   ActiveFallAlert? get activeAlert => _activeAlert;
@@ -122,21 +129,24 @@ class HearthController extends ChangeNotifier {
 
   List<String> get smsPhoneNumbers => _contacts
       .where((c) => c.notifySms)
-      .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
+      .expand((c) => c.phone.split(','))
+      .map((p) => p.trim().replaceAll(RegExp(r'[^0-9+]'), ''))
       .where((p) => p.length >= 9)
       .toSet()
       .toList(growable: false);
 
   List<String> get callPhoneNumbers => _contacts
       .where((c) => c.notifyCall)
-      .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
+      .expand((c) => c.phone.split(','))
+      .map((p) => p.trim().replaceAll(RegExp(r'[^0-9+]'), ''))
       .where((p) => p.length >= 9)
       .toSet()
       .toList(growable: false);
 
   List<String> get allEmergencyPhoneNumbers => _contacts
       .where((c) => c.notifySms || c.notifyCall)
-      .map((c) => c.phone.replaceAll(RegExp(r'[^0-9+]'), ''))
+      .expand((c) => c.phone.split(','))
+      .map((p) => p.trim().replaceAll(RegExp(r'[^0-9+]'), ''))
       .where((p) => p.length >= 9)
       .toSet()
       .toList(growable: false);
@@ -148,8 +158,10 @@ class HearthController extends ChangeNotifier {
       if (clean.isNotEmpty) ids.add(clean);
     }
     for (final c in _contacts) {
-      if (c.notifyTelegram && c.telegramChatId.trim().isNotEmpty) {
-        ids.add(c.telegramChatId.trim());
+      if (c.notifyTelegram) {
+        for (final id in c.telegramChatId.replaceAll(';', ',').split(',')) {
+          if (id.trim().isNotEmpty) ids.add(id.trim());
+        }
       }
     }
     return ids.toList(growable: false);
@@ -158,10 +170,13 @@ class HearthController extends ChangeNotifier {
   List<String> get allTelegramUsernames {
     final users = <String>{};
     for (final c in _contacts) {
-      if (c.notifyCall && c.telegramUsername.trim().isNotEmpty) {
-        var u = c.telegramUsername.trim();
-        if (!u.startsWith('@')) u = '@$u';
-        users.add(u);
+      if (c.notifyCall) {
+        for (final raw in c.telegramUsername.replaceAll(';', ',').split(',')) {
+          var user = raw.trim();
+          if (user.isEmpty) continue;
+          if (!user.startsWith('@')) user = '@$user';
+          users.add(user);
+        }
       }
     }
     return users.toList(growable: false);
@@ -194,7 +209,10 @@ class HearthController extends ChangeNotifier {
   HearthController() {
     _bindHardwareStreams();
     if (Platform.environment['FLUTTER_TEST'] != 'true') {
-      _heartbeatWatchdog = Timer.periodic(const Duration(seconds: 3), (_) => _expireStaleHardware());
+      _heartbeatWatchdog = Timer.periodic(
+        const Duration(seconds: 3),
+        (_) => _expireStaleHardware(),
+      );
     }
   }
 
@@ -205,7 +223,10 @@ class HearthController extends ChangeNotifier {
       final room = _rooms[idx];
       if (room.status != RoomStatus.offline &&
           now.difference(room.lastCheckedAt) > const Duration(seconds: 8)) {
-        _rooms[idx] = room.copyWith(status: RoomStatus.offline, offlineSince: now);
+        _rooms[idx] = room.copyWith(
+          status: RoomStatus.offline,
+          offlineSince: now,
+        );
         changed = true;
       }
     }
@@ -218,24 +239,50 @@ class HearthController extends ChangeNotifier {
       if (_telemetryHistory.length > 40) _telemetryHistory.removeAt(0);
 
       if (_rooms.isNotEmpty) {
-        final incomingId = snap.deviceId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
-        final fullIdIdx = incomingId.isEmpty ? -1 : _rooms.indexWhere((room) {
-          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
-          return roomId.length >= 12 && incomingId == roomId;
-        });
-        final ipIdx = snap.ipAddress == '0.0.0.0' ? -1 : _rooms.indexWhere((room) {
-          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
-          return roomId.length < 12 && room.lanIp == snap.ipAddress;
-        });
+        final incomingId = snap.deviceId.toUpperCase().replaceAll(
+          RegExp(r'[^A-F0-9]'),
+          '',
+        );
+        final fullIdIdx = incomingId.isEmpty
+            ? -1
+            : _rooms.indexWhere((room) {
+                final roomId = room.sensorId.toUpperCase().replaceAll(
+                  RegExp(r'[^A-F0-9]'),
+                  '',
+                );
+                return roomId.length >= 12 && incomingId == roomId;
+              });
+        final ipIdx = snap.ipAddress == '0.0.0.0'
+            ? -1
+            : _rooms.indexWhere((room) {
+                final roomId = room.sensorId.toUpperCase().replaceAll(
+                  RegExp(r'[^A-F0-9]'),
+                  '',
+                );
+                return roomId.length < 12 && room.lanIp == snap.ipAddress;
+              });
         final bleIdx = _rooms.indexWhere((room) {
-          final roomId = room.sensorId.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
+          final roomId = room.sensorId.toUpperCase().replaceAll(
+            RegExp(r'[^A-F0-9]'),
+            '',
+          );
           if (roomId.length >= 12) return false;
-          final bleId = room.bleDeviceId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '');
-          return bleId != null && bleId.isNotEmpty &&
-              bleId == hardware.connectedDeviceId?.toUpperCase().replaceAll(RegExp(r'[^A-F0-9]'), '') &&
+          final bleId = room.bleDeviceId?.toUpperCase().replaceAll(
+            RegExp(r'[^A-F0-9]'),
+            '',
+          );
+          return bleId != null &&
+              bleId.isNotEmpty &&
+              bleId ==
+                  hardware.connectedDeviceId?.toUpperCase().replaceAll(
+                    RegExp(r'[^A-F0-9]'),
+                    '',
+                  ) &&
               (snap.ipAddress == '0.0.0.0' || room.lanIp == snap.ipAddress);
         });
-        final matchingIdx = fullIdIdx >= 0 ? fullIdIdx : (ipIdx >= 0 ? ipIdx : bleIdx);
+        final matchingIdx = fullIdIdx >= 0
+            ? fullIdIdx
+            : (ipIdx >= 0 ? ipIdx : bleIdx);
         final targetIdx = matchingIdx >= 0
             ? matchingIdx
             : _rooms.indexWhere((r) => r.id == _activeRoomIdForHardware);
@@ -244,7 +291,8 @@ class HearthController extends ChangeNotifier {
         final room = _rooms[targetIdx];
         // A BLE telemetry packet alone does not prove Wi-Fi connectivity.
         // Firmware reports 0.0.0.0 until the station has a valid IP.
-        final hasWifi = snap.ipAddress.isNotEmpty && snap.ipAddress != '0.0.0.0';
+        final hasWifi =
+            snap.ipAddress.isNotEmpty && snap.ipAddress != '0.0.0.0';
         final present = snap.isPersonPresent;
         final hits = (_presenceHits[room.id] ?? 0);
         final absences = (_absenceHits[room.id] ?? 0);
@@ -278,7 +326,8 @@ class HearthController extends ChangeNotifier {
         if (snap.isFallAlert && _activeAlert == null && !_guestModeActive) {
           triggerFallAlert(roomId: room.id, simulated: false, telemetry: snap);
         } else if (_activeAlert != null && _activeAlert!.roomId == room.id) {
-          if (snap.radarMotion >= 28 && _activeAlert!.movementDetectedAt == null) {
+          if (snap.radarMotion >= 28 &&
+              _activeAlert!.movementDetectedAt == null) {
             _activeAlert = _activeAlert!.copyWith(
               movementDetectedAt: DateTime.now(),
               telemetry: snap,
@@ -309,21 +358,26 @@ class HearthController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _language = AppLanguage.fromCode(prefs.getString('hearth_lang') ?? 'vi');
     final themeIdx = prefs.getInt('hearth_theme') ?? 0;
-    _themeMode = ThemeMode.values[themeIdx.clamp(0, ThemeMode.values.length - 1)];
+    _themeMode =
+        ThemeMode.values[themeIdx.clamp(0, ThemeMode.values.length - 1)];
 
     _signedIn = prefs.getBool('hearth_signed_in') ?? false;
     _setupCompleted = prefs.getBool('hearth_setup_done') ?? false;
     _userEmail = prefs.getString('hearth_email') ?? '';
     _carerName = prefs.getString('hearth_carer_name') ?? '';
     _personName = prefs.getString('hearth_person_name') ?? '';
-    _dispatchMode = AlertDispatchMode.fromName(prefs.getString('hearth_dispatch_mode'));
+    _dispatchMode = AlertDispatchMode.fromName(
+      prefs.getString('hearth_dispatch_mode'),
+    );
     _escalationMinutes = prefs.getInt('hearth_escalation_min') ?? 2;
     _channelSmsEnabled = prefs.getBool('hearth_ch_sms') ?? false;
     _channelTelegramEnabled = prefs.getBool('hearth_ch_tg') ?? true;
     _channelCallEnabled = prefs.getBool('hearth_ch_call') ?? true;
     _guestModeActive = prefs.getBool('hearth_guest_mode') ?? false;
     final checkInIso = prefs.getString('hearth_last_checkin');
-    _lastSafeCheckIn = checkInIso != null ? DateTime.tryParse(checkInIso) : null;
+    _lastSafeCheckIn = checkInIso != null
+        ? DateTime.tryParse(checkInIso)
+        : null;
 
     _telegramBotToken = prefs.getString('hearth_tg_token') ?? '';
     _telegramChatId = prefs.getString('hearth_tg_chat') ?? '';
@@ -338,9 +392,14 @@ class HearthController extends ChangeNotifier {
       _alertBotUrl = savedBotUrl;
     }
     final savedBotKey = (prefs.getString('hearth_bot_key') ?? '').trim();
-    _alertBotApiKey = savedBotKey.isNotEmpty ? savedBotKey : kDefaultAlertBotApiKey;
+    _alertBotApiKey = savedBotKey.isNotEmpty
+        ? savedBotKey
+        : kDefaultAlertBotApiKey;
     _emergencyServiceNumber =
         prefs.getString('hearth_emg_num') ?? _defaultEmergencyNumber(_language);
+    _emergencyNumberCustomized =
+        prefs.getBool('hearth_emg_num_custom') ?? false;
+    _shareLocationWithAlerts = prefs.getBool('hearth_share_location') ?? false;
     _heightInCm = prefs.getBool('hearth_height_cm') ?? false;
     _steadiScore = prefs.getInt('hearth_steadi_score') ?? 0;
     final steadiIso = prefs.getString('hearth_steadi_date');
@@ -378,7 +437,10 @@ class HearthController extends ChangeNotifier {
     if (eventsRaw != null) {
       try {
         final decoded = jsonDecode(eventsRaw) as List;
-        _events = decoded.whereType<Map<String, dynamic>>().map(HearthEvent.fromJson).toList();
+        _events = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(HearthEvent.fromJson)
+            .toList();
       } catch (_) {}
     }
 
@@ -386,7 +448,10 @@ class HearthController extends ChangeNotifier {
     if (contactsRaw != null) {
       try {
         final decoded = jsonDecode(contactsRaw) as List;
-        _contacts = decoded.whereType<Map<String, dynamic>>().map(AlertContact.fromJson).toList();
+        _contacts = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(AlertContact.fromJson)
+            .toList();
       } catch (_) {}
     }
 
@@ -422,7 +487,9 @@ class HearthController extends ChangeNotifier {
   }
 
   void _ensurePrimarySelfContact() {
-    final displayName = _carerName.trim().isNotEmpty ? _carerName.trim() : _userEmail;
+    final displayName = _carerName.trim().isNotEmpty
+        ? _carerName.trim()
+        : _userEmail;
     final idx = _contacts.indexWhere((c) => c.isPrimaryUser);
     if (idx >= 0) {
       _contacts[idx] = _contacts[idx].copyWith(name: displayName);
@@ -456,23 +523,43 @@ class HearthController extends ChangeNotifier {
     await prefs.setBool('hearth_ch_call', _channelCallEnabled);
     await prefs.setBool('hearth_guest_mode', _guestModeActive);
     if (_lastSafeCheckIn != null) {
-      await prefs.setString('hearth_last_checkin', _lastSafeCheckIn!.toIso8601String());
+      await prefs.setString(
+        'hearth_last_checkin',
+        _lastSafeCheckIn!.toIso8601String(),
+      );
     }
     await prefs.setString('hearth_tg_token', _telegramBotToken);
     await prefs.setString('hearth_tg_chat', _telegramChatId);
     await prefs.setString('hearth_bot_url', _alertBotUrl);
     await prefs.setString('hearth_bot_key', _alertBotApiKey);
     await prefs.setString('hearth_emg_num', _emergencyServiceNumber);
+    await prefs.setBool('hearth_emg_num_custom', _emergencyNumberCustomized);
+    await prefs.setBool('hearth_share_location', _shareLocationWithAlerts);
     await prefs.setBool('hearth_height_cm', _heightInCm);
     await prefs.setInt('hearth_steadi_score', _steadiScore);
     if (_steadiDate != null) {
-      await prefs.setString('hearth_steadi_date', _steadiDate!.toIso8601String());
+      await prefs.setString(
+        'hearth_steadi_date',
+        _steadiDate!.toIso8601String(),
+      );
     }
     await prefs.setString('hearth_med_profile', _medicalProfile.encode());
-    await prefs.setString('hearth_rooms', jsonEncode(_rooms.map((e) => e.toJson()).toList()));
-    await prefs.setString('hearth_events', jsonEncode(_events.map((e) => e.toJson()).toList()));
-    await prefs.setString('hearth_contacts', jsonEncode(_contacts.map((e) => e.toJson()).toList()));
-    await prefs.setString('hearth_medications', jsonEncode(_medications.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      'hearth_rooms',
+      jsonEncode(_rooms.map((e) => e.toJson()).toList()),
+    );
+    await prefs.setString(
+      'hearth_events',
+      jsonEncode(_events.map((e) => e.toJson()).toList()),
+    );
+    await prefs.setString(
+      'hearth_contacts',
+      jsonEncode(_contacts.map((e) => e.toJson()).toList()),
+    );
+    await prefs.setString(
+      'hearth_medications',
+      jsonEncode(_medications.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<void> setLanguage(AppLanguage lang) async {
@@ -500,7 +587,9 @@ class HearthController extends ChangeNotifier {
     _personName = personName.trim();
     _medicalProfile = _medicalProfile.copyWith(
       fullName: _personName,
-      personPhone: personPhone.trim().isNotEmpty ? personPhone.trim() : _medicalProfile.personPhone,
+      personPhone: personPhone.trim().isNotEmpty
+          ? personPhone.trim()
+          : _medicalProfile.personPhone,
     );
     _signedIn = true;
     _ensurePrimarySelfContact();
@@ -578,14 +667,21 @@ class HearthController extends ChangeNotifier {
       hardware.stopLanPolling();
       _activeRoomIdForHardware = _rooms.isEmpty ? null : _rooms.first.id;
       if (_rooms.isNotEmpty && _rooms.first.lanIp != null) {
-        hardware.startLanPolling(_rooms.first.lanIp!, expectedSensorId: _rooms.first.sensorId);
+        hardware.startLanPolling(
+          _rooms.first.lanIp!,
+          expectedSensorId: _rooms.first.sensorId,
+        );
       }
     }
     await _persist();
     notifyListeners();
   }
 
-  Future<void> markRoomOnlineAfterReconnect(String roomId, {String? wifiSsid, String? lanIp}) async {
+  Future<void> markRoomOnlineAfterReconnect(
+    String roomId, {
+    String? wifiSsid,
+    String? lanIp,
+  }) async {
     final idx = _rooms.indexWhere((r) => r.id == roomId);
     if (idx < 0) return;
     _rooms[idx] = _rooms[idx].copyWith(
@@ -599,7 +695,10 @@ class HearthController extends ChangeNotifier {
     _activeRoomIdForHardware = roomId;
     final activeIp = _rooms[idx].lanIp;
     if (activeIp != null && activeIp.isNotEmpty) {
-      hardware.startLanPolling(activeIp, expectedSensorId: _rooms[idx].sensorId);
+      hardware.startLanPolling(
+        activeIp,
+        expectedSensorId: _rooms[idx].sensorId,
+      );
     }
     await _persist();
     notifyListeners();
@@ -700,7 +799,12 @@ class HearthController extends ChangeNotifier {
   }
 
   // Daily Medication Schedule
-  Future<void> addMedication(String name, String dosage, int hour, int minute) async {
+  Future<void> addMedication(
+    String name,
+    String dosage,
+    int hour,
+    int minute,
+  ) async {
     _medications.add(
       MedicationReminder(
         id: 'med_${DateTime.now().millisecondsSinceEpoch}',
@@ -710,7 +814,9 @@ class HearthController extends ChangeNotifier {
         minute: minute,
       ),
     );
-    _medications.sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+    _medications.sort(
+      (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
+    );
     await _persist();
     notifyListeners();
   }
@@ -718,7 +824,9 @@ class HearthController extends ChangeNotifier {
   Future<void> toggleMedicationTaken(String id) async {
     final idx = _medications.indexWhere((m) => m.id == id);
     if (idx < 0) return;
-    _medications[idx] = _medications[idx].copyWith(takenToday: !_medications[idx].takenToday);
+    _medications[idx] = _medications[idx].copyWith(
+      takenToday: !_medications[idx].takenToday,
+    );
     await _persist();
     notifyListeners();
   }
@@ -737,7 +845,11 @@ class HearthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setChannelPreferences({bool? sms, bool? telegram, bool? call}) async {
+  Future<void> setChannelPreferences({
+    bool? sms,
+    bool? telegram,
+    bool? call,
+  }) async {
     if (sms != null) _channelSmsEnabled = sms;
     if (telegram != null) _channelTelegramEnabled = telegram;
     if (call != null) _channelCallEnabled = call;
@@ -756,14 +868,34 @@ class HearthController extends ChangeNotifier {
     bool notifySms = true,
     bool notifyCall = true,
   }) async {
+    final phoneList = phone
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramPhones = telegramPhone
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramChatIds = telegramChatId
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramUsernames = telegramUsername
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
     _contacts.add(
       AlertContact(
         id: 'c_${DateTime.now().millisecondsSinceEpoch}',
         name: name.trim(),
-        phone: phone.trim(),
-        telegramPhone: telegramPhone.trim(),
-        telegramChatId: telegramChatId.trim(),
-        telegramUsername: telegramUsername.trim(),
+        phone: phoneList.join(', '),
+        telegramPhone: telegramPhones.join(', '),
+        telegramChatId: telegramChatIds.join(','),
+        telegramUsername: telegramUsernames.join(','),
         isPrimaryUser: false,
         joined: telegramChatId.trim().isNotEmpty,
         notifyTelegram: notifyTelegram,
@@ -790,14 +922,33 @@ class HearthController extends ChangeNotifier {
     final index = _contacts.indexWhere((c) => c.id == id);
     if (index < 0) return;
     final cur = _contacts[index];
-    final nextChatId = telegramChatId != null ? telegramChatId.trim() : cur.telegramChatId;
+    final phoneList = phone
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramPhones = telegramPhone
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramChatIds = (telegramChatId ?? cur.telegramChatId)
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final telegramUsernames = (telegramUsername ?? cur.telegramUsername)
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
     _contacts[index] = cur.copyWith(
       name: name.trim(),
-      phone: phone.trim(),
-      telegramPhone: telegramPhone.trim(),
-      telegramChatId: nextChatId,
-      telegramUsername: telegramUsername != null ? telegramUsername.trim() : cur.telegramUsername,
-      joined: cur.joined || nextChatId.isNotEmpty,
+      phone: phoneList.join(', '),
+      telegramPhone: telegramPhones.join(', '),
+      telegramChatId: telegramChatIds.join(','),
+      telegramUsername: telegramUsernames.join(','),
+      joined: cur.joined || telegramChatIds.isNotEmpty,
       notifyTelegram: notifyTelegram ?? cur.notifyTelegram,
       notifySms: notifySms ?? cur.notifySms,
       notifyCall: notifyCall ?? cur.notifyCall,
@@ -827,7 +978,11 @@ class HearthController extends ChangeNotifier {
 
   Future<void> moveContactByDelta(int index, int delta) async {
     final target = index + delta;
-    if (index < 0 || index >= _contacts.length || target < 0 || target >= _contacts.length) return;
+    if (index < 0 ||
+        index >= _contacts.length ||
+        target < 0 ||
+        target >= _contacts.length)
+      return;
     final item = _contacts.removeAt(index);
     _contacts.insert(target, item);
     await _syncRemoteChannelsToHardware();
@@ -901,7 +1056,9 @@ class HearthController extends ChangeNotifier {
       botUrl: _alertBotUrl,
       apiKey: _alertBotApiKey,
     );
-    _lastBotSyncStatus = res.ok ? 'Connected (${res.enabledRecipients})' : res.message;
+    _lastBotSyncStatus = res.ok
+        ? 'Connected (${res.enabledRecipients})'
+        : res.message;
     _lastBotSyncOk = res.ok;
     notifyListeners();
     return res;
@@ -918,17 +1075,24 @@ class HearthController extends ChangeNotifier {
     var addedOrUpdated = 0;
     for (final r in remote) {
       if (r.id.startsWith('tg_group_')) continue;
-      final existingIdx = _contacts.indexWhere((c) =>
-          c.id == r.id ||
-          (r.telegramChatId.isNotEmpty && c.telegramChatId == r.telegramChatId) ||
-          (r.phone.isNotEmpty && c.phone == r.phone));
+      final existingIdx = _contacts.indexWhere(
+        (c) =>
+            c.id == r.id ||
+            (r.telegramChatId.isNotEmpty &&
+                c.telegramChatId == r.telegramChatId) ||
+            (r.phone.isNotEmpty && c.phone == r.phone),
+      );
       if (existingIdx >= 0) {
         final cur = _contacts[existingIdx];
         _contacts[existingIdx] = cur.copyWith(
           name: r.name.isNotEmpty ? r.name : cur.name,
           phone: r.phone.isNotEmpty ? r.phone : cur.phone,
-          telegramChatId: r.telegramChatId.isNotEmpty ? r.telegramChatId : cur.telegramChatId,
-          telegramUsername: r.telegramUsername.isNotEmpty ? r.telegramUsername : cur.telegramUsername,
+          telegramChatId: r.telegramChatId.isNotEmpty
+              ? r.telegramChatId
+              : cur.telegramChatId,
+          telegramUsername: r.telegramUsername.isNotEmpty
+              ? r.telegramUsername
+              : cur.telegramUsername,
           joined: true,
         );
       } else {
@@ -956,19 +1120,33 @@ class HearthController extends ChangeNotifier {
     final effectiveChannels = target == null
         ? channels
         : <String>[
-            if (target.notifyTelegram && target.telegramChatId.isNotEmpty && (channels == null || channels.contains('telegram'))) 'telegram',
-            if (target.notifySms && target.phone.isNotEmpty && (channels == null || channels.contains('sms'))) 'sms',
-            if (target.notifyCall && (target.phone.isNotEmpty || target.telegramUsername.isNotEmpty) && (channels == null || channels.contains('call'))) 'call',
+            if (target.notifyTelegram &&
+                target.telegramChatId.isNotEmpty &&
+                (channels == null || channels.contains('telegram')))
+              'telegram',
+            if (target.notifySms &&
+                target.phone.isNotEmpty &&
+                (channels == null || channels.contains('sms')))
+              'sms',
+            if (target.notifyCall &&
+                (target.phone.isNotEmpty ||
+                    target.telegramUsername.isNotEmpty) &&
+                (channels == null || channels.contains('call')))
+              'call',
           ];
-    if (targetContactId != null && (target == null || effectiveChannels!.isEmpty)) {
+    if (targetContactId != null &&
+        (target == null || effectiveChannels!.isEmpty)) {
       return AlertBotDispatchResult(
         ok: false,
         deliveredCount: 0,
         attemptedCount: 0,
-        summary: target == null ? 'Liên hệ không còn tồn tại' : 'Liên hệ chưa bật kênh kiểm tra phù hợp',
+        summary: target == null
+            ? 'Liên hệ không còn tồn tại'
+            : 'Liên hệ chưa bật kênh kiểm tra phù hợp',
       );
     }
-    final channelLabel = (effectiveChannels != null && effectiveChannels.isNotEmpty)
+    final channelLabel =
+        (effectiveChannels != null && effectiveChannels.isNotEmpty)
         ? effectiveChannels.map((e) => e.toUpperCase()).join('+')
         : 'ALL';
     final res = await alertBot.dispatchFallAlert(
@@ -981,23 +1159,38 @@ class HearthController extends ChangeNotifier {
       note: 'Kiểm tra kênh $channelLabel từ ứng dụng Hearth',
       telegramBotToken: _telegramBotToken,
       telegramChatIds: targetContactId != null
-          ? (effectiveChannels!.contains('telegram') ? [target!.telegramChatId] : const [])
+          ? (effectiveChannels!.contains('telegram')
+                ? [target!.telegramChatId]
+                : const [])
           : allTelegramChatIds,
       telegramUsernames: targetContactId != null
-          ? (effectiveChannels!.contains('call') && target!.telegramUsername.isNotEmpty ? [target.telegramUsername] : const [])
+          ? (effectiveChannels!.contains('call') &&
+                    target!.telegramUsername.isNotEmpty
+                ? [target.telegramUsername]
+                : const [])
           : allTelegramUsernames,
       phones: targetContactId != null
-          ? (effectiveChannels!.any((channel) => channel == 'sms' || channel == 'call') && target!.phone.isNotEmpty
-              ? [target.phone]
-              : const [])
-          : (channels?.contains('sms') == true ? smsPhoneNumbers : allEmergencyPhoneNumbers),
+          ? (effectiveChannels!.any(
+                      (channel) => channel == 'sms' || channel == 'call',
+                    ) &&
+                    target!.phone.isNotEmpty
+                ? [target.phone]
+                : const [])
+          : (channels?.contains('sms') == true
+                ? smsPhoneNumbers
+                : allEmergencyPhoneNumbers),
       telegramEnabled: targetContactId != null
           ? effectiveChannels!.contains('telegram')
-          : channels == null ? _channelTelegramEnabled : channels.contains('telegram'),
+          : channels == null
+          ? _channelTelegramEnabled
+          : channels.contains('telegram'),
       callEnabled: targetContactId != null
           ? effectiveChannels!.contains('call')
-          : channels == null ? _channelCallEnabled : channels.contains('call'),
-      fallbackMessage: '🧪 [TEST $channelLabel] HEARTH: Kiểm tra hệ thống cảnh báo té ngã thành công!',
+          : channels == null
+          ? _channelCallEnabled
+          : channels.contains('call'),
+      fallbackMessage:
+          '🧪 [TEST $channelLabel] HEARTH: Kiểm tra hệ thống cảnh báo té ngã thành công!',
       channelsOverride: effectiveChannels,
       targetRecipientIds: targetContactId != null ? [targetContactId] : null,
     );
@@ -1011,7 +1204,9 @@ class HearthController extends ChangeNotifier {
     final phones = allEmergencyPhoneNumbers.join(',');
     final chatIds = allTelegramChatIds.join(',');
     final tgUsers = allTelegramUsernames.join(',');
-    final lanIp = _rooms.isNotEmpty ? (_rooms.first.lanIp ?? hardware.activeLanIp) : hardware.activeLanIp;
+    final lanIp = _rooms.isNotEmpty
+        ? (_rooms.first.lanIp ?? hardware.activeLanIp)
+        : hardware.activeLanIp;
 
     await hardware.writeContactConfig(
       phoneList: phones,
@@ -1041,7 +1236,9 @@ class HearthController extends ChangeNotifier {
         contacts: _contacts,
         defaultTelegramChatIds: _telegramChatId,
       );
-      _lastBotSyncStatus = ok ? 'Synced to Alert Bot' : 'Bot offline (saved locally)';
+      _lastBotSyncStatus = ok
+          ? 'Synced to Alert Bot'
+          : 'Bot offline (saved locally)';
       _lastBotSyncOk = ok;
     }
   }
@@ -1049,8 +1246,63 @@ class HearthController extends ChangeNotifier {
   Future<void> updateEmergencyNumber(String number) async {
     if (number.trim().isEmpty) return;
     _emergencyServiceNumber = number.trim();
+    _emergencyNumberCustomized = true;
     await _persist();
     notifyListeners();
+  }
+
+  bool get shareLocationWithAlerts => _shareLocationWithAlerts;
+
+  Future<bool> setShareLocationWithAlerts(bool enabled) async {
+    if (!enabled) {
+      _shareLocationWithAlerts = false;
+      _emergencyLocation = null;
+      await _persist();
+      notifyListeners();
+      return true;
+    }
+    if (!await Geolocator.isLocationServiceEnabled()) return false;
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied)
+      permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever)
+      return false;
+    try {
+      final location = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      _emergencyLocation = location;
+      if (!_emergencyNumberCustomized) {
+        try {
+          final places = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          final countryCode = places.isEmpty
+              ? null
+              : places.first.isoCountryCode?.toUpperCase();
+          final regionalNumber = switch (countryCode) {
+            'VN' => '115',
+            'US' => '911',
+            'CA' => '911',
+            'FR' => '112',
+            _ => null,
+          };
+          if (regionalNumber != null) _emergencyServiceNumber = regionalNumber;
+        } catch (_) {}
+      }
+      _shareLocationWithAlerts = true;
+      await _persist();
+      await _syncRemoteChannelsToHardware();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> setHeightUnitCm(bool inCm) async {
@@ -1081,13 +1333,15 @@ class HearthController extends ChangeNotifier {
   }
 
   /// Builds pre-filled simultaneous emergency SMS body containing person, room, time, address & door lockbox code.
-  String buildEmergencySmsBody(ActiveFallAlert alert) {
+  String buildEmergencySmsBody(ActiveFallAlert alert, {Position? location}) {
     final timeStr = s.formatClock(alert.detectedAt);
     final addr = _medicalProfile.homeAddress.trim();
     final door = _medicalProfile.doorLockboxCode.trim();
     final extra = [
       if (addr.isNotEmpty) addr,
       if (door.isNotEmpty) 'Code: $door',
+      if (_shareLocationWithAlerts && location != null)
+        'GPS: https://maps.google.com/?q=${location.latitude},${location.longitude}',
     ].join(' | ');
 
     switch (_language) {
@@ -1109,8 +1363,11 @@ class HearthController extends ChangeNotifier {
     final room = _rooms.isEmpty
         ? null
         : (roomId != null
-            ? _rooms.firstWhere((r) => r.id == roomId, orElse: () => _rooms.first)
-            : _rooms.first);
+              ? _rooms.firstWhere(
+                  (r) => r.id == roomId,
+                  orElse: () => _rooms.first,
+                )
+              : _rooms.first);
 
     final rId = room?.id ?? 'home_room';
     final rName = room?.name ?? s.roomTypeName(RoomType.bathroom);
@@ -1128,10 +1385,14 @@ class HearthController extends ChangeNotifier {
       detectedAt: now,
       dispatchMode: _dispatchMode,
       notifiedContactIds: notifiedIds,
-      smsBroadcastReady: _channelSmsEnabled && allEmergencyPhoneNumbers.isNotEmpty,
-      telegramBroadcastReady: _channelTelegramEnabled && (allTelegramChatIds.isNotEmpty || _alertBotUrl.isNotEmpty),
+      smsBroadcastReady:
+          _channelSmsEnabled && allEmergencyPhoneNumbers.isNotEmpty,
+      telegramBroadcastReady:
+          _channelTelegramEnabled &&
+          (allTelegramChatIds.isNotEmpty || _alertBotUrl.isNotEmpty),
       simulated: simulated,
-      telemetry: telemetry ??
+      telemetry:
+          telemetry ??
           TelemetrySnapshot(
             state: 'ALERT',
             postureClass: 'FALL',
@@ -1181,6 +1442,20 @@ class HearthController extends ChangeNotifier {
   }
 
   Future<void> _dispatchRemoteFallAlert(ActiveFallAlert alert) async {
+    Position? location;
+    if (_shareLocationWithAlerts) {
+      try {
+        location = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        _emergencyLocation = location;
+      } catch (_) {
+        location = _emergencyLocation;
+      }
+    }
     final res = await alertBot.dispatchFallAlert(
       botUrl: _alertBotUrl,
       apiKey: _alertBotApiKey,
@@ -1189,13 +1464,15 @@ class HearthController extends ChangeNotifier {
       personName: alert.personName,
       simulated: alert.simulated,
       telemetry: alert.telemetry,
+      locationLatitude: location?.latitude,
+      locationLongitude: location?.longitude,
       telegramBotToken: _telegramBotToken,
       telegramChatIds: allTelegramChatIds,
       telegramUsernames: allTelegramUsernames,
       phones: allEmergencyPhoneNumbers,
       telegramEnabled: _channelTelegramEnabled,
       callEnabled: _channelCallEnabled,
-      fallbackMessage: buildEmergencySmsBody(alert),
+      fallbackMessage: buildEmergencySmsBody(alert, location: location),
     );
     if (_activeAlert?.id == alert.id) {
       _activeAlert = _activeAlert!.copyWith(
@@ -1219,19 +1496,24 @@ class HearthController extends ChangeNotifier {
     );
     notifyListeners();
     if (remoteId != null && _alertBotUrl.trim().isNotEmpty) {
-      unawaited(alertBot.acknowledgeAlert(
-        botUrl: _alertBotUrl,
-        apiKey: _alertBotApiKey,
-        alertId: remoteId,
-        by: ackBy,
-      ));
+      unawaited(
+        alertBot.acknowledgeAlert(
+          botUrl: _alertBotUrl,
+          apiKey: _alertBotApiKey,
+          alertId: remoteId,
+          by: ackBy,
+        ),
+      );
     }
     return true;
   }
 
   Future<void> turnOffRoomAlarmOnly() async {
     if (_activeAlert == null) return;
-    _activeAlert = _activeAlert!.copyWith(roomAlarmActive: false, roomLightActive: true);
+    _activeAlert = _activeAlert!.copyWith(
+      roomAlarmActive: false,
+      roomLightActive: true,
+    );
     await hardware.sendCommand('BUZZER_MUTE');
     notifyListeners();
   }
@@ -1259,15 +1541,17 @@ class HearthController extends ChangeNotifier {
         FallResolutionOutcome.neededHelp => 'needed_help',
         FallResolutionOutcome.falseAlarm => 'false_alarm',
       };
-      unawaited(alertBot.resolveAlert(
-        botUrl: _alertBotUrl,
-        apiKey: _alertBotApiKey,
-        alertId: alert.remoteAlertId!,
-        by: resolvedBy,
-        outcome: outcomeKey,
-        falseAlarmReason: falseAlarmReason?.name ?? '',
-        note: note ?? '',
-      ));
+      unawaited(
+        alertBot.resolveAlert(
+          botUrl: _alertBotUrl,
+          apiKey: _alertBotApiKey,
+          alertId: alert.remoteAlertId!,
+          by: resolvedBy,
+          outcome: outcomeKey,
+          falseAlarmReason: falseAlarmReason?.name ?? '',
+          note: note ?? '',
+        ),
+      );
     }
 
     await logEvent(

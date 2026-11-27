@@ -52,11 +52,12 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
   void _openContactModal({AlertContact? contact}) {
     final isEditing = contact != null;
     final nameCtrl = TextEditingController(text: contact?.name ?? '');
-    final phoneCtrl = TextEditingController(text: contact?.phone ?? '');
-    final telegramCtrl = TextEditingController(text: contact?.telegramPhone ?? '');
-    final chatIdCtrl = TextEditingController(text: contact?.telegramChatId ?? '');
-    final usernameCtrl = TextEditingController(text: contact?.telegramUsername ?? '');
-    bool sameTelegramPhone = contact != null &&
+    final phoneCtrls = _contactControllers(contact?.phone ?? '');
+    final telegramCtrls = _contactControllers(contact?.telegramPhone ?? '');
+    final chatIdCtrls = _contactControllers(contact?.telegramChatId ?? '');
+    final usernameCtrls = _contactControllers(contact?.telegramUsername ?? '');
+    bool sameTelegramPhone =
+        contact != null &&
         contact.telegramPhone.trim().isNotEmpty &&
         contact.telegramPhone.trim() == contact.phone.trim();
     bool notifyTelegram = contact?.notifyTelegram ?? true;
@@ -73,7 +74,10 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(isEditing ? s.s9EditContact : s.s9AddContact, style: Theme.of(c).textTheme.titleLarge),
+              Text(
+                isEditing ? s.s9EditContact : s.s9AddContact,
+                style: Theme.of(c).textTheme.titleLarge,
+              ),
               const SizedBox(height: 14),
               TextField(
                 controller: nameCtrl,
@@ -84,26 +88,22 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
+              _MultipleContactFields(
+                label: s.s9ContactPhone,
+                controllers: phoneCtrls,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: s.s9ContactPhone,
-                  helperText: s.s9InviteHelper,
-                  helperMaxLines: 2,
-                  errorText: phoneError,
-                  errorMaxLines: 2,
-                ),
+                addLabel: 'Thêm số điện thoại',
+                helperText: s.s9InviteHelper,
+                errorText: phoneError,
+                onChanged: () => setModalState(() {}),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: telegramCtrl,
+              const SizedBox(height: 10),
+              _MultipleContactFields(
+                label: s.s9TelegramPhone,
+                controllers: telegramCtrls,
                 keyboardType: TextInputType.phone,
-                enabled: !sameTelegramPhone,
-                decoration: InputDecoration(
-                  labelText: s.s9TelegramPhone,
-                  hintText: '+84 xxx xxx xxx',
-                ),
+                addLabel: 'Thêm số Telegram',
+                onChanged: () => setModalState(() {}),
               ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
@@ -111,32 +111,32 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 value: sameTelegramPhone,
                 title: Text(s.s9TelegramSamePhone),
                 controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (value) {
-                  setModalState(() {
-                    sameTelegramPhone = value ?? false;
-                    if (sameTelegramPhone) telegramCtrl.text = phoneCtrl.text;
-                  });
-                },
+                onChanged: (value) => setModalState(() {
+                  sameTelegramPhone = value ?? false;
+                  if (sameTelegramPhone)
+                    telegramCtrls.first.text = phoneCtrls.first.text;
+                }),
+              ),
+              _MultipleContactFields(
+                label: s.s9TelegramChatId,
+                controllers: chatIdCtrls,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                ),
+                addLabel: 'Thêm Telegram chat ID',
+                onChanged: () => setModalState(() {}),
+              ),
+              _MultipleContactFields(
+                label: s.s9TelegramUsername,
+                controllers: usernameCtrls,
+                addLabel: 'Thêm Telegram username',
+                onChanged: () => setModalState(() {}),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: chatIdCtrl,
-                keyboardType: const TextInputType.numberWithOptions(signed: true),
-                decoration: InputDecoration(
-                  labelText: s.s9TelegramChatId,
-                  hintText: '512345678 (nhắn /start cho bot để lấy)',
-                ),
+              Text(
+                s.s9ContactChannels,
+                style: Theme.of(c).textTheme.labelLarge,
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: usernameCtrl,
-                decoration: InputDecoration(
-                  labelText: s.s9TelegramUsername,
-                  hintText: '@username_telegram',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(s.s9ContactChannels, style: Theme.of(c).textTheme.labelLarge),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -167,23 +167,32 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 label: isEditing ? s.s9EditContact : s.s9SendInvite,
                 onPressed: () async {
                   final name = nameCtrl.text.trim();
-                  final digits = phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
-                  final hasTelegram = chatIdCtrl.text.trim().isNotEmpty || usernameCtrl.text.trim().isNotEmpty;
+                  final phones = _contactValues(phoneCtrls);
+                  final chatIds = _contactValues(chatIdCtrls);
+                  final usernames = _contactValues(usernameCtrls);
+                  final telegramPhones = _contactValues(telegramCtrls);
+                  final hasPhone =
+                      phones.replaceAll(RegExp(r'[^0-9]'), '').length >= 9;
+                  final hasTelegram =
+                      chatIds.isNotEmpty || usernames.isNotEmpty;
                   setModalState(() {
                     nameError = name.isEmpty ? s.requiredFieldError : null;
-                    phoneError = (digits.length < 9 && !hasTelegram) ? s.s9PhoneError : null;
+                    phoneError = !hasPhone && !hasTelegram
+                        ? s.s9PhoneError
+                        : null;
                   });
-                  if (name.isEmpty || (digits.length < 9 && !hasTelegram)) return;
-
-                  final telegramPhone = sameTelegramPhone ? phoneCtrl.text.trim() : telegramCtrl.text.trim();
+                  if (name.isEmpty || (!hasPhone && !hasTelegram)) return;
+                  final telegramPhone = sameTelegramPhone
+                      ? phoneCtrls.first.text.trim()
+                      : telegramPhones;
                   if (contact != null) {
                     await widget.ctrl.updateContact(
                       contact.id,
                       name,
-                      phoneCtrl.text.trim(),
+                      phones,
                       telegramPhone: telegramPhone,
-                      telegramChatId: chatIdCtrl.text.trim(),
-                      telegramUsername: usernameCtrl.text.trim(),
+                      telegramChatId: chatIds,
+                      telegramUsername: usernames,
                       notifyTelegram: notifyTelegram,
                       notifySms: notifySms,
                       notifyCall: notifyCall,
@@ -191,21 +200,23 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                   } else {
                     await widget.ctrl.addContact(
                       name,
-                      phoneCtrl.text.trim(),
+                      phones,
                       telegramPhone: telegramPhone,
-                      telegramChatId: chatIdCtrl.text.trim(),
-                      telegramUsername: usernameCtrl.text.trim(),
+                      telegramChatId: chatIds,
+                      telegramUsername: usernames,
                       notifyTelegram: notifyTelegram,
                       notifySms: notifySms,
                       notifyCall: notifyCall,
                     );
                   }
-                  if (c.mounted) {
-                    Navigator.pop(c);
-                  }
-                  if (mounted) {
-                    showHearthToast(context, isEditing ? '${s.s9EditContact}: $name' : '${s.s9BadgeInvited}: $name');
-                  }
+                  if (c.mounted) Navigator.pop(c);
+                  if (mounted)
+                    showHearthToast(
+                      context,
+                      isEditing
+                          ? '${s.s9EditContact}: $name'
+                          : '${s.s9BadgeInvited}: $name',
+                    );
                 },
               ),
             ],
@@ -240,7 +251,9 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
               Text(s.s9Title, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                isSimultaneous ? s.s9SimultaneousExplainer : s.s9SequentialExplainer(ctrl.escalationMinutes),
+                isSimultaneous
+                    ? s.s9SimultaneousExplainer
+                    : s.s9SequentialExplainer(ctrl.escalationMinutes),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -250,7 +263,10 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(s.s9ModeTitle, style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      s.s9ModeTitle,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 10),
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -267,14 +283,18 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                               icon: Icons.campaign_rounded,
                               label: s.s9ModeSimultaneous,
                               selected: isSimultaneous,
-                              onPressed: () => ctrl.setDispatchMode(AlertDispatchMode.simultaneous),
+                              onPressed: () => ctrl.setDispatchMode(
+                                AlertDispatchMode.simultaneous,
+                              ),
                             ),
                             _AlertModeButton(
                               width: itemWidth,
                               icon: Icons.format_list_numbered_rounded,
                               label: s.s9ModeSequential,
                               selected: !isSimultaneous,
-                              onPressed: () => ctrl.setDispatchMode(AlertDispatchMode.sequential),
+                              onPressed: () => ctrl.setDispatchMode(
+                                AlertDispatchMode.sequential,
+                              ),
                             ),
                           ],
                         );
@@ -284,8 +304,12 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         const gap = 8.0;
-                        final columns = constraints.maxWidth >= 520 ? 3 : (constraints.maxWidth >= 300 ? 2 : 1);
-                        final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+                        final columns = constraints.maxWidth >= 520
+                            ? 3
+                            : (constraints.maxWidth >= 300 ? 2 : 1);
+                        final itemWidth =
+                            (constraints.maxWidth - gap * (columns - 1)) /
+                            columns;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
@@ -295,21 +319,24 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                               icon: Icons.sms_rounded,
                               label: 'SMS',
                               selected: ctrl.channelSmsEnabled,
-                              onPressed: (v) => ctrl.setChannelPreferences(sms: v),
+                              onPressed: (v) =>
+                                  ctrl.setChannelPreferences(sms: v),
                             ),
                             _AlertChannelButton(
                               width: itemWidth,
                               icon: Icons.send_rounded,
                               label: 'Telegram',
                               selected: ctrl.channelTelegramEnabled,
-                              onPressed: (v) => ctrl.setChannelPreferences(telegram: v),
+                              onPressed: (v) =>
+                                  ctrl.setChannelPreferences(telegram: v),
                             ),
                             _AlertChannelButton(
                               width: itemWidth,
                               icon: Icons.call_rounded,
                               label: 'Call',
                               selected: ctrl.channelCallEnabled,
-                              onPressed: (v) => ctrl.setChannelPreferences(call: v),
+                              onPressed: (v) =>
+                                  ctrl.setChannelPreferences(call: v),
                             ),
                           ],
                         );
@@ -317,16 +344,24 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     ),
                     if (!isSimultaneous) ...[
                       const SizedBox(height: 14),
-                      Text(s.s9WaitBeforeNext, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(
+                        s.s9WaitBeforeNext,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: [1, 2, 5].map((minutes) => ChoiceChip(
-                          label: Text(s.s9Minutes(minutes)),
-                          selected: ctrl.escalationMinutes == minutes,
-                          onSelected: (_) => ctrl.setEscalationMinutes(minutes),
-                        )).toList(),
+                        children: [1, 2, 5]
+                            .map(
+                              (minutes) => ChoiceChip(
+                                label: Text(s.s9Minutes(minutes)),
+                                selected: ctrl.escalationMinutes == minutes,
+                                onSelected: (_) =>
+                                    ctrl.setEscalationMinutes(minutes),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ],
                   ],
@@ -344,13 +379,18 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                         Icon(
                           ctrl.lastBotSyncStatus.isEmpty
                               ? Icons.info_outline_rounded
-                              : (ctrl.lastBotSyncOk ? Icons.verified_user_rounded : Icons.cloud_off_rounded),
+                              : (ctrl.lastBotSyncOk
+                                    ? Icons.verified_user_rounded
+                                    : Icons.cloud_off_rounded),
                           color: ctrl.lastBotSyncOk ? p.ok : p.warning,
                           size: 22,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(s.s9BotConfigTitle, style: Theme.of(context).textTheme.titleMedium),
+                          child: Text(
+                            s.s9BotConfigTitle,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ),
                       ],
                     ),
@@ -358,10 +398,12 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     Text(
                       ctrl.lastBotSyncStatus.isNotEmpty
                           ? (ctrl.lastBotSyncOk
-                              ? 'Hệ thống đã kết nối (${ctrl.lastBotSyncStatus})'
-                              : 'Chưa kết nối được hệ thống cảnh báo (${ctrl.lastBotSyncStatus})')
+                                ? 'Hệ thống đã kết nối (${ctrl.lastBotSyncStatus})'
+                                : 'Chưa kết nối được hệ thống cảnh báo (${ctrl.lastBotSyncStatus})')
                           : 'Tự động nhắn Telegram & gọi điện thoại tiếng Việt ngay khi phát hiện té ngã',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: p.textMuted),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: p.textMuted),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -369,48 +411,56 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                       runSpacing: 8,
                       children: [
                         HearthSecondaryButton(
-                          label: _testingChannel == s.s9TestSmsBtn ? '...' : s.s9TestSmsBtn,
+                          label: _testingChannel == s.s9TestSmsBtn
+                              ? '...'
+                              : s.s9TestSmsBtn,
                           expand: false,
                           icon: Icons.sms_rounded,
                           onPressed: _testingChannel != null
                               ? null
                               : () => _runTestChannel(
-                                    label: s.s9TestSmsBtn,
-                                    channels: const ['sms'],
-                                  ),
+                                  label: s.s9TestSmsBtn,
+                                  channels: const ['sms'],
+                                ),
                         ),
                         HearthSecondaryButton(
-                          label: _testingChannel == s.s9TestTelegramBtn ? '...' : s.s9TestTelegramBtn,
+                          label: _testingChannel == s.s9TestTelegramBtn
+                              ? '...'
+                              : s.s9TestTelegramBtn,
                           expand: false,
                           icon: Icons.send_rounded,
                           onPressed: _testingChannel != null
                               ? null
                               : () => _runTestChannel(
-                                    label: s.s9TestTelegramBtn,
-                                    channels: const ['telegram'],
-                                  ),
+                                  label: s.s9TestTelegramBtn,
+                                  channels: const ['telegram'],
+                                ),
                         ),
                         HearthSecondaryButton(
-                          label: _testingChannel == s.s9TestCallBtn ? '...' : s.s9TestCallBtn,
+                          label: _testingChannel == s.s9TestCallBtn
+                              ? '...'
+                              : s.s9TestCallBtn,
                           expand: false,
                           icon: Icons.call_rounded,
                           onPressed: _testingChannel != null
                               ? null
                               : () => _runTestChannel(
-                                    label: s.s9TestCallBtn,
-                                    channels: const ['call'],
-                                  ),
+                                  label: s.s9TestCallBtn,
+                                  channels: const ['call'],
+                                ),
                         ),
                         HearthSecondaryButton(
-                          label: _testingChannel == s.s9BotTestBtn ? '...' : s.s9BotTestBtn,
+                          label: _testingChannel == s.s9BotTestBtn
+                              ? '...'
+                              : s.s9BotTestBtn,
                           expand: false,
                           icon: Icons.notifications_active_outlined,
                           onPressed: _testingChannel != null
                               ? null
                               : () => _runTestChannel(
-                                    label: s.s9BotTestBtn,
-                                    channels: const ['telegram', 'call'],
-                                  ),
+                                  label: s.s9BotTestBtn,
+                                  channels: const ['telegram', 'call'],
+                                ),
                         ),
                         HearthSecondaryButton(
                           label: s.s9BotPullBtn,
@@ -419,12 +469,20 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                           onPressed: _testingChannel != null
                               ? null
                               : () async {
-                                  final count = await ctrl.pullContactsFromBot();
+                                  final count = await ctrl
+                                      .pullContactsFromBot();
                                   if (!context.mounted) return;
                                   if (count < 0) {
-                                    showHearthToast(context, 'Không kết nối được máy chủ cảnh báo', critical: true);
+                                    showHearthToast(
+                                      context,
+                                      'Không kết nối được máy chủ cảnh báo',
+                                      critical: true,
+                                    );
                                   } else {
-                                    showHearthToast(context, 'Đã đồng bộ $count người nhận từ Telegram');
+                                    showHearthToast(
+                                      context,
+                                      'Đã đồng bộ $count người nhận từ Telegram',
+                                    );
                                   }
                                 },
                         ),
@@ -458,7 +516,10 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                     key: ValueKey(c.id),
                     padding: const EdgeInsets.only(bottom: 10),
                     child: LiquidGlassCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       child: Row(
                         children: [
                           ReorderableDragStartListener(
@@ -466,7 +527,10 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                             child: SizedBox(
                               width: 44,
                               height: 48,
-                              child: Icon(Icons.drag_indicator_rounded, color: p.textMuted),
+                              child: Icon(
+                                Icons.drag_indicator_rounded,
+                                color: p.textMuted,
+                              ),
                             ),
                           ),
                           Container(
@@ -479,7 +543,11 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                             ),
                             child: Text(
                               '${idx + 1}',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: p.accent),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: p.accent,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -488,20 +556,44 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  c.isPrimaryUser ? '${c.name} (${s.s9YouThisPhone})' : c.name,
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.text),
+                                  c.isPrimaryUser
+                                      ? '${c.name} (${s.s9YouThisPhone})'
+                                      : c.name,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: p.text,
+                                  ),
                                 ),
                                 if (c.phone.isNotEmpty)
-                                  Text(c.phone, style: TextStyle(fontSize: 14, color: p.textMuted)),
+                                  Text(
+                                    c.phone,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: p.textMuted,
+                                    ),
+                                  ),
                                 if (c.telegramPhone.isNotEmpty)
-                                  Text('Telegram: ${c.telegramPhone}', style: TextStyle(fontSize: 13, color: p.textMuted)),
-                                if (c.telegramChatId.isNotEmpty || c.telegramUsername.isNotEmpty)
+                                  Text(
+                                    'Telegram: ${c.telegramPhone}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: p.textMuted,
+                                    ),
+                                  ),
+                                if (c.telegramChatId.isNotEmpty ||
+                                    c.telegramUsername.isNotEmpty)
                                   Text(
                                     [
-                                      if (c.telegramChatId.isNotEmpty) 'TG: ${c.telegramChatId}',
-                                      if (c.telegramUsername.isNotEmpty) c.telegramUsername,
+                                      if (c.telegramChatId.isNotEmpty)
+                                        'TG: ${c.telegramChatId}',
+                                      if (c.telegramUsername.isNotEmpty)
+                                        c.telegramUsername,
                                     ].join(' · '),
-                                    style: TextStyle(fontSize: 12.5, color: p.accent),
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: p.accent,
+                                    ),
                                   ),
                                 const SizedBox(height: 4),
                                 Wrap(
@@ -510,14 +602,29 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                                   children: [
                                     if (!c.isPrimaryUser)
                                       HearthStatusBadge(
-                                        icon: c.joined ? Icons.check_circle_rounded : Icons.sync_rounded,
-                                        label: c.joined ? s.s9BadgeJoined : s.s9BadgeInvited,
+                                        icon: c.joined
+                                            ? Icons.check_circle_rounded
+                                            : Icons.sync_rounded,
+                                        label: c.joined
+                                            ? s.s9BadgeJoined
+                                            : s.s9BadgeInvited,
                                         color: c.joined ? p.ok : p.accent,
                                       ),
-                                    if (c.notifyTelegram && c.telegramChatId.isNotEmpty)
-                                      HearthStatusBadge(icon: Icons.send_rounded, label: 'TG', color: p.ok),
-                                    if (c.notifyCall && (c.telegramUsername.isNotEmpty || c.phone.isNotEmpty))
-                                      HearthStatusBadge(icon: Icons.call_rounded, label: 'Call', color: p.warning),
+                                    if (c.notifyTelegram &&
+                                        c.telegramChatId.isNotEmpty)
+                                      HearthStatusBadge(
+                                        icon: Icons.send_rounded,
+                                        label: 'TG',
+                                        color: p.ok,
+                                      ),
+                                    if (c.notifyCall &&
+                                        (c.telegramUsername.isNotEmpty ||
+                                            c.phone.isNotEmpty))
+                                      HearthStatusBadge(
+                                        icon: Icons.call_rounded,
+                                        label: 'Call',
+                                        color: p.warning,
+                                      ),
                                   ],
                                 ),
                               ],
@@ -527,18 +634,44 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
                             tooltip: s.s9ContactActions,
                             icon: const Icon(Icons.more_vert_rounded),
                             onSelected: (action) {
-                              if (action == 'edit') _openContactModal(contact: c);
-                              if (action == 'up') ctrl.moveContactByDelta(idx, -1);
-                              if (action == 'down') ctrl.moveContactByDelta(idx, 1);
-                              if (action == 'test') _runTestChannel(label: 'Test ${c.name}', targetContactId: c.id);
+                              if (action == 'edit')
+                                _openContactModal(contact: c);
+                              if (action == 'up')
+                                ctrl.moveContactByDelta(idx, -1);
+                              if (action == 'down')
+                                ctrl.moveContactByDelta(idx, 1);
+                              if (action == 'test')
+                                _runTestChannel(
+                                  label: 'Test ${c.name}',
+                                  targetContactId: c.id,
+                                );
                               if (action == 'delete') ctrl.removeContact(c.id);
                             },
                             itemBuilder: (context) => [
-                              PopupMenuItem(value: 'edit', child: Text(s.s9EditContact)),
-                              if (idx > 0) PopupMenuItem(value: 'up', child: Text(s.s9MoveUp)),
-                              if (idx < contacts.length - 1) PopupMenuItem(value: 'down', child: Text(s.s9MoveDown)),
-                              if (_testingChannel == null) PopupMenuItem(value: 'test', child: Text(s.s9BotTestBtn)),
-                              if (!c.isPrimaryUser) PopupMenuItem(value: 'delete', child: Text(s.s9DeleteContact)),
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Text(s.s9EditContact),
+                              ),
+                              if (idx > 0)
+                                PopupMenuItem(
+                                  value: 'up',
+                                  child: Text(s.s9MoveUp),
+                                ),
+                              if (idx < contacts.length - 1)
+                                PopupMenuItem(
+                                  value: 'down',
+                                  child: Text(s.s9MoveDown),
+                                ),
+                              if (_testingChannel == null)
+                                PopupMenuItem(
+                                  value: 'test',
+                                  child: Text(s.s9BotTestBtn),
+                                ),
+                              if (!c.isPrimaryUser)
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text(s.s9DeleteContact),
+                                ),
                             ],
                           ),
                         ],
@@ -591,13 +724,110 @@ class _S9ContactsScreenState extends State<S9ContactsScreen> {
               HearthStepTopBar(
                 step: 4,
                 totalSteps: widget.isOnboarding ? 4 : 0,
-                customStepText: widget.isOnboarding ? s.s9AlmostDone : s.s9Title,
+                customStepText: widget.isOnboarding
+                    ? s.s9AlmostDone
+                    : s.s9Title,
                 onBack: widget.onBack,
               ),
               Expanded(child: body),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+List<TextEditingController> _contactControllers(String raw) {
+  final values = raw
+      .replaceAll(';', ',')
+      .split(',')
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty);
+  return [
+    ...values.map((value) => TextEditingController(text: value)),
+    TextEditingController(),
+  ];
+}
+
+String _contactValues(List<TextEditingController> controllers) => controllers
+    .map((controller) => controller.text.trim())
+    .where((value) => value.isNotEmpty)
+    .join(',');
+
+class _MultipleContactFields extends StatelessWidget {
+  final String label;
+  final List<TextEditingController> controllers;
+  final TextInputType? keyboardType;
+  final String addLabel;
+  final String? helperText;
+  final String? errorText;
+  final VoidCallback onChanged;
+
+  const _MultipleContactFields({
+    required this.label,
+    required this.controllers,
+    required this.addLabel,
+    required this.onChanged,
+    this.keyboardType,
+    this.helperText,
+    this.errorText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StatefulBuilder(
+      builder: (context, setState) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          ...List.generate(
+            controllers.length,
+            (index) => Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controllers[index],
+                      keyboardType: keyboardType,
+                      decoration: InputDecoration(
+                        labelText: '$label ${index + 1}',
+                        helperText: index == 0 ? helperText : null,
+                        helperMaxLines: 2,
+                        errorText: index == 0 ? errorText : null,
+                        errorMaxLines: 2,
+                      ),
+                      onChanged: (_) => onChanged(),
+                    ),
+                  ),
+                  if (index > 0)
+                    IconButton(
+                      tooltip: 'Xóa',
+                      onPressed: () {
+                        controllers.removeAt(index).dispose();
+                        setState(() {});
+                        onChanged();
+                      },
+                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                controllers.add(TextEditingController());
+                setState(() {});
+                onChanged();
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: Text(addLabel),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -632,8 +862,13 @@ class _AlertModeButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           foregroundColor: selected ? p.accent : p.text,
           backgroundColor: selected ? p.accent.withValues(alpha: 0.12) : null,
-          side: BorderSide(color: selected ? p.accent : p.border, width: selected ? 1.8 : 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HearthTokens.buttonRadius)),
+          side: BorderSide(
+            color: selected ? p.accent : p.border,
+            width: selected ? 1.8 : 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(HearthTokens.buttonRadius),
+          ),
         ),
       ),
     );
@@ -663,14 +898,19 @@ class _AlertChannelButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: () => onPressed(!selected),
         icon: Icon(icon, size: 18),
-        label: Text(label),
+        label: Text(label, textAlign: TextAlign.center, softWrap: true),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           foregroundColor: selected ? p.accent : p.text,
           backgroundColor: selected ? p.accent.withValues(alpha: 0.10) : null,
-          side: BorderSide(color: selected ? p.accent : p.border, width: selected ? 1.6 : 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HearthTokens.buttonRadius)),
+          side: BorderSide(
+            color: selected ? p.accent : p.border,
+            width: selected ? 1.6 : 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(HearthTokens.buttonRadius),
+          ),
         ),
       ),
     );
